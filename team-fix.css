@@ -1,0 +1,9 @@
+/* CRITICAL FIX: Prevent Team section content from overlapping sidebar */
+#team {
+    padding-left: 1rem !important;
+}
+
+#team .glass-card {
+    position: relative;
+    z-index: 50;
+}
