@@ -12,13 +12,16 @@
 
 <body>
     <div class="app-container">
-        <!-- Sidebar Restored -->
-        <nav class="sidebar">
-            <!-- Toggle Button -->
-            <button class="sidebar-toggle" onclick="toggleSidebar()">
-                <i class="fa-solid fa-bars"></i>
-            </button>
+        <!-- Mobile Overlay -->
+        <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
+        <!-- Hamburger Toggle - Always visible -->
+        <button class="sidebar-toggle" id="sidebar-toggle-btn" onclick="toggleSidebar()" aria-label="Menüyü Aç/Kapat">
+            <i class="fa-solid fa-bars" id="sidebar-toggle-icon"></i>
+        </button>
+
+        <!-- Sidebar -->
+        <nav class="sidebar" id="sidebar">
             <div class="logo">
                 <i class="fa-solid fa-gamepad"></i>
                 <span>MANAGER++</span>

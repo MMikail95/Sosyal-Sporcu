@@ -1,5 +1,95 @@
 
 // ======================================================
+// SIDEBAR TOGGLE
+// ======================================================
+let sidebarOpen = true; // default: open on desktop
+
+function updateTogglePosition(isOpen) {
+    const btn = document.getElementById('sidebar-toggle-btn');
+    if (!btn) return;
+    if (window.innerWidth > 768) {
+        btn.style.left = isOpen ? 'calc(var(--sidebar-width, 260px) - 58px)' : '1rem';
+    } else {
+        btn.style.left = '1rem';
+    }
+}
+
+window.toggleSidebar = function () {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.querySelector('.main-content');
+    const overlay = document.getElementById('sidebar-overlay');
+    const icon = document.getElementById('sidebar-toggle-icon');
+    const isMobile = window.innerWidth <= 768;
+
+    if (isMobile) {
+        // Mobile: sidebar starts hidden (collapsed), toggle in/out
+        const isHidden = sidebar.classList.contains('collapsed');
+        if (isHidden) {
+            sidebar.classList.remove('collapsed');
+            overlay.classList.add('active');
+            icon.className = 'fa-solid fa-xmark';
+        } else {
+            sidebar.classList.add('collapsed');
+            overlay.classList.remove('active');
+            icon.className = 'fa-solid fa-bars';
+        }
+        updateTogglePosition(false);
+    } else {
+        // Desktop: toggle sidebar open/close, main content slides
+        sidebarOpen = !sidebarOpen;
+        if (sidebarOpen) {
+            sidebar.classList.remove('collapsed');
+            mainContent.classList.remove('expanded');
+        } else {
+            sidebar.classList.add('collapsed');
+            mainContent.classList.add('expanded');
+        }
+        icon.className = 'fa-solid fa-bars';
+        updateTogglePosition(sidebarOpen);
+    }
+};
+
+// Handle resize: reset sidebar state
+window.addEventListener('resize', () => {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.querySelector('.main-content');
+    const overlay = document.getElementById('sidebar-overlay');
+    const icon = document.getElementById('sidebar-toggle-icon');
+
+    if (window.innerWidth > 768) {
+        // Desktop: restore state
+        overlay.classList.remove('active');
+        if (sidebarOpen) {
+            sidebar.classList.remove('collapsed');
+            mainContent.classList.remove('expanded');
+        } else {
+            sidebar.classList.add('collapsed');
+            mainContent.classList.add('expanded');
+        }
+        icon.className = 'fa-solid fa-bars';
+        updateTogglePosition(sidebarOpen);
+    } else {
+        // Mobile: always close sidebar, full width content
+        sidebar.classList.add('collapsed');
+        mainContent.classList.remove('expanded'); // mobile always full
+        overlay.classList.remove('active');
+        icon.className = 'fa-solid fa-bars';
+        updateTogglePosition(false);
+    }
+});
+
+// On mobile, start with sidebar collapsed
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.innerWidth <= 768) {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar) sidebar.classList.add('collapsed');
+        updateTogglePosition(false);
+    } else {
+        updateTogglePosition(true); // desktop starts open
+    }
+});
+
+
 // SOSYAL SPORCU MANAGER - CORE SCRIPT
 // ======================================================
 
@@ -115,6 +205,8 @@ function showSection(id) {
     if (id === 'takimim') {
         console.log("⚡ Rendering Player List...");
         renderPlayerList();
+        // Restore pitch positions after section is visible
+        setTimeout(() => restorePitchState(), 50);
     }
 
     if (id === 'profile') {
@@ -635,11 +727,10 @@ window.addToPitch = function (id, x, y) {
             token.style.zIndex = 10;
             token.style.transform = 'scale(1)';
 
-            // CHECK BOUNDS for REMOVAL ("Çekip Bırakarak Kaldırma")
+            // CHECK BOUNDS for REMOVAL
             const pitchRect = pitch.getBoundingClientRect();
             const tokenRect = token.getBoundingClientRect();
 
-            // Check if center of token is outside pitch
             const centerX = tokenRect.left + tokenRect.width / 2;
             const centerY = tokenRect.top + tokenRect.height / 2;
 
@@ -649,10 +740,21 @@ window.addToPitch = function (id, x, y) {
                 centerY < pitchRect.top ||
                 centerY > pitchRect.bottom
             ) {
-                // Remove Token
+                // Remove Token + clear saved position
                 token.remove();
+                const p = players.find(pl => pl.id === id);
+                if (p) { delete p.pitchPos; savePlayers(); }
                 document.removeEventListener('mousemove', mouseMoveHandler);
                 document.removeEventListener('mouseup', mouseUpHandler);
+            } else {
+                // ✅ SAVE NEW POSITION after intra-pitch drag
+                const newLeft = parseFloat(token.style.left);
+                const newTop  = parseFloat(token.style.top);
+                const p = players.find(pl => pl.id === id);
+                if (p && !isNaN(newLeft) && !isNaN(newTop)) {
+                    p.pitchPos = { left: newLeft, top: newTop };
+                    savePlayers();
+                }
             }
         }
     };
@@ -665,6 +767,9 @@ window.addToPitch = function (id, x, y) {
     // Double click to remove from pitch
     token.ondblclick = function () {
         token.remove();
+        // Clear saved position
+        const p = players.find(pl => pl.id === id);
+        if (p) { delete p.pitchPos; savePlayers(); }
         document.removeEventListener('mousemove', mouseMoveHandler);
         document.removeEventListener('mouseup', mouseUpHandler);
     };
