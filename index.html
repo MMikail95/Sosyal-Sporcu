@@ -209,118 +209,312 @@
 
                         <!-- TAB 2: DETAYLI VERİLER -->
                         <div id="tab-detay" class="profile-subtab" style="display:none;">
-                            <div class="glass-card" style="margin-bottom:1.5rem;">
-                                <!-- KİMLİK -->
-                                <h4 class="attr-header"
-                                    style="color:var(--neon-green); border-bottom:1px solid #333; padding-bottom:0.5rem; margin-bottom:1rem;">
-                                    KİMLİK</h4>
-                                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
-                                    <div class="info-box">
-                                        <span class="info-label">Yaş</span>
-                                        <input type="number" id="inp-age" class="profile-input" value="34" onchange="syncProfileData()">
-                                    </div>
-                                    <div class="info-box">
-                                        <span class="info-label">Boy (cm)</span>
-                                        <input type="number" id="inp-height" class="profile-input" value="178" onchange="syncProfileData()">
-                                    </div>
-                                    <div class="info-box">
-                                        <span class="info-label">Kilo (kg)</span>
-                                        <input type="number" id="inp-weight" class="profile-input" value="82" onchange="syncProfileData()">
-                                    </div>
-                                    <div class="info-box">
-                                        <span class="info-label">Deneyim (Ekol)</span>
-                                        <select id="sel-ekol" class="profile-select" onchange="syncProfileData()">
-                                            <option value="Eski Lisanslı">Eski Lisanslı</option>
-                                            <option value="Halısaha Gazisi" selected>Halısaha Gazisi</option>
-                                            <option value="Sokak Futbolu">Sokak Futbolu</option>
-                                        </select>
-                                    </div>
-                                    <div class="info-box" style="border-color:var(--neon-pink);">
-                                        <span class="info-label">Sakatlık Riski</span>
-                                        <select id="sel-sakatlik" class="profile-select" style="color:var(--neon-pink);" onchange="syncProfileData()">
-                                            <option value="Beton Gibi">Beton Gibi</option>
-                                            <option value="Kronik Sakat">Kronik Sakat</option>
-                                            <option value="Maç Seçer" selected>Maç Seçer</option>
-                                        </select>
-                                    </div>
+
+                            <!-- SECTION 1: KİMLİK BİLGİLERİ -->
+                            <div class="detail-section glass-card">
+                                <div class="detail-section-header">
+                                    <i class="fa-solid fa-id-card"></i>
+                                    <h4>KİMLİK BİLGİLERİ</h4>
                                 </div>
-
-                                <!-- MEVKİ BİLGİSİ -->
-                                <h4 class="attr-header"
-                                    style="color:var(--neon-green); border-bottom:1px solid #333; padding-bottom:0.5rem; margin-bottom:1rem;">
-                                    MEVKİ BİLGİSİ</h4>
-                                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
-                                    <div class="info-box">
-                                        <span class="info-label">Ana Mevki</span>
-                                        <span class="info-val" style="color:var(--neon-cyan)">OS (Ofansif Orta Saha)</span>
+                                <div class="detail-identity-grid">
+                                    <div class="detail-field">
+                                        <label class="detail-label"><i class="fa-solid fa-cake-candles"></i> Yaş</label>
+                                        <input type="number" id="inp-age" class="profile-input detail-inp" value="24" onchange="syncProfileData()">
                                     </div>
-                                    <div class="info-box">
-                                        <span class="info-label">Alternatifler</span>
-                                        <span class="info-val">FV, SÖ</span>
+                                    <div class="detail-field">
+                                        <label class="detail-label"><i class="fa-solid fa-ruler-vertical"></i> Boy (cm)</label>
+                                        <input type="number" id="inp-height" class="profile-input detail-inp" value="180" onchange="syncProfileData()">
                                     </div>
-                                    <div class="info-box">
-                                        <span class="info-label">Oyun Tarzı</span>
-                                        <span class="info-val">Klasik 10 Numara</span>
+                                    <div class="detail-field">
+                                        <label class="detail-label"><i class="fa-solid fa-weight-scale"></i> Kilo (kg)</label>
+                                        <input type="number" id="inp-weight" class="profile-input detail-inp" value="75" onchange="syncProfileData()">
                                     </div>
-                                </div>
-
-                                <!-- KARAKTERİSTİK & LOJİSTİK -->
-                                <h4 class="attr-header"
-                                    style="color:var(--neon-green); border-bottom:1px solid #333; padding-bottom:0.5rem; margin-bottom:1rem;">
-                                    KARAKTERİSTİK &amp; LOJİSTİK</h4>
-                                <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;">
-                                    <div class="trait-select-wrapper">
-                                        <label>Maç Satma:</label>
-                                        <select id="sel-macsatma" class="profile-select-mini" onchange="syncProfileData()">
-                                            <option value="Asla Satmaz">Asla Satmaz</option>
-                                            <option value="Keyfine Bağlı" selected>Keyfine Bağlı</option>
-                                            <option value="Riskli">Riskli</option>
+                                    <div class="detail-field">
+                                        <label class="detail-label"><i class="fa-solid fa-graduation-cap"></i> Deneyim (Ekol)</label>
+                                        <select id="sel-ekol" class="profile-select detail-inp" onchange="syncProfileData()">
+                                            <option value="Eski Lisanslı">🏅 Eski Lisanslı</option>
+                                            <option value="Halısaha Gazisi" selected>⚡ Halısaha Gazisi</option>
+                                            <option value="Sokak Futbolu">🛣️ Sokak Futbolu</option>
                                         </select>
                                     </div>
-                                    <div class="trait-select-wrapper">
-                                        <label>Mizaç:</label>
-                                        <select id="sel-mizac" class="profile-select-mini" onchange="syncProfileData()">
-                                            <option value="Hakemle Kavgalı">Hakemle Kavgalı</option>
-                                            <option value="Sessiz Katil">Sessiz Katil</option>
-                                            <option value="Makara Yapıcı" selected>Makara Yapıcı</option>
+                                    <div class="detail-field" style="border-color: rgba(255,0,127,0.3);">
+                                        <label class="detail-label" style="color:var(--neon-pink);"><i class="fa-solid fa-kit-medical"></i> Sakatlık Riski</label>
+                                        <select id="sel-sakatlik" class="profile-select detail-inp" style="color:var(--neon-pink);" onchange="syncProfileData()">
+                                            <option value="Beton Gibi">🪨 Beton Gibi</option>
+                                            <option value="Kronik Sakat">🩹 Kronik Sakat</option>
+                                            <option value="Maç Seçer" selected>🎭 Maç Seçer</option>
                                         </select>
                                     </div>
-                                    <div class="trait-select-wrapper">
-                                        <label>Lojistik:</label>
-                                        <select id="sel-lojistik" class="profile-select-mini" onchange="syncProfileData()">
-                                            <option value="Servis Şoförü">Servis Şoförü</option>
-                                            <option value="Yolcu">Yolcu</option>
-                                            <option value="Kendi Gelir" selected>Kendi Gelir</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <button id="btn-save-details" class="btn-primary" onclick="saveProfileDetails()"
-                                    style="width:100%; margin-top:2rem; background:var(--neon-green); color:black; font-weight:800; padding:1rem; cursor:pointer; border:none; border-radius:8px; font-size:1rem; transition:transform 0.2s;">
-                                    <i class="fa-solid fa-floppy-disk"></i> DEĞİŞİKLİKLERİ KAYDET
-                                </button>
-
-                                <span class="trait-tag"
-                                    style="background:#222; padding:5px 10px; border-radius:4px; border:1px solid #444; display:flex; align-items:center; margin-top:1rem;">
-                                    Form: <b style="color:var(--neon-green); margin-left:5px;"><i
-                                            class="fa-solid fa-arrow-trend-up"></i> Yüksek</b>
-                                </span>
-                            </div>
-
-                            <!-- YETENEK KIRILIMLARI -->
-                            <div class="glass-card">
-                                <h4 class="attr-header" style="color:var(--neon-green); margin-bottom:1rem;">YETENEK
-                                    KIRILIMLARI (DETAY)</h4>
-                                <div id="sub-stats-container"
-                                    style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:2rem;">
-                                    <div style="color:#888; text-align:center; grid-column: 1 / -1;">
-                                        <i class="fa-solid fa-spinner fa-spin"></i> Veriler hesaplanıyor...
+                                    <div class="detail-field form-badge-field">
+                                        <label class="detail-label"><i class="fa-solid fa-arrow-trend-up"></i> Form</label>
+                                        <span class="form-badge good">🔥 Yüksek</span>
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- SECTION 2: MEVKİ & OYUN TARZI -->
+                            <div class="detail-section glass-card">
+                                <div class="detail-section-header">
+                                    <i class="fa-solid fa-futbol"></i>
+                                    <h4>MEVKİ & OYUN TARZI</h4>
+                                </div>
+                                <div class="detail-mevki-grid">
+                                    <div class="detail-field">
+                                        <label class="detail-label"><i class="fa-solid fa-map-pin"></i> Ana Mevki</label>
+                                        <select id="sel-ana-mevki" class="profile-select detail-inp" onchange="syncProfileData()">
+                                            <optgroup label="Kale">
+                                                <option value="Kaleci">🧤 Kaleci (KL)</option>
+                                            </optgroup>
+                                            <optgroup label="Defans">
+                                                <option value="Sol Bek">⬅️ Sol Bek</option>
+                                                <option value="Sağ Bek">➡️ Sağ Bek</option>
+                                                <option value="Stoper">🛡️ Stoper</option>
+                                                <option value="Libero">🔄 Libero</option>
+                                            </optgroup>
+                                            <optgroup label="Orta Saha">
+                                                <option value="Defansif OS">🔒 Defansif OS</option>
+                                                <option value="Box-to-Box OS">⚡ Box-to-Box OS</option>
+                                                <option value="Ofansif OS (10 Numara)" selected>🎨 Ofansif OS (10 Numara)</option>
+                                                <option value="Sol Kanat">🏃 Sol Kanat</option>
+                                                <option value="Sağ Kanat">🏃 Sağ Kanat</option>
+                                            </optgroup>
+                                            <optgroup label="Forvet">
+                                                <option value="İkinci Forvet">🔗 İkinci Forvet</option>
+                                                <option value="Santrafor (9 Numara)">⚽ Santrafor (9 Numara)</option>
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                    <div class="detail-field">
+                                        <label class="detail-label"><i class="fa-solid fa-shuffle"></i> Alternatif Mevkiler</label>
+                                        <input type="text" id="inp-alt-pos" class="profile-input detail-inp" placeholder="Örn: FV, Sol Kanat" onchange="syncProfileData()">
+                                    </div>
+                                    <div class="detail-field" style="grid-column: 1 / -1;">
+                                        <label class="detail-label"><i class="fa-solid fa-chess-knight"></i> Oyun Tarzı</label>
+                                        <select id="sel-oyun-tarzi" class="profile-select detail-inp" onchange="syncProfileData()">
+                                            <option value="Klasik 10 Numara">🎩 Klasik 10 Numara</option>
+                                            <option value="Box-to-Box">⚡ Box-to-Box</option>
+                                            <option value="İkinci Forvet">🔗 İkinci Forvet</option>
+                                            <option value="Kanat Oyuncusu">💨 Kanat Oyuncusu</option>
+                                            <option value="Goalgetter">🎯 Goalgetter</option>
+                                            <option value="Organizatör">🧠 Organizatör</option>
+                                            <option value="Sweeper">🧹 Sweeper</option>
+                                            <option value="Sweeper Keeper">🧤 Sweeper Keeper</option>
+                                            <option value="Libero">🔓 Libero</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SECTION 3: SAHA İÇİ KARAKTER (Segmented Controls) -->
+                            <div class="detail-section glass-card">
+                                <div class="detail-section-header">
+                                    <i class="fa-solid fa-brain"></i>
+                                    <h4>SAHA İÇİ KARAKTER</h4>
+                                    <span class="detail-section-hint">Her özellik için 3 seçenekten birini tıklayın</span>
+                                </div>
+                                <div class="trait-cards-grid">
+
+                                    <!-- Dakiklik -->
+                                    <div class="trait-card">
+                                        <div class="trait-card-label">
+                                            <i class="fa-solid fa-clock" style="color:var(--neon-cyan)"></i>
+                                            <span>Dakiklik</span>
+                                        </div>
+                                        <div class="seg-control" id="seg-dakiklik">
+                                            <button class="seg-opt good" data-val="15 dk Önce Sahada"
+                                                onclick="setSegTrait('dakiklik','15 dk Önce Sahada',this)">
+                                                ⚡ 15 dk Önce Sahada
+                                            </button>
+                                            <button class="seg-opt neutral active" data-val="Son Dakika Yetişir"
+                                                onclick="setSegTrait('dakiklik','Son Dakika Yetişir',this)">
+                                                🕐 Son Dakika Yetişir
+                                            </button>
+                                            <button class="seg-opt bad" data-val="Maç Başlarken Bağlar"
+                                                onclick="setSegTrait('dakiklik','Maç Başlarken Bağlar',this)">
+                                                🐢 Maç Başlarken Bağlar
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Saha İletişimi -->
+                                    <div class="trait-card">
+                                        <div class="trait-card-label">
+                                            <i class="fa-solid fa-comments" style="color:var(--neon-green)"></i>
+                                            <span>Saha İletişimi</span>
+                                        </div>
+                                        <div class="seg-control" id="seg-sahaIletisim">
+                                            <button class="seg-opt good" data-val="Sakin & Yapıcı"
+                                                onclick="setSegTrait('sahaIletisim','Sakin & Yapıcı',this)">
+                                                🤝 Sakin & Yapıcı
+                                            </button>
+                                            <button class="seg-opt neutral active" data-val="Sessiz Oynar"
+                                                onclick="setSegTrait('sahaIletisim','Sessiz Oynar',this)">
+                                                😐 Sessiz Oynar
+                                            </button>
+                                            <button class="seg-opt bad" data-val="Fırça Atar"
+                                                onclick="setSegTrait('sahaIletisim','Fırça Atar',this)">
+                                                😤 Fırça Atar
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Maç Sonu -->
+                                    <div class="trait-card">
+                                        <div class="trait-card-label">
+                                            <i class="fa-solid fa-mug-hot" style="color:var(--neon-pink)"></i>
+                                            <span>Maç Sonu</span>
+                                        </div>
+                                        <div class="seg-control" id="seg-macSonu">
+                                            <button class="seg-opt good" data-val="Çay & Muhabbet'te"
+                                                onclick="setSegTrait('macSonu',&quot;Çay & Muhabbet'te&quot;,this)">
+                                                ☕ Çay & Muhabbet'te
+                                            </button>
+                                            <button class="seg-opt neutral active" data-val="Bir Çay İçip Gider"
+                                                onclick="setSegTrait('macSonu','Bir Çay İçip Gider',this)">
+                                                🚶 Bir Çay İçip Gider
+                                            </button>
+                                            <button class="seg-opt bad" data-val="Maç Biter Uçar"
+                                                onclick="setSegTrait('macSonu','Maç Biter Uçar',this)">
+                                                💨 Maç Biter Uçar
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Mevki Sadakati -->
+                                    <div class="trait-card">
+                                        <div class="trait-card-label">
+                                            <i class="fa-solid fa-map-pin" style="color:var(--neon-cyan)"></i>
+                                            <span>Mevki Sadakati</span>
+                                        </div>
+                                        <div class="seg-control" id="seg-mevkiSadakat">
+                                            <button class="seg-opt good" data-val="Görevine Bağlı"
+                                                onclick="setSegTrait('mevkiSadakat','Görevine Bağlı',this)">
+                                                🎯 Görevine Bağlı
+                                            </button>
+                                            <button class="seg-opt neutral active" data-val="Bazen Gezer"
+                                                onclick="setSegTrait('mevkiSadakat','Bazen Gezer',this)">
+                                                🔄 Bazen Gezer
+                                            </button>
+                                            <button class="seg-opt bad" data-val="Saha Boyunca Dolaşır"
+                                                onclick="setSegTrait('mevkiSadakat','Saha Boyunca Dolaşır',this)">
+                                                🌍 Saha Boyunca Dolaşır
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Pres Gücü -->
+                                    <div class="trait-card">
+                                        <div class="trait-card-label">
+                                            <i class="fa-solid fa-person-running" style="color:var(--neon-green)"></i>
+                                            <span>Pres Gücü</span>
+                                        </div>
+                                        <div class="seg-control" id="seg-presGucu">
+                                            <button class="seg-opt good" data-val="Geri Koşar"
+                                                onclick="setSegTrait('presGucu','Geri Koşar',this)">
+                                                💪 Geri Koşar
+                                            </button>
+                                            <button class="seg-opt neutral active" data-val="Yorgunsa Yavaş"
+                                                onclick="setSegTrait('presGucu','Yorgunsa Yavaş',this)">
+                                                🚶 Yorgunsa Yavaş
+                                            </button>
+                                            <button class="seg-opt bad" data-val="Elleri Belinde Bekler"
+                                                onclick="setSegTrait('presGucu','Elleri Belinde Bekler',this)">
+                                                🏋️ Elleri Belinde Bekler
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Pas Tercihi -->
+                                    <div class="trait-card">
+                                        <div class="trait-card-label">
+                                            <i class="fa-solid fa-arrows-split-up-and-left" style="color:var(--neon-pink)"></i>
+                                            <span>Pas Tercihi</span>
+                                        </div>
+                                        <div class="seg-control" id="seg-pasTercihi">
+                                            <button class="seg-opt good" data-val="Garanti Oynar"
+                                                onclick="setSegTrait('pasTercihi','Garanti Oynar',this)">
+                                                ✅ Garanti Oynar
+                                            </button>
+                                            <button class="seg-opt neutral active" data-val="Dengeli"
+                                                onclick="setSegTrait('pasTercihi','Dengeli',this)">
+                                                ⚖️ Dengeli
+                                            </button>
+                                            <button class="seg-opt bad" data-val="İmkansızı Dener"
+                                                onclick="setSegTrait('pasTercihi','İmkansızı Dener',this)">
+                                                🎲 İmkansızı Dener
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Markaj -->
+                                    <div class="trait-card" style="grid-column: 1 / -1;">
+                                        <div class="trait-card-label">
+                                            <i class="fa-solid fa-user-shield" style="color:var(--neon-cyan)"></i>
+                                            <span>Markaj</span>
+                                        </div>
+                                        <div class="seg-control three-col" id="seg-markaj">
+                                            <button class="seg-opt good" data-val="Gölge Gibi Yapışır"
+                                                onclick="setSegTrait('markaj','Gölge Gibi Yapışır',this)">
+                                                👻 Gölge Gibi Yapışır
+                                            </button>
+                                            <button class="seg-opt neutral active" data-val="Yakın Takip"
+                                                onclick="setSegTrait('markaj','Yakın Takip',this)">
+                                                👀 Yakın Takip
+                                            </button>
+                                            <button class="seg-opt bad" data-val="5 Metreden İzler"
+                                                onclick="setSegTrait('markaj','5 Metreden İzler',this)">
+                                                📏 5 Metreden İzler
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            <!-- SECTION 4: KARAKTERİSTİK & LOJİSTİK -->
+                            <div class="detail-section glass-card">
+                                <div class="detail-section-header">
+                                    <i class="fa-solid fa-masks-theater"></i>
+                                    <h4>KARAKTERİSTİK &amp; LOJİSTİK</h4>
+                                </div>
+                                <div class="detail-karakteristik-grid">
+                                    <div class="detail-field">
+                                        <label class="detail-label"><i class="fa-solid fa-mask"></i> Maç Satma</label>
+                                        <select id="sel-macsatma" class="profile-select-mini detail-inp" onchange="syncProfileData()">
+                                            <option value="Asla Satmaz">💎 Asla Satmaz</option>
+                                            <option value="Keyfine Bağlı" selected>🎭 Keyfine Bağlı</option>
+                                            <option value="Riskli">⚠️ Riskli</option>
+                                        </select>
+                                    </div>
+                                    <div class="detail-field">
+                                        <label class="detail-label"><i class="fa-solid fa-fire"></i> Mizaç</label>
+                                        <select id="sel-mizac" class="profile-select-mini detail-inp" onchange="syncProfileData()">
+                                            <option value="Hakemle Kavgalı">😡 Hakemle Kavgalı</option>
+                                            <option value="Sessiz Katil">🥷 Sessiz Katil</option>
+                                            <option value="Makara Yapıcı" selected>😄 Makara Yapıcı</option>
+                                        </select>
+                                    </div>
+                                    <div class="detail-field">
+                                        <label class="detail-label"><i class="fa-solid fa-car"></i> Lojistik</label>
+                                        <select id="sel-lojistik" class="profile-select-mini detail-inp" onchange="syncProfileData()">
+                                            <option value="Servis Şoförü">🚌 Servis Şoförü</option>
+                                            <option value="Yolcu">🧑‍✈️ Yolcu</option>
+                                            <option value="Kendi Gelir" selected>🚗 Kendi Gelir</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SAVE BUTTON -->
+                            <button id="btn-save-details" class="btn-primary detail-save-btn" onclick="saveProfileDetails()">
+                                <i class="fa-solid fa-floppy-disk"></i> DEĞİŞİKLİKLERİ KAYDET
+                            </button>
+
                         </div>
 
+
                         <!-- TAB 3: YETENEKLER -->
+
                         <div id="tab-yetenekler" class="profile-subtab" style="display:none;">
                             <div class="skills-grid">
                                 <div class="glass-card skill-card locked" id="sc-maestro">

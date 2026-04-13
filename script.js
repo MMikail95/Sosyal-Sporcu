@@ -91,67 +91,155 @@ document.addEventListener('DOMContentLoaded', () => {
 const MOCK_PLAYERS = [
     {
         id: 'p1', name: 'Mikimon',
-        details: { pos: 'OS', age: 28, height: 182, weight: 76, ekol: 'Halısaha Gazisi', sakatlik: 'Maç Seçer', macsatma: 'Keyfine Bağlı', mizac: 'Makara Yapıcı', lojistik: 'Kendi Gelir' },
+        details: {
+            pos: 'OS', age: 28, height: 182, weight: 76,
+            ekol: 'Halısaha Gazisi', sakatlik: 'Maç Seçer',
+            macsatma: 'Keyfine Bağlı', mizac: 'Makara Yapıcı', lojistik: 'Kendi Gelir',
+            anaMevki: 'Ofansif OS (10 Numara)', altPos: 'FV, Sağ Kanat', oyunTarzi: 'Klasik 10 Numara',
+            dakiklik: '15 dk Önce Sahada', sahaIletisim: 'Sakin & Yapıcı',
+            macSonu: 'Çay & Muhabbet\'te', mevkiSadakat: 'Görevine Bağlı',
+            presGucu: 'Yorgunsa Yavaş', pasTercihi: 'Dengeli', markaj: 'Yakın Takip'
+        },
         ratings: { teknik: 85, sut: 80, pas: 90, hiz: 78, fizik: 65, kondisyon: 75 },
         communityRatings: []
     },
     {
         id: 'p2', name: 'Barış',
-        details: { pos: 'FV', age: 26, height: 185, weight: 82, ekol: 'Eski Lisanslı', sakatlik: 'Beton Gibi', macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Yolcu' },
+        details: {
+            pos: 'FV', age: 26, height: 185, weight: 82,
+            ekol: 'Eski Lisanslı', sakatlik: 'Beton Gibi',
+            macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Yolcu',
+            anaMevki: 'Santrafor (9 Numara)', altPos: 'İkinci Forvet', oyunTarzi: 'Goalgetter',
+            dakiklik: 'Son Dakika Yetişir', sahaIletisim: 'Sessiz Oynar',
+            macSonu: 'Bir Çay İçip Gider', mevkiSadakat: 'Görevine Bağlı',
+            presGucu: 'Elleri Belinde Bekler', pasTercihi: 'Garanti Oynar', markaj: '5 Metreden İzler'
+        },
         ratings: { teknik: 75, sut: 88, pas: 70, hiz: 84, fizik: 85, kondisyon: 80 },
         communityRatings: []
     },
     {
         id: 'p3', name: 'Kerem',
-        details: { pos: 'DEF', age: 30, height: 180, weight: 85, ekol: 'Halısaha Gazisi', sakatlik: 'Maç Seçer', macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Kendi Gelir' },
+        details: {
+            pos: 'DEF', age: 30, height: 180, weight: 85,
+            ekol: 'Halısaha Gazisi', sakatlik: 'Maç Seçer',
+            macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Kendi Gelir',
+            anaMevki: 'Stoper', altPos: 'Sol Bek', oyunTarzi: 'Sweeper',
+            dakiklik: '15 dk Önce Sahada', sahaIletisim: 'Sakin & Yapıcı',
+            macSonu: 'Çay & Muhabbet\'te', mevkiSadakat: 'Görevine Bağlı',
+            presGucu: 'Geri Koşar', pasTercihi: 'Garanti Oynar', markaj: 'Gölge Gibi Yapışır'
+        },
         ratings: { teknik: 70, sut: 60, pas: 72, hiz: 68, fizik: 88, kondisyon: 78 },
         communityRatings: []
     },
     {
         id: 'p4', name: 'Tarık',
-        details: { pos: 'OS', age: 24, height: 175, weight: 72, ekol: 'Sokak Futbolu', sakatlik: 'Kronik Sakat', macsatma: 'Riskli', mizac: 'Hakemle Kavgalı', lojistik: 'Yolcu' },
+        details: {
+            pos: 'OS', age: 24, height: 175, weight: 72,
+            ekol: 'Sokak Futbolu', sakatlik: 'Kronik Sakat',
+            macsatma: 'Riskli', mizac: 'Hakemle Kavgalı', lojistik: 'Yolcu',
+            anaMevki: 'Sol Kanat', altPos: 'Sağ Kanat, Ofansif OS (10 Numara)', oyunTarzi: 'Kanat Oyuncusu',
+            dakiklik: 'Maç Başlarken Bağlar', sahaIletisim: 'Fırça Atar',
+            macSonu: 'Maç Biter Uçar', mevkiSadakat: 'Saha Boyunca Dolaşır',
+            presGucu: 'Geri Koşar', pasTercihi: 'İmkansızı Dener', markaj: '5 Metreden İzler'
+        },
         ratings: { teknik: 83, sut: 77, pas: 80, hiz: 91, fizik: 70, kondisyon: 72 },
         communityRatings: []
     },
     {
         id: 'p5', name: 'Emre',
-        details: { pos: 'FV', age: 29, height: 178, weight: 79, ekol: 'Halısaha Gazisi', sakatlik: 'Beton Gibi', macsatma: 'Keyfine Bağlı', mizac: 'Makara Yapıcı', lojistik: 'Servis Şoförü' },
+        details: {
+            pos: 'FV', age: 29, height: 178, weight: 79,
+            ekol: 'Halısaha Gazisi', sakatlik: 'Beton Gibi',
+            macsatma: 'Keyfine Bağlı', mizac: 'Makara Yapıcı', lojistik: 'Servis Şoförü',
+            anaMevki: 'İkinci Forvet', altPos: 'Santrafor (9 Numara)', oyunTarzi: 'İkinci Forvet',
+            dakiklik: 'Son Dakika Yetişir', sahaIletisim: 'Sessiz Oynar',
+            macSonu: 'Bir Çay İçip Gider', mevkiSadakat: 'Bazen Gezer',
+            presGucu: 'Yorgunsa Yavaş', pasTercihi: 'Dengeli', markaj: 'Yakın Takip'
+        },
         ratings: { teknik: 78, sut: 85, pas: 65, hiz: 80, fizik: 82, kondisyon: 76 },
         communityRatings: []
     },
     {
         id: 'p6', name: 'Oğuz',
-        details: { pos: 'DEF', age: 33, height: 183, weight: 88, ekol: 'Eski Lisanslı', sakatlik: 'Beton Gibi', macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Kendi Gelir' },
+        details: {
+            pos: 'DEF', age: 33, height: 183, weight: 88,
+            ekol: 'Eski Lisanslı', sakatlik: 'Beton Gibi',
+            macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Kendi Gelir',
+            anaMevki: 'Stoper', altPos: 'Sağ Bek', oyunTarzi: 'Libero',
+            dakiklik: '15 dk Önce Sahada', sahaIletisim: 'Sakin & Yapıcı',
+            macSonu: 'Çay & Muhabbet\'te', mevkiSadakat: 'Görevine Bağlı',
+            presGucu: 'Geri Koşar', pasTercihi: 'Garanti Oynar', markaj: 'Gölge Gibi Yapışır'
+        },
         ratings: { teknik: 65, sut: 55, pas: 68, hiz: 62, fizik: 90, kondisyon: 82 },
         communityRatings: []
     },
     {
         id: 'p7', name: 'Can',
-        details: { pos: 'KL', age: 27, height: 188, weight: 84, ekol: 'Halısaha Gazisi', sakatlik: 'Maç Seçer', macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Yolcu' },
+        details: {
+            pos: 'KL', age: 27, height: 188, weight: 84,
+            ekol: 'Halısaha Gazisi', sakatlik: 'Maç Seçer',
+            macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Yolcu',
+            anaMevki: 'Kaleci', altPos: '—', oyunTarzi: 'Sweeper Keeper',
+            dakiklik: '15 dk Önce Sahada', sahaIletisim: 'Sakin & Yapıcı',
+            macSonu: 'Çay & Muhabbet\'te', mevkiSadakat: 'Görevine Bağlı',
+            presGucu: 'Yorgunsa Yavaş', pasTercihi: 'Garanti Oynar', markaj: 'Gölge Gibi Yapışır'
+        },
         ratings: { teknik: 72, sut: 60, pas: 70, hiz: 65, fizik: 80, kondisyon: 78 },
         communityRatings: []
     },
     {
         id: 'p8', name: 'Serhat',
-        details: { pos: 'OS', age: 22, height: 173, weight: 68, ekol: 'Sokak Futbolu', sakatlik: 'Maç Seçer', macsatma: 'Keyfine Bağlı', mizac: 'Makara Yapıcı', lojistik: 'Kendi Gelir' },
+        details: {
+            pos: 'OS', age: 22, height: 173, weight: 68,
+            ekol: 'Sokak Futbolu', sakatlik: 'Maç Seçer',
+            macsatma: 'Keyfine Bağlı', mizac: 'Makara Yapıcı', lojistik: 'Kendi Gelir',
+            anaMevki: 'Ofansif OS (10 Numara)', altPos: 'Sol Kanat', oyunTarzi: 'Klasik 10 Numara',
+            dakiklik: '15 dk Önce Sahada', sahaIletisim: 'Sakin & Yapıcı',
+            macSonu: 'Çay & Muhabbet\'te', mevkiSadakat: 'Görevine Bağlı',
+            presGucu: 'Geri Koşar', pasTercihi: 'İmkansızı Dener', markaj: 'Yakın Takip'
+        },
         ratings: { teknik: 88, sut: 72, pas: 85, hiz: 90, fizik: 65, kondisyon: 70 },
         communityRatings: []
     },
     {
         id: 'p9', name: 'Mert',
-        details: { pos: 'FV', age: 25, height: 181, weight: 78, ekol: 'Eski Lisanslı', sakatlik: 'Beton Gibi', macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Servis Şoförü' },
+        details: {
+            pos: 'FV', age: 25, height: 181, weight: 78,
+            ekol: 'Eski Lisanslı', sakatlik: 'Beton Gibi',
+            macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Servis Şoförü',
+            anaMevki: 'Santrafor (9 Numara)', altPos: 'İkinci Forvet', oyunTarzi: 'Goalgetter',
+            dakiklik: 'Son Dakika Yetişir', sahaIletisim: 'Sessiz Oynar',
+            macSonu: 'Bir Çay İçip Gider', mevkiSadakat: 'Bazen Gezer',
+            presGucu: 'Elleri Belinde Bekler', pasTercihi: 'Garanti Oynar', markaj: 'Yakın Takip'
+        },
         ratings: { teknik: 76, sut: 89, pas: 68, hiz: 82, fizik: 78, kondisyon: 74 },
         communityRatings: []
     },
     {
         id: 'p10', name: 'Ali',
-        details: { pos: 'DEF', age: 31, height: 186, weight: 86, ekol: 'Halısaha Gazisi', sakatlik: 'Beton Gibi', macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Kendi Gelir' },
+        details: {
+            pos: 'DEF', age: 31, height: 186, weight: 86,
+            ekol: 'Halısaha Gazisi', sakatlik: 'Beton Gibi',
+            macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Kendi Gelir',
+            anaMevki: 'Sağ Bek', altPos: 'Stoper', oyunTarzi: 'Organizatör',
+            dakiklik: '15 dk Önce Sahada', sahaIletisim: 'Sakin & Yapıcı',
+            macSonu: 'Çay & Muhabbet\'te', mevkiSadakat: 'Görevine Bağlı',
+            presGucu: 'Geri Koşar', pasTercihi: 'Garanti Oynar', markaj: 'Gölge Gibi Yapışır'
+        },
         ratings: { teknik: 67, sut: 58, pas: 65, hiz: 70, fizik: 87, kondisyon: 83 },
         communityRatings: []
     },
     {
         id: 'p11', name: 'Hasan',
-        details: { pos: 'OS', age: 23, height: 177, weight: 73, ekol: 'Halısaha Gazisi', sakatlik: 'Maç Seçer', macsatma: 'Keyfine Bağlı', mizac: 'Makara Yapıcı', lojistik: 'Yolcu' },
+        details: {
+            pos: 'OS', age: 23, height: 177, weight: 73,
+            ekol: 'Halısaha Gazisi', sakatlik: 'Maç Seçer',
+            macsatma: 'Keyfine Bağlı', mizac: 'Makara Yapıcı', lojistik: 'Yolcu',
+            anaMevki: 'Box-to-Box OS', altPos: 'Defansif OS', oyunTarzi: 'Box-to-Box',
+            dakiklik: 'Son Dakika Yetişir', sahaIletisim: 'Sessiz Oynar',
+            macSonu: 'Bir Çay İçip Gider', mevkiSadakat: 'Bazen Gezer',
+            presGucu: 'Geri Koşar', pasTercihi: 'Dengeli', markaj: 'Yakın Takip'
+        },
         ratings: { teknik: 80, sut: 74, pas: 78, hiz: 85, fizik: 68, kondisyon: 73 },
         communityRatings: []
     }
@@ -173,10 +261,36 @@ const MOCK_ACCOUNTS = [
 
 const DEFAULT_PLAYER = {
     id: 'new', name: 'Yeni Oyuncu',
-    details: { pos: 'OS', age: 24, height: 180, weight: 75, ekol: 'Halısaha Gazisi', sakatlik: 'Maç Seçer', macsatma: 'Keyfine Bağlı', mizac: 'Makara Yapıcı', lojistik: 'Kendi Gelir' },
+    details: {
+        pos: 'OS', age: 24, height: 180, weight: 75,
+        ekol: 'Halısaha Gazisi', sakatlik: 'Maç Seçer',
+        macsatma: 'Keyfine Bağlı', mizac: 'Makara Yapıcı', lojistik: 'Kendi Gelir',
+        anaMevki: 'Ofansif OS (10 Numara)', altPos: '', oyunTarzi: 'Box-to-Box',
+        dakiklik: 'Son Dakika Yetişir', sahaIletisim: 'Sessiz Oynar',
+        macSonu: 'Bir Çay İçip Gider', mevkiSadakat: 'Bazen Gezer',
+        presGucu: 'Yorgunsa Yavaş', pasTercihi: 'Dengeli', markaj: 'Yakın Takip'
+    },
     ratings: { teknik: 70, sut: 70, pas: 70, hiz: 70, fizik: 70, kondisyon: 70 },
     communityRatings: []
 };
+
+// Migrates old player data to add new fields if missing
+function migratePlayerData(player) {
+    const d = player.details;
+    if (!d) return player;
+    if (!d.anaMevki)      d.anaMevki      = 'Ofansif OS (10 Numara)';
+    if (!d.altPos)        d.altPos        = '';
+    if (!d.oyunTarzi)     d.oyunTarzi     = 'Box-to-Box';
+    if (!d.dakiklik)      d.dakiklik      = 'Son Dakika Yetişir';
+    if (!d.sahaIletisim)  d.sahaIletisim  = 'Sessiz Oynar';
+    if (!d.macSonu)       d.macSonu       = 'Bir Çay İçip Gider';
+    if (!d.mevkiSadakat)  d.mevkiSadakat  = 'Bazen Gezer';
+    if (!d.presGucu)      d.presGucu      = 'Yorgunsa Yavaş';
+    if (!d.pasTercihi)    d.pasTercihi    = 'Dengeli';
+    if (!d.markaj)        d.markaj        = 'Yakın Takip';
+    if (!player.communityRatings) player.communityRatings = [];
+    return player;
+}
 
 
 // ======================================================
@@ -194,8 +308,7 @@ function loadData() {
     if (rawPlayers && rawPlayers !== 'undefined') {
         try {
             players = JSON.parse(rawPlayers);
-            // Ensure communityRatings exists on all players
-            players.forEach(p => { if (!p.communityRatings) p.communityRatings = []; });
+            players.forEach(p => migratePlayerData(p));
             console.log('📂 Players loaded:', players.length);
         } catch (e) {
             console.error('Corruption in ss_players_v2, resetting:', e);
@@ -451,11 +564,16 @@ function applyProfileViewMode() {
     }
 
     // Disable/enable inputs in detail tab
-    const inputs = document.querySelectorAll('.profile-input, .profile-select, .profile-select-mini');
+    const inputs = document.querySelectorAll('.profile-input, .profile-select, .profile-select-mini, .detail-inp');
     inputs.forEach(el => {
         el.disabled = !canEdit;
         el.style.opacity = canEdit ? '1' : '0.5';
         el.style.cursor = canEdit ? '' : 'not-allowed';
+    });
+
+    // Disable/enable segmented control buttons
+    document.querySelectorAll('.seg-opt').forEach(btn => {
+        btn.disabled = !canEdit;
     });
 
     // Save button
@@ -586,6 +704,21 @@ window.updateUI = function () {
     setVal('sel-macsatma', player.details.macsatma);
     setVal('sel-mizac', player.details.mizac);
     setVal('sel-lojistik', player.details.lojistik);
+    // Mevki & oyun tarzı
+    setVal('sel-ana-mevki', player.details.anaMevki);
+    setVal('inp-alt-pos', player.details.altPos);
+    setVal('sel-oyun-tarzi', player.details.oyunTarzi);
+    // Segment controls (character traits)
+    const segFields = ['dakiklik','sahaIletisim','macSonu','mevkiSadakat','presGucu','pasTercihi','markaj'];
+    segFields.forEach(field => {
+        const val = player.details[field];
+        if (!val) return;
+        const container = document.getElementById(`seg-${field}`);
+        if (!container) return;
+        container.querySelectorAll('.seg-opt').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.val === val);
+        });
+    });
 
     // Update Sliders
     for (const [key, val] of Object.entries(player.ratings)) {
@@ -940,18 +1073,33 @@ window.syncProfileData = function () {
     if (!canEditPlayer(activePlayerId)) return;
 
     const getVal = (id) => { const el = document.getElementById(id); return el ? el.value : null; };
-    player.details.age    = getVal('inp-age')      || player.details.age;
-    player.details.height = getVal('inp-height')   || player.details.height;
-    player.details.weight = getVal('inp-weight')   || player.details.weight;
-    player.details.ekol       = getVal('sel-ekol')      || player.details.ekol;
-    player.details.sakatlik   = getVal('sel-sakatlik')  || player.details.sakatlik;
-    player.details.macsatma   = getVal('sel-macsatma')  || player.details.macsatma;
-    player.details.mizac      = getVal('sel-mizac')     || player.details.mizac;
-    player.details.lojistik   = getVal('sel-lojistik')  || player.details.lojistik;
+    player.details.age        = getVal('inp-age')        || player.details.age;
+    player.details.height     = getVal('inp-height')     || player.details.height;
+    player.details.weight     = getVal('inp-weight')     || player.details.weight;
+    player.details.ekol       = getVal('sel-ekol')       || player.details.ekol;
+    player.details.sakatlik   = getVal('sel-sakatlik')   || player.details.sakatlik;
+    player.details.macsatma   = getVal('sel-macsatma')   || player.details.macsatma;
+    player.details.mizac      = getVal('sel-mizac')      || player.details.mizac;
+    player.details.lojistik   = getVal('sel-lojistik')   || player.details.lojistik;
+    player.details.anaMevki   = getVal('sel-ana-mevki')  || player.details.anaMevki;
+    player.details.altPos     = getVal('inp-alt-pos')    !== null ? getVal('inp-alt-pos') : player.details.altPos;
+    player.details.oyunTarzi  = getVal('sel-oyun-tarzi') || player.details.oyunTarzi;
 
     savePlayers();
     const ageEl = document.getElementById('disp-age-header');
     if (ageEl) ageEl.innerHTML = `<i class="fa-solid fa-cake-candles"></i> ${player.details.age} Yaş`;
+};
+
+// Segmented control trait setter
+window.setSegTrait = function(field, val, btnEl) {
+    const player = players.find(p => p.id === activePlayerId);
+    if (!player) return;
+    if (!canEditPlayer(activePlayerId)) return;
+    player.details[field] = val;
+    savePlayers();
+    const container = btnEl.closest('.seg-control');
+    if (container) container.querySelectorAll('.seg-opt').forEach(b => b.classList.remove('active'));
+    btnEl.classList.add('active');
 };
 
 window.updateRateDisp = function (type, val) {
@@ -1003,14 +1151,18 @@ window.saveProfileDetails = function () {
     if (!player) return alert('Oyuncu bulunamadı!');
 
     const getVal = (id) => { const el = document.getElementById(id); return el ? el.value : null; };
-    player.details.age    = getVal('inp-age')      || player.details.age;
-    player.details.height = getVal('inp-height')   || player.details.height;
-    player.details.weight = getVal('inp-weight')   || player.details.weight;
-    player.details.ekol       = getVal('sel-ekol')      || player.details.ekol;
-    player.details.sakatlik   = getVal('sel-sakatlik')  || player.details.sakatlik;
-    player.details.macsatma   = getVal('sel-macsatma')  || player.details.macsatma;
-    player.details.mizac      = getVal('sel-mizac')     || player.details.mizac;
-    player.details.lojistik   = getVal('sel-lojistik')  || player.details.lojistik;
+    player.details.age        = getVal('inp-age')        || player.details.age;
+    player.details.height     = getVal('inp-height')     || player.details.height;
+    player.details.weight     = getVal('inp-weight')     || player.details.weight;
+    player.details.ekol       = getVal('sel-ekol')       || player.details.ekol;
+    player.details.sakatlik   = getVal('sel-sakatlik')   || player.details.sakatlik;
+    player.details.macsatma   = getVal('sel-macsatma')   || player.details.macsatma;
+    player.details.mizac      = getVal('sel-mizac')      || player.details.mizac;
+    player.details.lojistik   = getVal('sel-lojistik')   || player.details.lojistik;
+    player.details.anaMevki   = getVal('sel-ana-mevki')  || player.details.anaMevki;
+    player.details.altPos     = getVal('inp-alt-pos')    !== null ? getVal('inp-alt-pos') : player.details.altPos;
+    player.details.oyunTarzi  = getVal('sel-oyun-tarzi') || player.details.oyunTarzi;
+    // Segment fields are saved in real-time via setSegTrait, no need to re-read here
 
     savePlayers();
 

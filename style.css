@@ -2020,4 +2020,259 @@ input[type="range"]::-webkit-slider-runnable-track {
         width: auto;
     }
 }
+
+/* ======================================================
+   DETAYLI VERİLER TAB — DETAIL SECTIONS
+   ====================================================== */
+.detail-section {
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+    border-radius: 16px;
+}
+
+.detail-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.detail-section-header i {
+    font-size: 1rem;
+    color: var(--neon-green);
+    width: 20px;
+    text-align: center;
+}
+
+.detail-section-header h4 {
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: var(--neon-green);
+    text-transform: uppercase;
+    margin: 0;
+    flex: 1;
+}
+
+.detail-section-hint {
+    font-size: 0.72rem;
+    color: #555;
+    font-style: italic;
+    margin-left: auto;
+}
+
+/* Identity & Mevki Grids */
+.detail-identity-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 1rem;
+}
+
+.detail-mevki-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.detail-karakteristik-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.detail-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    transition: border-color 0.2s ease;
+}
+
+.detail-field:hover {
+    border-color: rgba(173,255,47,0.2);
+}
+
+.detail-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.detail-inp {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    border-radius: 0 !important;
+    padding: 4px 0 !important;
+    color: var(--text-main) !important;
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    width: 100% !important;
+    outline: none !important;
+    transition: border-color 0.2s ease !important;
+}
+
+.detail-inp:focus {
+    border-bottom-color: var(--neon-green) !important;
+}
+
+.detail-inp:disabled {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+}
+
+.form-badge-field {
+    justify-content: space-between;
+}
+
+.form-badge {
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: inline-block;
+    width: fit-content;
+}
+
+.form-badge.good {
+    background: rgba(173,255,47,0.1);
+    color: var(--neon-green);
+    border: 1px solid rgba(173,255,47,0.3);
+}
+
+/* Save Button */
+.detail-save-btn {
+    width: 100%;
+    padding: 1rem;
+    background: var(--neon-green);
+    color: black;
+    font-weight: 800;
+    font-size: 1rem;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    margin-bottom: 0.5rem;
+}
+
+.detail-save-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(173,255,47,0.3);
+}
+
+/* ======================================================
+   SEGMENTED CONTROLS (Trait Cards)
+   ====================================================== */
+.trait-cards-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+}
+
+.trait-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.trait-card-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.seg-control {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    background: rgba(255,255,255,0.03);
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+
+.seg-opt {
+    padding: 0.5rem 0.4rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    cursor: pointer;
+    background: transparent;
+    color: #555;
+    text-align: center;
+    line-height: 1.3;
+    transition: all 0.18s ease;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.seg-opt:hover {
+    background: rgba(255,255,255,0.05);
+    color: #aaa;
+}
+
+/* Good option — green when active */
+.seg-opt.good.active {
+    background: rgba(173,255,47,0.12);
+    border-color: rgba(173,255,47,0.4);
+    color: var(--neon-green);
+}
+
+/* Neutral option — yellow when active */
+.seg-opt.neutral.active {
+    background: rgba(255,200,0,0.1);
+    border-color: rgba(255,200,0,0.35);
+    color: #ffc800;
+}
+
+/* Bad option — red/pink when active */
+.seg-opt.bad.active {
+    background: rgba(255,0,127,0.1);
+    border-color: rgba(255,0,127,0.35);
+    color: var(--neon-pink);
+}
+
+/* View-only mode — disable seg buttons */
+.seg-opt:disabled,
+.seg-opt[disabled] {
+    cursor: not-allowed;
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+@media (max-width: 900px) {
+    .trait-cards-grid {
+        grid-template-columns: 1fr;
+    }
+    .detail-identity-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .detail-mevki-grid {
+        grid-template-columns: 1fr;
+    }
+    .detail-karakteristik-grid {
+        grid-template-columns: 1fr;
+    }
+    .seg-opt {
+        font-size: 0.65rem;
+        padding: 0.4rem 0.25rem;
+    }
+}
+
 
