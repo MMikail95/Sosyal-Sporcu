@@ -2534,4 +2534,408 @@ input[type="range"]::-webkit-slider-runnable-track {
 }
 .ss-toast.visible { transform: translateX(-50%) translateY(0); opacity: 1; }
 
+
+/* ======================================================
+   BAŞARIM SİSTEMİ (ACHIEVEMENTS)
+   ====================================================== */
+
+/* --- Banner --- */
+.ach-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 2rem;
+    background: linear-gradient(135deg,
+        rgba(173,255,47,0.07) 0%,
+        rgba(255,255,255,0.03) 50%,
+        rgba(255,0,127,0.05) 100%);
+    border: 1px solid rgba(173,255,47,0.2);
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.ach-banner-left {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.ach-banner-icon {
+    width: 56px;
+    height: 56px;
+    background: rgba(173,255,47,0.12);
+    border: 2px solid rgba(173,255,47,0.35);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    color: var(--neon-green);
+    box-shadow: 0 0 18px rgba(173,255,47,0.2);
+    flex-shrink: 0;
+}
+
+.ach-banner-title {
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin: 0 0 0.2rem;
+}
+
+.ach-banner-sub {
+    color: #666;
+    font-size: 0.88rem;
+    margin: 0;
+}
+
+.ach-banner-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+/* --- Progress Ring --- */
+.ach-progress-ring {
+    width: 72px;
+    height: 72px;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.ach-progress-ring svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.ach-ring-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.ach-ring-num {
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: var(--neon-green);
+}
+
+.ach-ring-total {
+    font-size: 0.65rem;
+    color: #555;
+    font-weight: 600;
+}
+
+/* --- Tier Pills --- */
+.ach-stat-pills {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.ach-pill {
+    padding: 0.3rem 0.9rem;
+    border-radius: 20px;
+    border: 1px solid;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    background: rgba(0,0,0,0.3);
+    white-space: nowrap;
+}
+
+/* --- Stats Row --- */
+.ach-stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.ach-stat-card {
+    padding: 1.2rem 1rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ach-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+}
+
+.ach-stat-num {
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1;
+}
+
+.ach-stat-label {
+    font-size: 0.75rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 600;
+}
+
+/* --- Category Section --- */
+.ach-category-section {
+    margin-bottom: 2.5rem;
+}
+
+.ach-category-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.ach-category-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin: 0;
+}
+
+.ach-category-count {
+    margin-left: auto;
+    font-size: 0.8rem;
+    color: #555;
+    font-weight: 700;
+    background: rgba(255,255,255,0.05);
+    padding: 0.2rem 0.7rem;
+    border-radius: 20px;
+    border: 1px solid #333;
+}
+
+/* --- Achievement Cards Grid --- */
+.ach-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+/* --- Achievement Card --- */
+.ach-card {
+    position: relative;
+    border-radius: 16px;
+    padding: 1.4rem 1.2rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    overflow: hidden;
+    cursor: default;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease, opacity 0.25s ease;
+    border: 1px solid #1f1f1f;
+    background: rgba(255,255,255,0.025);
+}
+
+.ach-card:hover { transform: translateY(-4px); }
+
+/* --- Unlocked Variant --- */
+.ach-card.ach-unlocked {
+    border-color: rgba(255,255,255,0.12);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    animation: achUnlockPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+.ach-card.ach-unlocked:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+
+.ach-card.ach-tier-bronz.ach-unlocked { border-color: rgba(205,127,50,0.3); }
+.ach-card.ach-tier-gumus.ach-unlocked { border-color: rgba(170,170,170,0.3); }
+.ach-card.ach-tier-altin.ach-unlocked  { border-color: rgba(255,215,0,0.35); }
+
+.ach-card.ach-tier-bronz.ach-unlocked:hover { box-shadow: 0 8px 30px rgba(205,127,50,0.25); }
+.ach-card.ach-tier-gumus.ach-unlocked:hover  { box-shadow: 0 8px 30px rgba(170,170,170,0.2); }
+.ach-card.ach-tier-altin.ach-unlocked:hover  { box-shadow: 0 8px 30px rgba(255,215,0,0.3);   }
+
+/* --- Locked Variant --- */
+.ach-card.ach-locked { filter: grayscale(0.7); opacity: 0.65; }
+.ach-card.ach-locked:hover { opacity: 0.85; filter: grayscale(0.4); }
+
+/* --- Glow Layer --- */
+.ach-card-glow {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    border-radius: 16px;
+}
+
+/* --- Card Top --- */
+.ach-card-top {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.ach-card-icon {
+    font-size: 1.6rem;
+    line-height: 1;
+    transition: text-shadow 0.3s ease;
+}
+
+.ach-card.ach-unlocked .ach-card-icon { filter: drop-shadow(0 0 6px currentColor); }
+
+.ach-card-emoji {
+    font-size: 1.1rem;
+    margin-left: auto;
+}
+
+/* --- Status Badge --- */
+.ach-status-badge {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    flex-shrink: 0;
+}
+
+.ach-status-unlock {
+    background: rgba(173,255,47,0.2);
+    color: var(--neon-green);
+    border: 1px solid rgba(173,255,47,0.4);
+}
+
+.ach-status-lock {
+    background: rgba(255,255,255,0.04);
+    color: #444;
+    border: 1px solid #2a2a2a;
+}
+
+/* --- Card Body --- */
+.ach-card-body {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.ach-card-title {
+    font-size: 0.92rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.ach-card-desc {
+    font-size: 0.78rem;
+    color: #888;
+    line-height: 1.4;
+    margin: 0;
+}
+
+.ach-card-hint {
+    margin-top: 0.3rem;
+    font-size: 0.72rem;
+    color: #444;
+    display: flex;
+    gap: 0.35rem;
+    align-items: flex-start;
+    line-height: 1.4;
+    padding: 0.4rem 0.6rem;
+    background: rgba(255,255,255,0.02);
+    border-radius: 6px;
+    border: 1px solid #222;
+}
+
+.ach-card-hint i { color: #555; flex-shrink: 0; margin-top: 1px; }
+
+/* --- Tier Stamp --- */
+.ach-tier-stamp {
+    position: absolute;
+    bottom: 0.6rem;
+    right: 0.8rem;
+    font-size: 1.1rem;
+    opacity: 0.85;
+    z-index: 1;
+}
+
+/* --- Animations --- */
+@keyframes achUnlockPop {
+    0%   { transform: scale(0.9); opacity: 0; }
+    70%  { transform: scale(1.03); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* --- Toast Notification --- */
+.ach-toast {
+    position: fixed;
+    bottom: 6rem;
+    right: 2rem;
+    background: rgba(18,18,18,0.97);
+    border: 1px solid rgba(173,255,47,0.3);
+    border-radius: 14px;
+    padding: 1rem 1.4rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    z-index: 5000;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    opacity: 0;
+    transform: translateX(120%);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    min-width: 240px;
+    max-width: 320px;
+    backdrop-filter: blur(20px);
+}
+
+.ach-toast.show { opacity: 1; transform: translateX(0); }
+
+.ach-toast-icon { font-size: 1.8rem; flex-shrink: 0; }
+
+.ach-toast-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.2rem;
+}
+
+.ach-toast-name { font-size: 1rem; font-weight: 800; color: #fff; }
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    .ach-banner { flex-direction: column; align-items: flex-start; }
+    .ach-banner-right { width: 100%; justify-content: flex-start; }
+    .ach-stats-row { grid-template-columns: repeat(2, 1fr); }
+    .ach-cards-grid { grid-template-columns: repeat(2, 1fr); }
+    .ach-toast {
+        bottom: 4rem; right: 1rem; left: 1rem;
+        max-width: unset;
+        transform: translateY(120%);
+    }
+    .ach-toast.show { transform: translateY(0); }
+}
+
+@media (max-width: 480px) {
+    .ach-cards-grid { grid-template-columns: 1fr 1fr; }
+    .ach-stats-row  { grid-template-columns: repeat(2, 1fr); }
+}
+
+
 

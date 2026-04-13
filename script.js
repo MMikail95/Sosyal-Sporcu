@@ -660,6 +660,15 @@ window.switchProfileTab = function (tabId) {
     if (tabId === 'tab-puanla') {
         updatePuanlaTab();
     }
+
+    if (tabId === 'tab-yetenekler') {
+        const player = players.find(p => p.id === activePlayerId);
+        if (player) {
+            const vals = Object.values(player.ratings);
+            const avg = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+            checkSkillUnlocks(player, avg);
+        }
+    }
 };
 
 window.updateUI = function () {
@@ -1084,28 +1093,467 @@ window.submitCommunityRating = function () {
 
 
 // ======================================================
-// 9. SKILL UNLOCKING
+// 9. BAŞARIM (ACHIEVEMENT) SİSTEMİ
 // ======================================================
 
-function checkSkillUnlocks(player, avg) {
-    const skills = [
-        { id: 'sc-maestro', check: player.ratings.pas > 85 },
-        { id: 'sc-tank',    check: player.ratings.fizik > 85 },
-        { id: 'sc-makina',  check: avg > 88 },
-        { id: 'sc-flash',   check: player.ratings.hiz > 85 }
-    ];
-    skills.forEach(s => {
-        const el = document.getElementById(s.id);
-        if (!el) return;
-        const lock = el.querySelector('.lock-overlay');
-        if (s.check) {
-            el.classList.remove('locked');
-            if (lock) lock.style.display = 'none';
-        } else {
-            el.classList.add('locked');
-            if (lock) lock.style.display = 'flex';
+/**
+ * Başarım tanımları.
+ * check(player, avg) → true ise açılmış demektir.
+ */
+const ACHIEVEMENT_DEFS = [
+    // ── KATILIM & SADAKAT ──────────────────────────────
+    {
+        id: 'ach-demirperde',
+        title: 'Demirbaş',
+        emoji: '🛡️',
+        icon: 'fa-shield-halved',
+        category: 'Katılım',
+        tier: 'bronz',
+        color: '#cd7f32',
+        desc: 'Toplam 10 maça katıldın.',
+        criteria: 'Toplamda en az 10 maça katıl.',
+        check: (p) => (p.stats?.totalMatches || 0) >= 10
+    },
+    {
+        id: 'ach-veteran',
+        title: 'Veteran',
+        emoji: '🎖️',
+        icon: 'fa-medal',
+        category: 'Katılım',
+        tier: 'gumus',
+        color: '#aaa',
+        desc: 'Toplam 50 maça katıldın.',
+        criteria: 'Toplamda en az 50 maça katıl.',
+        check: (p) => (p.stats?.totalMatches || 0) >= 50
+    },
+    {
+        id: 'ach-efsane',
+        title: 'Efsane Kaptan',
+        emoji: '👑',
+        icon: 'fa-crown',
+        category: 'Katılım',
+        tier: 'altin',
+        color: 'gold',
+        desc: 'Toplam 100 maça katıldın.',
+        criteria: 'Toplamda en az 100 maça katıl.',
+        check: (p) => (p.stats?.totalMatches || 0) >= 100
+    },
+    {
+        id: 'ach-beton',
+        title: 'Beton Gibi',
+        emoji: '🪨',
+        icon: 'fa-person-military-pointing',
+        category: 'Katılım',
+        tier: 'gumus',
+        color: '#aaa',
+        desc: 'Son 10 maçın hepsine sakatlık bildirmeden katıldın.',
+        criteria: 'Sakatlık riski "Beton Gibi" ve en az 10 maça katıl.',
+        check: (p) => {
+            const s = p.details?.sakatlik;
+            const m = p.stats?.totalMatches || 0;
+            return s === 'Beton Gibi' && m >= 10;
         }
-    });
+    },
+    // ── KARAKTER & LOJİSTİK ────────────────────────────
+    {
+        id: 'ach-saat',
+        title: 'Saat Gibi',
+        emoji: '⚡',
+        icon: 'fa-clock',
+        category: 'Karakter',
+        tier: 'gumus',
+        color: 'var(--neon-cyan)',
+        desc: 'Her maçtan 15 dk önce sahada bekliyorsun.',
+        criteria: 'Dakiklik özelliğini "15 dk Önce Sahada" olarak ayarla.',
+        check: (p) => p.details?.dakiklik === '15 dk Önce Sahada'
+    },
+    {
+        id: 'ach-vefall',
+        title: 'Vefalı Yolcu',
+        emoji: '🧳',
+        icon: 'fa-person-walking-luggage',
+        category: 'Karakter',
+        tier: 'bronz',
+        color: '#cd7f32',
+        desc: 'Arabası olmasa da her maça gelirsin.',
+        criteria: 'Lojistik "Yolcu" olsun ve toplamda 5+ maça katıl.',
+        check: (p) => p.details?.lojistik === 'Yolcu' && (p.stats?.totalMatches || 0) >= 5
+    },
+    {
+        id: 'ach-cay',
+        title: 'Çay Filozofu',
+        emoji: '☕',
+        icon: 'fa-mug-hot',
+        category: 'Karakter',
+        tier: 'bronz',
+        color: '#cd7f32',
+        desc: 'Maç sonu sohbeti asla bırakmıyorsun.',
+        criteria: 'Maç sonu özelliğini "Çay & Muhabbet\'te" olarak ayarla.',
+        check: (p) => p.details?.macSonu === "Çay & Muhabbet'te"
+    },
+    {
+        id: 'ach-ekol',
+        title: 'Eski Tüfek',
+        emoji: '🎩',
+        icon: 'fa-user-graduate',
+        category: 'Karakter',
+        tier: 'bronz',
+        color: '#cd7f32',
+        desc: 'Lisanslı futbol geçmişiyle gelen ekol sahibi oyuncu.',
+        criteria: 'Ekol "Eski Lisanslı" olsun.',
+        check: (p) => p.details?.ekol === 'Eski Lisanslı'
+    },
+    // ── GOL & ŞÜT ──────────────────────────────────────
+    {
+        id: 'ach-golcu',
+        title: 'Golcü',
+        emoji: '⚽',
+        icon: 'fa-futbol',
+        category: 'Goller',
+        tier: 'bronz',
+        color: '#cd7f32',
+        desc: 'Toplamda 10 gol attın.',
+        criteria: 'Toplamda en az 10 gol at.',
+        check: (p) => (p.stats?.totalGoals || 0) >= 10
+    },
+    {
+        id: 'ach-goatify',
+        title: 'Makineli Tüfek',
+        emoji: '🔫',
+        icon: 'fa-crosshairs',
+        category: 'Goller',
+        tier: 'altin',
+        color: 'gold',
+        desc: 'Toplam 50 gol barajını aştın.',
+        criteria: 'Toplamda en az 50 gol at.',
+        check: (p) => (p.stats?.totalGoals || 0) >= 50
+    },
+    {
+        id: 'ach-sniper',
+        title: 'Füze Atıcı',
+        emoji: '🚀',
+        icon: 'fa-rocket',
+        category: 'Goller',
+        tier: 'altin',
+        color: 'gold',
+        desc: 'Şut puanı 90+ keskin nişancı — ceza sahası dışından vuruyor.',
+        criteria: 'Şut puanın 90\'ın üzerinde olsun ve oyun tarzın Goalgetter olsun.',
+        check: (p) => (p.ratings?.sut || 0) >= 90 && p.details?.oyunTarzi === 'Goalgetter'
+    },
+    {
+        id: 'ach-asist',
+        title: 'Asist Makinası',
+        emoji: '🎯',
+        icon: 'fa-arrows-to-dot',
+        category: 'Goller',
+        tier: 'gumus',
+        color: '#aaa',
+        desc: 'Toplamda 20 asist yapan son pas ustası.',
+        criteria: 'Toplamda en az 20 asist yap.',
+        check: (p) => (p.stats?.totalAssists || 0) >= 20
+    },
+    // ── TEKNİK ─────────────────────────────────────────
+    {
+        id: 'ach-xavi',
+        title: "Xavi'nin İzinde",
+        emoji: '🧠',
+        icon: 'fa-wand-magic-sparkles',
+        category: 'Teknik',
+        tier: 'altin',
+        color: 'var(--neon-green)',
+        desc: 'Pas radar grafiğindeki puan 85+.',
+        criteria: 'Pas puanını 85\'in üzerine çıkar.',
+        check: (p) => (p.ratings?.pas || 0) >= 85
+    },
+    {
+        id: 'ach-teknik',
+        title: 'Maestro',
+        emoji: '🎨',
+        icon: 'fa-palette',
+        category: 'Teknik',
+        tier: 'gumus',
+        color: '#aaa',
+        desc: 'Teknik puanın 85 üzerinde.',
+        criteria: 'Teknik puanını 85\'in üzerine çıkar.',
+        check: (p) => (p.ratings?.teknik || 0) >= 85
+    },
+    {
+        id: 'ach-fisek',
+        title: 'Fişek',
+        emoji: '💨',
+        icon: 'fa-bolt',
+        category: 'Teknik',
+        tier: 'gumus',
+        color: 'var(--neon-cyan)',
+        desc: 'Hız puanın 90 üzerinde.',
+        criteria: 'Hız puanını 90\'ın üzerine çıkar.',
+        check: (p) => (p.ratings?.hiz || 0) >= 90
+    },
+    {
+        id: 'ach-kondikral',
+        title: 'Enerji Kaynağı',
+        emoji: '🔋',
+        icon: 'fa-battery-full',
+        category: 'Teknik',
+        tier: 'bronz',
+        color: '#cd7f32',
+        desc: 'Kondisyon puanın 85 üzerinde.',
+        criteria: 'Kondisyon puanını 85\'in üzerine çıkar.',
+        check: (p) => (p.ratings?.kondisyon || 0) >= 85
+    },
+    // ── SAVUNMA ────────────────────────────────────────
+    {
+        id: 'ach-hava',
+        title: 'Hava Savunma Sanayii',
+        emoji: '🛩️',
+        icon: 'fa-shield',
+        category: 'Savunma',
+        tier: 'altin',
+        color: 'var(--neon-pink)',
+        desc: 'Defans mevkisinde oynayan üst düzey duvar.',
+        criteria: 'Mevki DEF/Stoper/Bek olsun ve Fizik puanın 85+ olsun.',
+        check: (p) => {
+            const pos = p.details?.pos || '';
+            const mevki = p.details?.anaMevki || '';
+            const isDefans = pos === 'DEF' || mevki.includes('Stoper') || mevki.includes('Bek') || mevki.includes('Libero');
+            return isDefans && (p.ratings?.fizik || 0) >= 85;
+        }
+    },
+    {
+        id: 'ach-golge',
+        title: 'Gölge',
+        emoji: '👻',
+        icon: 'fa-user-ninja',
+        category: 'Savunma',
+        tier: 'gumus',
+        color: '#aaa',
+        desc: 'Rakiplerini gölge gibi markaj altına alıyorsun.',
+        criteria: 'Markaj özelliğini "Gölge Gibi Yapışır" olarak ayarla.',
+        check: (p) => p.details?.markaj === 'Gölge Gibi Yapışır'
+    },
+    {
+        id: 'ach-disiplin',
+        title: 'Disiplinli',
+        emoji: '📌',
+        icon: 'fa-map-pin',
+        category: 'Savunma',
+        tier: 'bronz',
+        color: '#cd7f32',
+        desc: 'Mevki sadakatiyle oyunun kuralını koruyan oyuncu.',
+        criteria: 'Mevki sadakati "Görevine Bağlı" olsun.',
+        check: (p) => p.details?.mevkiSadakat === 'Görevine Bağlı'
+    },
+    // ── GENEL ─────────────────────────────────────────
+    {
+        id: 'ach-gen85',
+        title: 'Elit Oyuncu',
+        emoji: '⭐',
+        icon: 'fa-star',
+        category: 'Genel',
+        tier: 'altin',
+        color: 'gold',
+        desc: 'GEN puanın 85 ve üzeri.',
+        criteria: 'Genel puanını (GEN) 85\'in üzerine çıkar.',
+        check: (p, avg) => avg >= 85
+    },
+    {
+        id: 'ach-komunite',
+        title: 'Popüler',
+        emoji: '🌟',
+        icon: 'fa-users-rays',
+        category: 'Genel',
+        tier: 'gumus',
+        color: '#a78bfa',
+        desc: 'En az 3 takım arkadaşından community puanı aldın.',
+        criteria: 'En az 3 farklı kişiden community puanı al.',
+        check: (p) => (p.communityRatings?.length || 0) >= 3
+    }
+];
+
+/**
+ * Player istatistikleri mock verisi
+ */
+function getPlayerStats(player) {
+    const mockStatsMap = {
+        'p1':  { totalMatches: 45, totalGoals: 32, totalAssists: 18 },
+        'p2':  { totalMatches: 38, totalGoals: 54, totalAssists: 8  },
+        'p3':  { totalMatches: 52, totalGoals: 4,  totalAssists: 12 },
+        'p4':  { totalMatches: 29, totalGoals: 22, totalAssists: 15 },
+        'p5':  { totalMatches: 41, totalGoals: 47, totalAssists: 9  },
+        'p6':  { totalMatches: 61, totalGoals: 6,  totalAssists: 5  },
+        'p7':  { totalMatches: 55, totalGoals: 0,  totalAssists: 2  },
+        'p8':  { totalMatches: 18, totalGoals: 14, totalAssists: 20 },
+        'p9':  { totalMatches: 33, totalGoals: 39, totalAssists: 7  },
+        'p10': { totalMatches: 70, totalGoals: 8,  totalAssists: 14 },
+        'p11': { totalMatches: 24, totalGoals: 18, totalAssists: 22 }
+    };
+    return mockStatsMap[player.id] || { totalMatches: 0, totalGoals: 0, totalAssists: 0 };
+}
+
+/**
+ * Başarımları değerlendirip render eder
+ */
+function checkSkillUnlocks(player, avg) {
+    player.stats = getPlayerStats(player);
+    renderAchievements(player, avg);
+}
+
+function renderAchievements(player, avg) {
+    const container = document.getElementById('achievements-container');
+    if (!container) return;
+
+    const stats = player.stats;
+    const results = ACHIEVEMENT_DEFS.map(def => ({
+        ...def,
+        unlocked: def.check(player, avg)
+    }));
+
+    const unlockedCount = results.filter(r => r.unlocked).length;
+    const totalCount = results.length;
+    const categories = [...new Set(ACHIEVEMENT_DEFS.map(d => d.category))];
+    const circumference = 150.8;
+    const progress = Math.round((unlockedCount / totalCount) * circumference);
+
+    container.innerHTML = `
+        <!-- BAŞARIM BANNER -->
+        <div class="ach-banner glass-card">
+            <div class="ach-banner-left">
+                <div class="ach-banner-icon"><i class="fa-solid fa-trophy"></i></div>
+                <div>
+                    <h2 class="ach-banner-title">BAŞARIMLAR</h2>
+                    <p class="ach-banner-sub">${player.name} için kişisel başarım koleksiyonu</p>
+                </div>
+            </div>
+            <div class="ach-banner-right">
+                <div class="ach-progress-ring">
+                    <svg viewBox="0 0 60 60">
+                        <circle cx="30" cy="30" r="24" fill="none" stroke="#333" stroke-width="5"/>
+                        <circle cx="30" cy="30" r="24" fill="none"
+                            stroke="var(--neon-green)" stroke-width="5"
+                            stroke-dasharray="${progress} ${circumference}"
+                            stroke-dashoffset="37.7"
+                            stroke-linecap="round"
+                            style="transition: stroke-dasharray 1s ease;"/>
+                    </svg>
+                    <div class="ach-ring-text">
+                        <span class="ach-ring-num">${unlockedCount}</span>
+                        <span class="ach-ring-total">/ ${totalCount}</span>
+                    </div>
+                </div>
+                <div class="ach-stat-pills">
+                    <div class="ach-pill" style="border-color:#cd7f32; color:#cd7f32;">
+                        🥉 ${results.filter(r => r.unlocked && r.tier === 'bronz').length}
+                    </div>
+                    <div class="ach-pill" style="border-color:#aaa; color:#aaa;">
+                        🥈 ${results.filter(r => r.unlocked && r.tier === 'gumus').length}
+                    </div>
+                    <div class="ach-pill" style="border-color:gold; color:gold;">
+                        🥇 ${results.filter(r => r.unlocked && r.tier === 'altin').length}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- İSTATİSTİK BANTLARI -->
+        <div class="ach-stats-row">
+            <div class="glass-card ach-stat-card">
+                <i class="fa-solid fa-calendar-check" style="color:var(--neon-green);font-size:1.4rem;"></i>
+                <div class="ach-stat-num">${stats.totalMatches}</div>
+                <div class="ach-stat-label">Toplam Maç</div>
+            </div>
+            <div class="glass-card ach-stat-card">
+                <i class="fa-solid fa-futbol" style="color:var(--neon-cyan);font-size:1.4rem;"></i>
+                <div class="ach-stat-num">${stats.totalGoals}</div>
+                <div class="ach-stat-label">Toplam Gol</div>
+            </div>
+            <div class="glass-card ach-stat-card">
+                <i class="fa-solid fa-handshake" style="color:var(--neon-pink);font-size:1.4rem;"></i>
+                <div class="ach-stat-num">${stats.totalAssists}</div>
+                <div class="ach-stat-label">Toplam Asist</div>
+            </div>
+            <div class="glass-card ach-stat-card">
+                <i class="fa-solid fa-users" style="color:gold;font-size:1.4rem;"></i>
+                <div class="ach-stat-num">${player.communityRatings?.length || 0}</div>
+                <div class="ach-stat-label">Community Puanı</div>
+            </div>
+        </div>
+
+        <!-- KATEGORİ BAZLI BAŞARIMLAR -->
+        ${categories.map(cat => {
+            const catResults = results.filter(r => r.category === cat);
+            const catUnlocked = catResults.filter(r => r.unlocked).length;
+            const catIcons = {
+                Katılım: 'fa-calendar', Goller: 'fa-futbol',
+                Teknik: 'fa-bolt', Savunma: 'fa-shield',
+                Karakter: 'fa-masks-theater', Genel: 'fa-star'
+            };
+            const catColors = {
+                Katılım: 'var(--neon-green)', Goller: 'var(--neon-cyan)',
+                Teknik: 'gold', Savunma: 'var(--neon-pink)',
+                Karakter: '#f97316', Genel: '#a78bfa'
+            };
+            return `
+                <div class="ach-category-section">
+                    <div class="ach-category-header">
+                        <i class="fa-solid ${catIcons[cat]}" style="color:${catColors[cat]};"></i>
+                        <h3 class="ach-category-title" style="color:${catColors[cat]}">${cat}</h3>
+                        <span class="ach-category-count">${catUnlocked} / ${catResults.length}</span>
+                    </div>
+                    <div class="ach-cards-grid">
+                        ${catResults.map(r => renderAchievementCard(r)).join('')}
+                    </div>
+                </div>
+            `;
+        }).join('')}
+    `;
+}
+
+function renderAchievementCard(ach) {
+    const tierEmoji = { bronz: '🥉', gumus: '🥈', altin: '🥇' }[ach.tier] || '';
+    const unlockClass = ach.unlocked ? 'ach-unlocked' : 'ach-locked';
+    const tierClass = `ach-tier-${ach.tier}`;
+
+    return `
+        <div class="ach-card ${unlockClass} ${tierClass}" title="${ach.criteria}">
+            ${ach.unlocked ? `<div class="ach-card-glow" style="background:radial-gradient(circle, ${ach.color}33 0%, transparent 70%);"></div>` : ''}
+            <div class="ach-card-top">
+                <div class="ach-card-icon" style="${ach.unlocked ? `color:${ach.color};` : 'color:#444;'}">
+                    <i class="fa-solid ${ach.icon}"></i>
+                </div>
+                <span class="ach-card-emoji">${ach.emoji}</span>
+                ${ach.unlocked
+                    ? `<div class="ach-status-badge ach-status-unlock"><i class="fa-solid fa-check"></i></div>`
+                    : `<div class="ach-status-badge ach-status-lock"><i class="fa-solid fa-lock"></i></div>`}
+            </div>
+            <div class="ach-card-body">
+                <h4 class="ach-card-title" style="${ach.unlocked ? `color:${ach.color}` : 'color:#555'}">${ach.title}</h4>
+                <p class="ach-card-desc">${ach.desc}</p>
+                ${!ach.unlocked ? `<div class="ach-card-hint"><i class="fa-solid fa-circle-info"></i> ${ach.criteria}</div>` : ''}
+            </div>
+            ${ach.unlocked ? `<div class="ach-tier-stamp">${tierEmoji}</div>` : ''}
+        </div>
+    `;
+}
+
+/**
+ * Başarım toast bildirimi
+ */
+function showAchievementUnlockToast(ach) {
+    const toast = document.createElement('div');
+    toast.className = 'ach-toast';
+    toast.innerHTML = `
+        <div class="ach-toast-icon" style="color:${ach.color}"><i class="fa-solid ${ach.icon}"></i></div>
+        <div>
+            <div class="ach-toast-title">🎉 Başarım Açıldı!</div>
+            <div class="ach-toast-name">${ach.emoji} ${ach.title}</div>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 50);
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 400);
+    }, 3500);
 }
 
 
