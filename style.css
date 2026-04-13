@@ -1746,4 +1746,278 @@ input[type="range"]::-webkit-slider-runnable-track {
         display: block;
         overflow-x: auto;
     }
-}
+}
+
+/* ======================================================
+   ACCOUNT SWITCHER
+   ====================================================== */
+.account-switcher {
+    margin-top: auto;
+    position: relative;
+}
+
+.account-current {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    background: rgba(255,255,255,0.04);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+}
+
+.account-current:hover {
+    background: rgba(173, 255, 47, 0.07);
+    border-color: rgba(173, 255, 47, 0.3);
+}
+
+.acc-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid var(--neon-green);
+    background: #111;
+    flex-shrink: 0;
+}
+
+.acc-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex: 1;
+}
+
+.acc-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.acc-role {
+    font-size: 0.75rem;
+    color: var(--neon-green);
+}
+
+.acc-chevron {
+    font-size: 0.75rem;
+    color: #555;
+    transition: transform 0.25s ease;
+}
+
+.account-panel.open ~ .account-current .acc-chevron,
+.account-switcher:has(.account-panel.open) .acc-chevron {
+    transform: rotate(180deg);
+}
+
+/* Account Panel (opens upward) */
+.account-panel {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: #111;
+    border: 1px solid rgba(173,255,47,0.2);
+    border-radius: 14px;
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease;
+    z-index: 2000;
+    box-shadow: 0 -8px 30px rgba(0,0,0,0.6);
+}
+
+.account-panel.open {
+    max-height: 500px;
+    opacity: 1;
+    pointer-events: all;
+}
+
+.account-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--neon-green);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background: rgba(173,255,47,0.05);
+    border-bottom: 1px solid #222;
+}
+
+.account-list {
+    overflow-y: auto;
+    max-height: 360px;
+}
+
+.account-list-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    border-bottom: 1px solid #1a1a1a;
+}
+
+.account-list-item:hover {
+    background: rgba(255,255,255,0.04);
+}
+
+.account-list-item.active {
+    background: rgba(173,255,47,0.08);
+    border-left: 3px solid var(--neon-green);
+}
+
+.acc-list-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #222;
+    border: 1.5px solid #333;
+    flex-shrink: 0;
+}
+
+.account-list-item.active .acc-list-avatar {
+    border-color: var(--neon-green);
+}
+
+.acc-list-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
+.acc-list-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #eee;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.acc-list-role {
+    font-size: 0.72rem;
+    color: #666;
+}
+
+.acc-list-gen {
+    font-size: 0.85rem;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+/* ======================================================
+   VIEW-ONLY BANNER
+   ====================================================== */
+.view-only-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    background: rgba(0, 229, 255, 0.07);
+    border: 1px solid rgba(0, 229, 255, 0.3);
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--neon-cyan);
+    font-weight: 600;
+    animation: slideDown 0.3s ease;
+}
+
+.view-only-banner i {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.view-banner-text {
+    flex: 1;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ======================================================
+   COMMUNITY RATING
+   ====================================================== */
+.community-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--neon-cyan);
+    color: #000;
+    border-radius: 20px;
+    padding: 2px 7px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    margin-left: 5px;
+    line-height: 1;
+}
+
+.community-rating-card {
+    border-color: rgba(0, 229, 255, 0.2);
+}
+
+/* Admin panel in team section hides if not admin — controlled by JS opacity/display */
+.admin-panel {
+    transition: opacity 0.3s ease;
+}
+
+/* Stat box bottom (genel bakış) */
+.stat-box-bottom {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sb-val {
+    font-size: 2rem;
+    font-weight: 800;
+    display: block;
+}
+
+.sb-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+
+/* Genel bakış grid */
+.genel-bakis-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 1.5rem;
+}
+
+@media (max-width: 900px) {
+    .genel-bakis-grid {
+        grid-template-columns: 1fr;
+    }
+    .gb-bottom-stats {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .account-panel {
+        position: fixed;
+        bottom: 80px;
+        left: 1rem;
+        right: 1rem;
+        width: auto;
+    }
+}
+

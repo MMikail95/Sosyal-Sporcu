@@ -2,7 +2,7 @@
 // ======================================================
 // SIDEBAR TOGGLE
 // ======================================================
-let sidebarOpen = true; // default: open on desktop
+let sidebarOpen = true;
 
 function updateTogglePosition(isOpen) {
     const btn = document.getElementById('sidebar-toggle-btn');
@@ -22,7 +22,6 @@ window.toggleSidebar = function () {
     const isMobile = window.innerWidth <= 768;
 
     if (isMobile) {
-        // Mobile: sidebar starts hidden (collapsed), toggle in/out
         const isHidden = sidebar.classList.contains('collapsed');
         if (isHidden) {
             sidebar.classList.remove('collapsed');
@@ -35,7 +34,6 @@ window.toggleSidebar = function () {
         }
         updateTogglePosition(false);
     } else {
-        // Desktop: toggle sidebar open/close, main content slides
         sidebarOpen = !sidebarOpen;
         if (sidebarOpen) {
             sidebar.classList.remove('collapsed');
@@ -49,7 +47,6 @@ window.toggleSidebar = function () {
     }
 };
 
-// Handle resize: reset sidebar state
 window.addEventListener('resize', () => {
     const sidebar = document.getElementById('sidebar');
     const mainContent = document.querySelector('.main-content');
@@ -57,7 +54,6 @@ window.addEventListener('resize', () => {
     const icon = document.getElementById('sidebar-toggle-icon');
 
     if (window.innerWidth > 768) {
-        // Desktop: restore state
         overlay.classList.remove('active');
         if (sidebarOpen) {
             sidebar.classList.remove('collapsed');
@@ -69,131 +65,329 @@ window.addEventListener('resize', () => {
         icon.className = 'fa-solid fa-bars';
         updateTogglePosition(sidebarOpen);
     } else {
-        // Mobile: always close sidebar, full width content
         sidebar.classList.add('collapsed');
-        mainContent.classList.remove('expanded'); // mobile always full
+        mainContent.classList.remove('expanded');
         overlay.classList.remove('active');
         icon.className = 'fa-solid fa-bars';
         updateTogglePosition(false);
     }
 });
 
-// On mobile, start with sidebar collapsed
 document.addEventListener('DOMContentLoaded', () => {
     if (window.innerWidth <= 768) {
         const sidebar = document.getElementById('sidebar');
         if (sidebar) sidebar.classList.add('collapsed');
         updateTogglePosition(false);
     } else {
-        updateTogglePosition(true); // desktop starts open
+        updateTogglePosition(true);
     }
 });
 
 
-// SOSYAL SPORCU MANAGER - CORE SCRIPT
+// ======================================================
+// 1. MOCK DATA DEFINITIONS
 // ======================================================
 
-// 1. GLOBAL STATE & DATA
-// ======================================================
-let activePlayerId = 'p1';
-const DEFAULT_PLAYER = {
-    id: 'new',
-    name: 'Yeni Oyuncu',
-    details: {
-        pos: 'OS', age: 24, height: 180, weight: 75,
-        ekol: 'Halısaha Gazisi', sakatlik: 'Maç Seçer',
-        macsatma: 'Keyfine Bağlı', mizac: 'Makara Yapıcı', lojistik: 'Kendi Gelir'
+const MOCK_PLAYERS = [
+    {
+        id: 'p1', name: 'Mikimon',
+        details: { pos: 'OS', age: 28, height: 182, weight: 76, ekol: 'Halısaha Gazisi', sakatlik: 'Maç Seçer', macsatma: 'Keyfine Bağlı', mizac: 'Makara Yapıcı', lojistik: 'Kendi Gelir' },
+        ratings: { teknik: 85, sut: 80, pas: 90, hiz: 78, fizik: 65, kondisyon: 75 },
+        communityRatings: []
     },
-    ratings: { teknik: 70, sut: 70, pas: 70, hiz: 70, fizik: 70, kondisyon: 70 }
+    {
+        id: 'p2', name: 'Barış',
+        details: { pos: 'FV', age: 26, height: 185, weight: 82, ekol: 'Eski Lisanslı', sakatlik: 'Beton Gibi', macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Yolcu' },
+        ratings: { teknik: 75, sut: 88, pas: 70, hiz: 84, fizik: 85, kondisyon: 80 },
+        communityRatings: []
+    },
+    {
+        id: 'p3', name: 'Kerem',
+        details: { pos: 'DEF', age: 30, height: 180, weight: 85, ekol: 'Halısaha Gazisi', sakatlik: 'Maç Seçer', macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Kendi Gelir' },
+        ratings: { teknik: 70, sut: 60, pas: 72, hiz: 68, fizik: 88, kondisyon: 78 },
+        communityRatings: []
+    },
+    {
+        id: 'p4', name: 'Tarık',
+        details: { pos: 'OS', age: 24, height: 175, weight: 72, ekol: 'Sokak Futbolu', sakatlik: 'Kronik Sakat', macsatma: 'Riskli', mizac: 'Hakemle Kavgalı', lojistik: 'Yolcu' },
+        ratings: { teknik: 83, sut: 77, pas: 80, hiz: 91, fizik: 70, kondisyon: 72 },
+        communityRatings: []
+    },
+    {
+        id: 'p5', name: 'Emre',
+        details: { pos: 'FV', age: 29, height: 178, weight: 79, ekol: 'Halısaha Gazisi', sakatlik: 'Beton Gibi', macsatma: 'Keyfine Bağlı', mizac: 'Makara Yapıcı', lojistik: 'Servis Şoförü' },
+        ratings: { teknik: 78, sut: 85, pas: 65, hiz: 80, fizik: 82, kondisyon: 76 },
+        communityRatings: []
+    },
+    {
+        id: 'p6', name: 'Oğuz',
+        details: { pos: 'DEF', age: 33, height: 183, weight: 88, ekol: 'Eski Lisanslı', sakatlik: 'Beton Gibi', macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Kendi Gelir' },
+        ratings: { teknik: 65, sut: 55, pas: 68, hiz: 62, fizik: 90, kondisyon: 82 },
+        communityRatings: []
+    },
+    {
+        id: 'p7', name: 'Can',
+        details: { pos: 'KL', age: 27, height: 188, weight: 84, ekol: 'Halısaha Gazisi', sakatlik: 'Maç Seçer', macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Yolcu' },
+        ratings: { teknik: 72, sut: 60, pas: 70, hiz: 65, fizik: 80, kondisyon: 78 },
+        communityRatings: []
+    },
+    {
+        id: 'p8', name: 'Serhat',
+        details: { pos: 'OS', age: 22, height: 173, weight: 68, ekol: 'Sokak Futbolu', sakatlik: 'Maç Seçer', macsatma: 'Keyfine Bağlı', mizac: 'Makara Yapıcı', lojistik: 'Kendi Gelir' },
+        ratings: { teknik: 88, sut: 72, pas: 85, hiz: 90, fizik: 65, kondisyon: 70 },
+        communityRatings: []
+    },
+    {
+        id: 'p9', name: 'Mert',
+        details: { pos: 'FV', age: 25, height: 181, weight: 78, ekol: 'Eski Lisanslı', sakatlik: 'Beton Gibi', macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Servis Şoförü' },
+        ratings: { teknik: 76, sut: 89, pas: 68, hiz: 82, fizik: 78, kondisyon: 74 },
+        communityRatings: []
+    },
+    {
+        id: 'p10', name: 'Ali',
+        details: { pos: 'DEF', age: 31, height: 186, weight: 86, ekol: 'Halısaha Gazisi', sakatlik: 'Beton Gibi', macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Kendi Gelir' },
+        ratings: { teknik: 67, sut: 58, pas: 65, hiz: 70, fizik: 87, kondisyon: 83 },
+        communityRatings: []
+    },
+    {
+        id: 'p11', name: 'Hasan',
+        details: { pos: 'OS', age: 23, height: 177, weight: 73, ekol: 'Halısaha Gazisi', sakatlik: 'Maç Seçer', macsatma: 'Keyfine Bağlı', mizac: 'Makara Yapıcı', lojistik: 'Yolcu' },
+        ratings: { teknik: 80, sut: 74, pas: 78, hiz: 85, fizik: 68, kondisyon: 73 },
+        communityRatings: []
+    }
+];
+
+const MOCK_ACCOUNTS = [
+    { id: 'acc_admin', name: 'Mikimon', role: 'admin', playerId: 'p1' },
+    { id: 'acc_2',     name: 'Barış',   role: 'player', playerId: 'p2' },
+    { id: 'acc_3',     name: 'Kerem',   role: 'player', playerId: 'p3' },
+    { id: 'acc_4',     name: 'Tarık',   role: 'player', playerId: 'p4' },
+    { id: 'acc_5',     name: 'Emre',    role: 'player', playerId: 'p5' },
+    { id: 'acc_6',     name: 'Oğuz',    role: 'player', playerId: 'p6' },
+    { id: 'acc_7',     name: 'Can',     role: 'player', playerId: 'p7' },
+    { id: 'acc_8',     name: 'Serhat',  role: 'player', playerId: 'p8' },
+    { id: 'acc_9',     name: 'Mert',    role: 'player', playerId: 'p9' },
+    { id: 'acc_10',    name: 'Ali',     role: 'player', playerId: 'p10' },
+    { id: 'acc_11',    name: 'Hasan',   role: 'player', playerId: 'p11' }
+];
+
+const DEFAULT_PLAYER = {
+    id: 'new', name: 'Yeni Oyuncu',
+    details: { pos: 'OS', age: 24, height: 180, weight: 75, ekol: 'Halısaha Gazisi', sakatlik: 'Maç Seçer', macsatma: 'Keyfine Bağlı', mizac: 'Makara Yapıcı', lojistik: 'Kendi Gelir' },
+    ratings: { teknik: 70, sut: 70, pas: 70, hiz: 70, fizik: 70, kondisyon: 70 },
+    communityRatings: []
 };
 
-// Initial Mock Data (If LocalStorage Empty)
-// Initial Data Loading (Strict LocalStorage Priority)
-let rawData = localStorage.getItem('ss_players');
+
+// ======================================================
+// 2. DATA LOADING & PERSISTENCE
+// ======================================================
+
 let players = [];
+let accounts = [];
+let activeAccountId = 'acc_admin';
+let activePlayerId = 'p1';
 
-if (rawData && rawData !== "undefined" && rawData !== "null") {
-    try {
-        players = JSON.parse(rawData);
-        console.log("📂 Loaded from LocalStorage:", players.length, "players");
-    } catch (e) {
-        console.error("Corruption detected in LS, falling back to mock", e);
-        players = []; // Will trigger mock load below
-    }
-}
-
-// Fallback to Mock if empty
-if (!players || players.length === 0) {
-    console.log("⚠️ Storage empty, initializing Mock Data");
-    players = [
-        {
-            id: 'p1', name: 'Mikimon',
-            details: { pos: 'OS', age: 24, height: 182, weight: 76, ekol: 'Halısaha Gazisi', sakatlik: 'Maç Seçer', macsatma: 'Keyfine Bağlı', mizac: 'Makara Yapıcı', lojistik: 'Kendi Gelir' },
-            ratings: { teknik: 85, sut: 80, pas: 90, hiz: 78, fizik: 65, kondisyon: 75 }
-        },
-        {
-            id: 'p2', name: 'Barış',
-            details: { pos: 'FV', age: 26, height: 185, weight: 80, ekol: 'Eski Lisanslı', sakatlik: 'Beton Gibi', macsatma: 'Asla Satmaz', mizac: 'Sessiz Katil', lojistik: 'Yolcu' },
-            ratings: { teknik: 75, sut: 88, pas: 70, hiz: 82, fizik: 85, kondisyon: 80 }
+function loadData() {
+    // --- Players ---
+    let rawPlayers = localStorage.getItem('ss_players_v2');
+    if (rawPlayers && rawPlayers !== 'undefined') {
+        try {
+            players = JSON.parse(rawPlayers);
+            // Ensure communityRatings exists on all players
+            players.forEach(p => { if (!p.communityRatings) p.communityRatings = []; });
+            console.log('📂 Players loaded:', players.length);
+        } catch (e) {
+            console.error('Corruption in ss_players_v2, resetting:', e);
+            players = JSON.parse(JSON.stringify(MOCK_PLAYERS));
         }
-    ];
-    savePlayers(); // Save initial mock state
+    } else {
+        players = JSON.parse(JSON.stringify(MOCK_PLAYERS));
+        console.log('⚠️ Initializing mock players');
+    }
+
+    // --- Accounts ---
+    let rawAccounts = localStorage.getItem('ss_accounts');
+    if (rawAccounts && rawAccounts !== 'undefined') {
+        try {
+            accounts = JSON.parse(rawAccounts);
+        } catch (e) {
+            accounts = JSON.parse(JSON.stringify(MOCK_ACCOUNTS));
+        }
+    } else {
+        accounts = JSON.parse(JSON.stringify(MOCK_ACCOUNTS));
+        console.log('⚠️ Initializing mock accounts');
+    }
+
+    // --- Active Account ---
+    const savedAccount = localStorage.getItem('ss_active_account');
+    if (savedAccount && accounts.find(a => a.id === savedAccount)) {
+        activeAccountId = savedAccount;
+    } else {
+        activeAccountId = 'acc_admin';
+    }
+
+    // Set active player from account
+    const acc = getActiveAccount();
+    if (acc) activePlayerId = acc.playerId;
+
+    savePlayers();
+    saveAccounts();
 }
 
 function savePlayers() {
-    localStorage.setItem('ss_players', JSON.stringify(players));
+    localStorage.setItem('ss_players_v2', JSON.stringify(players));
+}
+
+function saveAccounts() {
+    localStorage.setItem('ss_accounts', JSON.stringify(accounts));
+    localStorage.setItem('ss_active_account', activeAccountId);
 }
 
 
-// 2. INITIALIZATION & NAVIGATION
 // ======================================================
+// 3. ACCOUNT SYSTEM
+// ======================================================
+
+function getActiveAccount() {
+    return accounts.find(a => a.id === activeAccountId) || accounts[0];
+}
+
+function getAccountForPlayer(playerId) {
+    return accounts.find(a => a.playerId === playerId);
+}
+
+function canEditPlayer(playerId) {
+    const acc = getActiveAccount();
+    if (!acc) return false;
+    if (acc.role === 'admin') return true;
+    return acc.playerId === playerId;
+}
+
+window.switchAccount = function (accountId) {
+    const acc = accounts.find(a => a.id === accountId);
+    if (!acc) return;
+
+    activeAccountId = accountId;
+    activePlayerId = acc.playerId;
+    saveAccounts();
+    localStorage.setItem('activePlayerId', activePlayerId);
+
+    // Close account panel
+    closeAccountPanel();
+
+    // Refresh UI
+    updateAccountUI();
+    updateUI();
+    renderPlayerList();
+
+    // Go to profile
+    showSection('profile');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const profileNav = document.querySelector('.nav-item[data-target="profile"]');
+    if (profileNav) profileNav.classList.add('active');
+
+    console.log(`✅ Switched to account: ${acc.name} (${acc.role})`);
+};
+
+function updateAccountUI() {
+    const acc = getActiveAccount();
+    if (!acc) return;
+
+    const nameEl = document.getElementById('current-account-name');
+    const roleEl = document.getElementById('current-account-role');
+    const avatarEl = document.getElementById('current-account-avatar');
+
+    if (nameEl) nameEl.textContent = acc.name;
+    if (roleEl) {
+        roleEl.textContent = acc.role === 'admin' ? '⚡ Admin' : '🎮 Oyuncu';
+        roleEl.style.color = acc.role === 'admin' ? 'var(--neon-cyan)' : 'var(--neon-green)';
+    }
+    if (avatarEl) avatarEl.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${acc.name}`;
+
+    // Render account list
+    renderAccountList();
+}
+
+function renderAccountList() {
+    const container = document.getElementById('account-list-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+    accounts.forEach(acc => {
+        const isActive = acc.id === activeAccountId;
+        const player = players.find(p => p.id === acc.playerId);
+        const vals = player ? Object.values(player.ratings) : [70,70,70,70,70,70];
+        const gen = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+
+        const item = document.createElement('div');
+        item.className = `account-list-item ${isActive ? 'active' : ''}`;
+        item.onclick = () => window.switchAccount(acc.id);
+        item.innerHTML = `
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${acc.name}" class="acc-list-avatar">
+            <div class="acc-list-info">
+                <span class="acc-list-name">${acc.name}</span>
+                <span class="acc-list-role">${acc.role === 'admin' ? '⚡ Admin' : acc.playerId === getActiveAccount()?.playerId && isActive ? '🎮 Sen' : '🎮 Oyuncu'}</span>
+            </div>
+            <span class="acc-list-gen" style="color:${gen >= 80 ? 'var(--neon-green)' : 'orange'}">${gen}</span>
+            ${isActive ? '<i class="fa-solid fa-check" style="color:var(--neon-green); margin-left:4px;"></i>' : ''}
+        `;
+        container.appendChild(item);
+    });
+}
+
+window.toggleAccountPanel = function () {
+    const panel = document.getElementById('account-panel');
+    if (!panel) return;
+    panel.classList.toggle('open');
+    renderAccountList();
+};
+
+window.closeAccountPanel = function () {
+    const panel = document.getElementById('account-panel');
+    if (panel) panel.classList.remove('open');
+};
+
+
+// ======================================================
+// 4. INITIALIZATION & NAVIGATION
+// ======================================================
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 App Initializing...');
 
-    // Load last active player
-    const lastId = localStorage.getItem('activePlayerId');
-    if (lastId && players.find(p => p.id === lastId)) {
-        activePlayerId = lastId;
-    }
-
-    // Initialize Navigation
+    loadData();
     setupNavigation();
-
-    // Initial Render
-    updateUI();         // Render Profile
-    renderPlayerList(); // Render Team Table
+    updateAccountUI();
+    updateUI();
+    renderPlayerList();
+    // Chart resize fix
+    setTimeout(restorePitchState, 300);
+    setTimeout(restorePitchState, 1000);
 });
 
 function setupNavigation() {
     const navItems = document.querySelectorAll('.nav-item');
-
     navItems.forEach(item => {
         item.addEventListener('click', () => {
-            // 1. Handle Active Class on Nav
             navItems.forEach(nav => nav.classList.remove('active'));
             item.classList.add('active');
-
-            // 2. Get Target Section ID
             const targetId = item.getAttribute('data-target');
-
-            // 3. Switch Section
             showSection(targetId);
+            // Close account panel on nav
+            closeAccountPanel();
         });
     });
 }
 
 function showSection(id) {
-    // 1. Force Hide All Sections (Reset)
     document.querySelectorAll('.section').forEach(sec => {
-        sec.style.display = 'none';      // HARD RESET
+        sec.style.display = 'none';
         sec.classList.remove('active');
     });
-
-    // 2. Force Show Target
     const targetSec = document.getElementById(id);
     if (targetSec) {
-        targetSec.style.display = 'block'; // FORCE VISIBLE
-        // Force Reflow
+        targetSec.style.display = 'block';
         void targetSec.offsetWidth;
         targetSec.classList.add('active');
     } else {
@@ -201,45 +395,132 @@ function showSection(id) {
         return;
     }
 
-    // 3. Data Triggers (CRITICAL)
     if (id === 'takimim') {
-        console.log("⚡ Rendering Player List...");
         renderPlayerList();
-        // Restore pitch positions after section is visible
         setTimeout(() => restorePitchState(), 50);
     }
-
     if (id === 'profile') {
         setTimeout(() => {
             const player = players.find(p => p.id === activePlayerId) || players[0];
-            updateChart(player); // Sekme açıldıktan 100ms sonra zorla çiz
+            updateChart(player);
         }, 100);
     }
 }
 
 
-// 3. PROFILE LOGIC (RICH FEATURES)
+// ======================================================
+// 5. PROFILE VIEW MODE
 // ======================================================
 
-// Tab Switching (Sub-tabs within Profile)
-window.switchProfileTab = function (tabId) {
-    // Hide all subtabs
-    document.querySelectorAll('.profile-subtab').forEach(el => el.style.display = 'none');
+/**
+ * Returns true if we're viewing someone else's profile (not ours)
+ */
+function isViewingOtherProfile() {
+    const acc = getActiveAccount();
+    return acc && acc.playerId !== activePlayerId;
+}
 
-    // Deactivate all buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+/**
+ * Sets profile to view-only or edit mode based on permissions
+ */
+function applyProfileViewMode() {
+    const viewingOther = isViewingOtherProfile();
+    const acc = getActiveAccount();
+    const isAdmin = acc && acc.role === 'admin';
 
-    // Show target
-    const target = document.getElementById(tabId);
-    if (target) {
-        target.style.display = 'block';
+    // If admin, always can edit. If viewing own profile, can edit.
+    const canEdit = !viewingOther || isAdmin;
+
+    // Show/hide the view banner
+    const banner = document.getElementById('view-only-banner');
+    if (banner) {
+        if (viewingOther && !isAdmin) {
+            const viewedPlayer = players.find(p => p.id === activePlayerId);
+            banner.style.display = 'flex';
+            banner.querySelector('.view-banner-text').textContent =
+                `👁️ ${viewedPlayer ? viewedPlayer.name : 'Oyuncu'}'nın profilini görüntülüyorsunuz`;
+        } else if (viewingOther && isAdmin) {
+            const viewedPlayer = players.find(p => p.id === activePlayerId);
+            banner.style.display = 'flex';
+            banner.querySelector('.view-banner-text').textContent =
+                `⚡ Admin olarak ${viewedPlayer ? viewedPlayer.name : 'Oyuncu'}'nın profilini düzenliyorsunuz`;
+            banner.style.borderColor = 'var(--neon-cyan)';
+        } else {
+            banner.style.display = 'none';
+        }
     }
 
-    // Activate specific button
-    // (Simple lookup based on onclick attribute text)
+    // Disable/enable inputs in detail tab
+    const inputs = document.querySelectorAll('.profile-input, .profile-select, .profile-select-mini');
+    inputs.forEach(el => {
+        el.disabled = !canEdit;
+        el.style.opacity = canEdit ? '1' : '0.5';
+        el.style.cursor = canEdit ? '' : 'not-allowed';
+    });
+
+    // Save button
+    const btnSaveDetails = document.getElementById('btn-save-details');
+    if (btnSaveDetails) {
+        btnSaveDetails.disabled = !canEdit;
+        btnSaveDetails.style.opacity = canEdit ? '1' : '0.5';
+        btnSaveDetails.style.cursor = canEdit ? 'pointer' : 'not-allowed';
+    }
+
+    // Maça davet butonu
+    const davetBtn = document.getElementById('btn-mac-davet');
+    if (davetBtn) {
+        if (viewingOther) {
+            davetBtn.style.display = 'block';
+        } else {
+            davetBtn.style.display = 'block';
+        }
+    }
+
+    // Puanla tab - hide/disable if viewing own profile
+    updatePuanlaTab();
+}
+
+function updatePuanlaTab() {
+    const acc = getActiveAccount();
+    const viewingOther = isViewingOtherProfile();
+
+    const puanlaTabBtn = document.querySelector('.tab-btn[data-tab="tab-puanla"]');
+    const puanlaContent = document.getElementById('tab-puanla');
+
+    if (!viewingOther) {
+        // Own profile: show "Puanla" but disable with message
+        if (puanlaContent) {
+            puanlaContent.innerHTML = `
+                <div class="glass-card" style="text-align:center; padding: 3rem;">
+                    <i class="fa-solid fa-ban" style="font-size:3rem; color:#555; margin-bottom:1rem;"></i>
+                    <h3 style="color:#888; margin-bottom:0.5rem;">Kendinizi Puanlayamazsınız</h3>
+                    <p style="color:#555; font-size:0.9rem;">Başka bir kullanıcı hesabına geçerek bu profili puanlayabilirsiniz.</p>
+                </div>
+            `;
+        }
+    } else {
+        // Viewing other: render rating form
+        if (puanlaContent) {
+            renderCommunityRatingForm(puanlaContent);
+        }
+    }
+}
+
+
+// ======================================================
+// 6. PROFILE LOGIC (RICH FEATURES)
+// ======================================================
+
+window.switchProfileTab = function (tabId) {
+    document.querySelectorAll('.profile-subtab').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+    const target = document.getElementById(tabId);
+    if (target) target.style.display = 'block';
+
     const btns = document.querySelectorAll('.tab-btn');
     btns.forEach(b => {
-        if (b.getAttribute('onclick').includes(tabId)) b.classList.add('active');
+        if (b.getAttribute('onclick') && b.getAttribute('onclick').includes(tabId)) b.classList.add('active');
     });
 
     if (tabId === 'tab-genel') {
@@ -250,30 +531,53 @@ window.switchProfileTab = function (tabId) {
             }
         }, 50);
     }
+
+    if (tabId === 'tab-puanla') {
+        updatePuanlaTab();
+    }
 };
 
-// Main UI Update Function (Preserves Rich Visuals)
 window.updateUI = function () {
     const player = players.find(p => p.id === activePlayerId) || players[0];
     if (!player) return;
 
     // --- Header ---
-    document.getElementById('player-name').textContent = player.name;
-    document.getElementById('profile-avatar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.name}`;
-    document.getElementById('disp-age-header').innerHTML = `<i class="fa-solid fa-cake-candles"></i> ${player.details.age} Yaş`;
+    const nameEl = document.getElementById('player-name');
+    if (nameEl) nameEl.textContent = player.name;
+    const avatarEl = document.getElementById('profile-avatar');
+    if (avatarEl) avatarEl.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${player.name}`;
+    const ageEl = document.getElementById('disp-age-header');
+    if (ageEl) ageEl.innerHTML = `<i class="fa-solid fa-cake-candles"></i> ${player.details.age} Yaş`;
 
-    // --- Value Calculation ---
+    // --- Value Calculation (own ratings) ---
     const totalRating = Object.values(player.ratings).reduce((a, b) => a + b, 0);
     const avg = Math.round(totalRating / 6);
     const value = (totalRating * 200000) * (avg > 80 ? 1.5 : 1);
-    document.getElementById('market-value').textContent = `€${(value / 1000000).toFixed(1)}M`;
-    document.getElementById('overall-rating-disp').textContent = avg;
+    const mvEl = document.getElementById('market-value');
+    if (mvEl) mvEl.textContent = `€${(value / 1000000).toFixed(1)}M`;
+    const orEl = document.getElementById('overall-rating-disp');
+    if (orEl) orEl.textContent = avg;
 
-    // --- Stats & Inputs ---
-    document.getElementById('disp-height-gb').textContent = `${player.details.height} cm`;
-    document.getElementById('disp-weight-gb').textContent = `${player.details.weight} kg`;
+    // --- Community avg score for ORT. PUAN ---
+    const communityAvg = calcCommunityAvg(player);
+    const statAvgEl = document.getElementById('stat-avg-score');
+    if (statAvgEl) {
+        if (communityAvg > 0) {
+            statAvgEl.textContent = communityAvg.toFixed(1);
+            statAvgEl.title = `${player.communityRatings.length} kullanıcı puanı`;
+        } else {
+            statAvgEl.textContent = '—';
+            statAvgEl.title = 'Henüz community puanı yok';
+        }
+    }
 
-    // Fill Inputs (if they exist in DOM)
+    // --- Stat boxes ---
+    const hEl = document.getElementById('disp-height-gb');
+    if (hEl) hEl.textContent = `${player.details.height} cm`;
+    const wEl = document.getElementById('disp-weight-gb');
+    if (wEl) wEl.textContent = `${player.details.weight} kg`;
+
+    // Fill Inputs
     setVal('inp-age', player.details.age);
     setVal('inp-height', player.details.height);
     setVal('inp-weight', player.details.weight);
@@ -290,22 +594,13 @@ window.updateUI = function () {
     }
 
     // --- Chart ---
-    try {
-        updateChart(player);
-    } catch (e) {
-        console.error("Chart Update Failed:", e);
-    }
+    try { updateChart(player); } catch (e) { console.error('Chart Update Failed:', e); }
 
     // --- Skills ---
-    try {
-        checkSkillUnlocks(player, avg);
-    } catch (e) {
-        console.error("Skill Unlock Check Failed:", e);
-    }
+    try { checkSkillUnlocks(player, avg); } catch (e) { console.error('Skill Unlock Check Failed:', e); }
 
-    // Reset Save Button State on Player Switch/Load
+    // Reset Save Button
     const btnSave = document.getElementById('btn-save-ratings');
-    // Only reset if it's NOT in the middle of a "Saved" success animation
     if (btnSave && btnSave.innerHTML.includes('KAYDET')) {
         btnSave.disabled = true;
         btnSave.style.background = '#333';
@@ -313,9 +608,22 @@ window.updateUI = function () {
         btnSave.style.cursor = 'not-allowed';
         btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> KAYDET';
     }
+
+    // --- Profile view mode ---
+    applyProfileViewMode();
+
+    // Update community rating count badge
+    updateCommunityBadge(player);
 };
 
-// Helper to set value safely
+function updateCommunityBadge(player) {
+    const badge = document.getElementById('community-count-badge');
+    if (!badge) return;
+    const count = player.communityRatings ? player.communityRatings.length : 0;
+    badge.textContent = count > 0 ? count : '';
+    badge.style.display = count > 0 ? 'inline-flex' : 'none';
+}
+
 function setVal(id, val) {
     const el = document.getElementById(id);
     if (el) el.value = val;
@@ -325,46 +633,60 @@ function setText(id, txt) {
     if (el) el.textContent = txt;
 }
 
-// Chart.js Logic (ROBUST)
+
+// ======================================================
+// 7. CHART
+// ======================================================
+
 function updateChart(player) {
     const ctx = document.getElementById('profileChart');
-    // 1. Visibility Check enforced by HTML styles now, but safe check:
     if (!ctx) return;
-
-    // Ensure Chart library is loaded
-    if (typeof Chart === 'undefined') {
-        console.error("Chart.js not loaded!");
-        return;
-    }
+    if (typeof Chart === 'undefined') { console.error('Chart.js not loaded!'); return; }
 
     const dataValues = [
-        player.ratings.teknik,
-        player.ratings.sut,
-        player.ratings.pas,
-        player.ratings.hiz,
-        player.ratings.fizik,
-        player.ratings.kondisyon
+        player.ratings.teknik, player.ratings.sut, player.ratings.pas,
+        player.ratings.hiz, player.ratings.fizik, player.ratings.kondisyon
     ];
 
+    // Community avg overlay
+    const communityR = calcCommunityRatingsAvg(player);
+    const communityValues = communityR ? [
+        communityR.teknik, communityR.sut, communityR.pas,
+        communityR.hiz, communityR.fizik, communityR.kondisyon
+    ] : null;
+
+    const datasets = [{
+        label: 'Kendi Puanı',
+        data: dataValues,
+        backgroundColor: 'rgba(173, 255, 47, 0.15)',
+        borderColor: '#adff2f',
+        borderWidth: 2,
+        pointBackgroundColor: '#adff2f'
+    }];
+
+    if (communityValues) {
+        datasets.push({
+            label: 'Community Puanı',
+            data: communityValues,
+            backgroundColor: 'rgba(0, 229, 255, 0.1)',
+            borderColor: 'var(--neon-cyan)',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            pointBackgroundColor: 'var(--neon-cyan)',
+            pointRadius: 4
+        });
+    }
+
     if (window.profileChartInstance) {
-        // Update existing instance
-        window.profileChartInstance.data.datasets[0].data = dataValues;
+        window.profileChartInstance.data.datasets = datasets;
         window.profileChartInstance.update();
-        window.profileChartInstance.resize(); // CRITICAL FIX
+        window.profileChartInstance.resize();
     } else {
-        // Create new instance
         window.profileChartInstance = new Chart(ctx, {
             type: 'radar',
             data: {
-                labels: ['Teknik', 'Şut', 'Pas', 'Hız', 'Fizik', 'Kondiyon'],
-                datasets: [{
-                    label: 'Yetenekler',
-                    data: dataValues,
-                    backgroundColor: 'rgba(173, 255, 47, 0.2)',
-                    borderColor: '#adff2f',
-                    borderWidth: 2,
-                    pointBackgroundColor: '#adff2f'
-                }]
+                labels: ['Teknik', 'Şut', 'Pas', 'Hız', 'Fizik', 'Kondisyon'],
+                datasets
             },
             options: {
                 responsive: true,
@@ -376,33 +698,227 @@ function updateChart(player) {
                         pointLabels: { color: '#fff', font: { size: 12 } },
                         suggestedMin: 0,
                         suggestedMax: 100,
-                        ticks: {
-                            display: false,
-                            beginAtZero: true,
-                            max: 100
-                        }
+                        ticks: { display: false, beginAtZero: true }
                     }
                 },
-                plugins: { legend: { display: false } }
+                plugins: {
+                    legend: {
+                        display: communityValues !== null,
+                        labels: { color: '#aaa', font: { size: 11 } }
+                    }
+                }
             }
         });
     }
 }
 
-// Skill Unlocking
+
+// ======================================================
+// 8. COMMUNITY RATING SYSTEM
+// ======================================================
+
+/**
+ * Calculate average of all numeric ratings categories (for ORT. PUAN display)
+ * Returns a single number (e.g. 7.8) or 0 if no ratings
+ */
+function calcCommunityAvg(player) {
+    if (!player.communityRatings || player.communityRatings.length === 0) return 0;
+    const keys = ['teknik', 'sut', 'pas', 'hiz', 'fizik', 'kondisyon'];
+    let total = 0;
+    let count = 0;
+    player.communityRatings.forEach(r => {
+        keys.forEach(k => {
+            if (r[k] !== undefined) { total += r[k]; count++; }
+        });
+    });
+    if (count === 0) return 0;
+    // Scale 1-99 to 1-10
+    return ((total / count) / 99 * 10);
+}
+
+/**
+ * Returns per-stat community averages (for chart overlay)
+ */
+function calcCommunityRatingsAvg(player) {
+    if (!player.communityRatings || player.communityRatings.length === 0) return null;
+    const keys = ['teknik', 'sut', 'pas', 'hiz', 'fizik', 'kondisyon'];
+    const result = {};
+    keys.forEach(k => {
+        const vals = player.communityRatings.map(r => r[k]).filter(v => v !== undefined);
+        result[k] = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+    });
+    return result;
+}
+
+/**
+ * Renders the community rating form in the Puanla tab (for other users)
+ */
+function renderCommunityRatingForm(container) {
+    const targetPlayer = players.find(p => p.id === activePlayerId);
+    if (!targetPlayer) return;
+
+    const acc = getActiveAccount();
+    // Find existing rating from this account
+    const existing = targetPlayer.communityRatings
+        ? targetPlayer.communityRatings.find(r => r.fromAccountId === activeAccountId)
+        : null;
+
+    const keys = ['teknik', 'sut', 'pas', 'hiz', 'fizik', 'kondisyon'];
+    const labels = { teknik: 'Teknik', sut: 'Şut', pas: 'Pas', hiz: 'Hız', fizik: 'Fizik', kondisyon: 'Kondisyon' };
+    const defaults = existing || { teknik: 70, sut: 70, pas: 70, hiz: 70, fizik: 70, kondisyon: 70 };
+
+    container.innerHTML = `
+        <div class="glass-card community-rating-card" style="max-width:600px; margin:0 auto;">
+            <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${targetPlayer.name}"
+                     style="width:50px; height:50px; border-radius:50%; border:2px solid var(--neon-cyan);">
+                <div>
+                    <h3 style="color:var(--neon-cyan); margin-bottom:0.2rem;">
+                        <i class="fa-solid fa-star"></i> ${targetPlayer.name}'ı Puanla
+                    </h3>
+                    <span style="color:#888; font-size:0.85rem;">
+                        ${existing ? '✅ Daha önce puan verdiniz — güncelleyebilirsiniz' : '📝 İlk puanınızı verin'}
+                    </span>
+                </div>
+                <div id="community-count-badge" style="margin-left:auto; background:var(--neon-cyan); color:#000; border-radius:20px; padding:4px 12px; font-weight:800; font-size:0.85rem; display:${(targetPlayer.communityRatings?.length || 0) > 0 ? 'inline-flex' : 'none'}; align-items:center; gap:4px;">
+                    <i class="fa-solid fa-users"></i> ${targetPlayer.communityRatings?.length || 0}
+                </div>
+            </div>
+
+            <div class="rating-form" id="community-rating-form">
+                ${keys.map(k => `
+                <div class="rating-row">
+                    <span class="rating-label">${labels[k]}</span>
+                    <input type="range" class="rating-slider" id="cr-${k}"
+                        min="1" max="99" step="1" value="${defaults[k]}"
+                        oninput="updateCRDisp('${k}', this.value)">
+                    <span class="rating-val" id="cr-disp-${k}">${defaults[k]}</span>
+                </div>`).join('')}
+
+                <button id="btn-submit-community" class="btn-primary"
+                    onclick="submitCommunityRating()"
+                    style="width:100%; margin-top:2rem; background:var(--neon-cyan); color:black; font-weight:800; padding:1rem; border:none; border-radius:8px; cursor:pointer; font-size:1rem;">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    ${existing ? 'PUANI GÜNCELLE' : 'PUANI GÖNDER'}
+                </button>
+                <div style="margin-top:1rem; text-align:center; font-size:0.85rem; color:#666;">
+                    Puanlar ${targetPlayer.name}'nın Genel Bakış → ORT. PUAN bölümüne yansır
+                </div>
+            </div>
+
+            ${targetPlayer.communityRatings && targetPlayer.communityRatings.length > 0 ? `
+            <div style="margin-top:2rem; border-top:1px solid #333; padding-top:1.5rem;">
+                <h4 style="color:#888; font-size:0.9rem; margin-bottom:1rem; text-transform:uppercase; letter-spacing:1px;">
+                    Verilen Puanlar (${targetPlayer.communityRatings.length})
+                </h4>
+                <div id="community-ratings-log">
+                    ${renderCommunityLog(targetPlayer)}
+                </div>
+            </div>` : ''}
+        </div>
+    `;
+}
+
+function renderCommunityLog(player) {
+    if (!player.communityRatings || player.communityRatings.length === 0) return '';
+    return player.communityRatings.map(r => {
+        const fromAcc = accounts.find(a => a.id === r.fromAccountId);
+        const fromName = fromAcc ? fromAcc.name : 'Bilinmeyen';
+        const vals = ['teknik', 'sut', 'pas', 'hiz', 'fizik', 'kondisyon'];
+        const avg = Math.round(vals.reduce((s, k) => s + (r[k] || 0), 0) / vals.length);
+        const isMe = r.fromAccountId === activeAccountId;
+        return `
+            <div style="display:flex; align-items:center; gap:1rem; padding:0.8rem; border-radius:8px;
+                background:${isMe ? 'rgba(0,229,255,0.05)' : 'rgba(255,255,255,0.02)'};
+                border:1px solid ${isMe ? 'rgba(0,229,255,0.2)' : '#2a2a2a'};
+                margin-bottom:0.5rem;">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${fromName}"
+                     style="width:30px;height:30px;border-radius:50%;">
+                <span style="font-weight:600; color:${isMe ? 'var(--neon-cyan)' : '#ddd'}">
+                    ${fromName}${isMe ? ' (Sen)' : ''}
+                </span>
+                <span style="margin-left:auto; font-weight:800; color:var(--neon-green);">${avg} GEN</span>
+            </div>
+        `;
+    }).join('');
+}
+
+window.updateCRDisp = function (key, val) {
+    const el = document.getElementById(`cr-disp-${key}`);
+    if (el) el.textContent = val;
+};
+
+window.submitCommunityRating = function () {
+    const targetPlayer = players.find(p => p.id === activePlayerId);
+    if (!targetPlayer) return;
+
+    const acc = getActiveAccount();
+    if (!acc) return;
+
+    // Self-rating guard
+    if (acc.playerId === activePlayerId) {
+        alert('Kendinizi puanlayamazsınız!');
+        return;
+    }
+
+    const keys = ['teknik', 'sut', 'pas', 'hiz', 'fizik', 'kondisyon'];
+    const newRating = { fromAccountId: activeAccountId, date: new Date().toISOString() };
+    keys.forEach(k => {
+        const el = document.getElementById(`cr-${k}`);
+        newRating[k] = el ? parseInt(el.value) : 70;
+    });
+
+    if (!targetPlayer.communityRatings) targetPlayer.communityRatings = [];
+
+    // Update or insert
+    const existingIdx = targetPlayer.communityRatings.findIndex(r => r.fromAccountId === activeAccountId);
+    if (existingIdx >= 0) {
+        targetPlayer.communityRatings[existingIdx] = newRating;
+    } else {
+        targetPlayer.communityRatings.push(newRating);
+    }
+
+    savePlayers();
+
+    // Visual feedback
+    const btn = document.getElementById('btn-submit-community');
+    if (btn) {
+        btn.innerHTML = '✅ PUAN KAYDEDİLDİ';
+        btn.style.background = 'var(--neon-green)';
+        setTimeout(() => {
+            // Re-render the puanla tab
+            const puanlaContent = document.getElementById('tab-puanla');
+            if (puanlaContent) renderCommunityRatingForm(puanlaContent);
+            // Update ORT. PUAN on overview
+            updateUI();
+        }, 1200);
+    }
+
+    // Update the chart overlay
+    setTimeout(() => {
+        const player = players.find(p => p.id === activePlayerId);
+        if (player) updateChart(player);
+    }, 1300);
+
+    console.log(`✅ Community rating submitted for ${targetPlayer.name}`);
+};
+
+
+// ======================================================
+// 9. SKILL UNLOCKING
+// ======================================================
+
 function checkSkillUnlocks(player, avg) {
     const skills = [
         { id: 'sc-maestro', check: player.ratings.pas > 85 },
-        { id: 'sc-tank', check: player.ratings.fizik > 85 },
-        { id: 'sc-makina', check: avg > 88 },
-        { id: 'sc-flash', check: player.ratings.hiz > 85 }
+        { id: 'sc-tank',    check: player.ratings.fizik > 85 },
+        { id: 'sc-makina',  check: avg > 88 },
+        { id: 'sc-flash',   check: player.ratings.hiz > 85 }
     ];
-
     skills.forEach(s => {
         const el = document.getElementById(s.id);
         if (!el) return;
         const lock = el.querySelector('.lock-overlay');
-
         if (s.check) {
             el.classList.remove('locked');
             if (lock) lock.style.display = 'none';
@@ -413,67 +929,56 @@ function checkSkillUnlocks(player, avg) {
     });
 }
 
-// Data Sync (from inputs)
-// Data Sync (from inputs)
+
+// ======================================================
+// 10. DATA SYNC & SAVE
+// ======================================================
+
 window.syncProfileData = function () {
     const player = players.find(p => p.id === activePlayerId);
     if (!player) return;
+    if (!canEditPlayer(activePlayerId)) return;
 
-    // Read all inputs safely
-    const getVal = (id) => {
-        const el = document.getElementById(id);
-        return el ? el.value : null;
-    };
+    const getVal = (id) => { const el = document.getElementById(id); return el ? el.value : null; };
+    player.details.age    = getVal('inp-age')      || player.details.age;
+    player.details.height = getVal('inp-height')   || player.details.height;
+    player.details.weight = getVal('inp-weight')   || player.details.weight;
+    player.details.ekol       = getVal('sel-ekol')      || player.details.ekol;
+    player.details.sakatlik   = getVal('sel-sakatlik')  || player.details.sakatlik;
+    player.details.macsatma   = getVal('sel-macsatma')  || player.details.macsatma;
+    player.details.mizac      = getVal('sel-mizac')     || player.details.mizac;
+    player.details.lojistik   = getVal('sel-lojistik')  || player.details.lojistik;
 
-    // Update Player Data
-    player.details.age = getVal('inp-age') || player.details.age;
-    player.details.height = getVal('inp-height') || player.details.height;
-    player.details.weight = getVal('inp-weight') || player.details.weight;
-
-    player.details.ekol = getVal('sel-ekol') || player.details.ekol;
-    player.details.sakatlik = getVal('sel-sakatlik') || player.details.sakatlik;
-
-    player.details.macsatma = getVal('sel-macsatma') || player.details.macsatma;
-    player.details.mizac = getVal('sel-mizac') || player.details.mizac;
-    player.details.lojistik = getVal('sel-lojistik') || player.details.lojistik;
-
-    console.log("💾 Synced Profile Data:", player.details);
     savePlayers();
-
-    // Update Header UI immediately (e.g. Age might be in header)
-    document.getElementById('disp-age-header').innerHTML = `<i class="fa-solid fa-cake-candles"></i> ${player.details.age} Yaş`;
-    // updateUI(); // Recursion risk? No, but let's just update header specific parts or efficient re-render
-    // Actually updateUI is safe here
-    // updateUI(); 
+    const ageEl = document.getElementById('disp-age-header');
+    if (ageEl) ageEl.innerHTML = `<i class="fa-solid fa-cake-candles"></i> ${player.details.age} Yaş`;
 };
 
 window.updateRateDisp = function (type, val) {
-    document.getElementById(`disp-rate-${type}`).innerText = val;
+    const el = document.getElementById(`disp-rate-${type}`);
+    if (el) el.innerText = val;
     const btn = document.getElementById('btn-save-ratings');
-    if (btn) {
+    if (btn && canEditPlayer(activePlayerId)) {
         btn.disabled = false;
-        btn.style.background = 'var(--neon-green)'; // Neon active
+        btn.style.background = 'var(--neon-green)';
         btn.style.color = 'black';
         btn.style.cursor = 'pointer';
-        btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> KAYDET'; // Reset text if was "Saved"
+        btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> KAYDET';
     }
-}
+};
 
 window.saveRatings = function () {
+    if (!canEditPlayer(activePlayerId)) return alert('Bu profili düzenleme yetkiniz yok.');
     const player = players.find(p => p.id === activePlayerId);
     if (!player) return;
 
-    // 1. Capture Data
     const types = ['teknik', 'sut', 'pas', 'hiz', 'fizik', 'kondisyon'];
     types.forEach(t => {
         const input = document.getElementById(`rate-${t}`);
         if (input) player.ratings[t] = parseInt(input.value);
     });
-
-    // 2. Save to Storage
     savePlayers();
 
-    // 3. FORCE VISUAL FEEDBACK (Priority 1)
     const btn = document.getElementById('btn-save-ratings');
     if (btn) {
         btn.innerHTML = '✅ KAYDEDİLDİ';
@@ -481,8 +986,6 @@ window.saveRatings = function () {
         btn.style.setProperty('background-color', 'var(--neon-green)', 'important');
         btn.style.color = 'black';
         btn.style.cursor = 'default';
-
-        // Schedule reset
         setTimeout(() => {
             btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> KAYDET';
             btn.disabled = true;
@@ -491,314 +994,206 @@ window.saveRatings = function () {
             btn.style.cursor = 'not-allowed';
         }, 1500);
     }
+    try { updateUI(); renderPlayerList(); } catch (e) { console.error('UI Refresh Error:', e); }
+};
 
-
-    // 4. Update UI (Priority 2 - Wrapped to prevent crashing)
-    try {
-        updateUI();
-        renderPlayerList();
-    } catch (e) {
-        console.error("UI Refresh Error:", e);
-    }
-}
-
-// MANUAL SAVE DETAILS BUTTON
 window.saveProfileDetails = function () {
+    if (!canEditPlayer(activePlayerId)) return alert('Bu profili düzenleme yetkiniz yok.');
     const player = players.find(p => p.id === activePlayerId);
-    if (!player) return alert("Oyuncu bulunamadı!");
+    if (!player) return alert('Oyuncu bulunamadı!');
 
-    // Capture All Inputs
-    const getVal = (id) => {
-        const el = document.getElementById(id);
-        return el ? el.value : null;
-    };
+    const getVal = (id) => { const el = document.getElementById(id); return el ? el.value : null; };
+    player.details.age    = getVal('inp-age')      || player.details.age;
+    player.details.height = getVal('inp-height')   || player.details.height;
+    player.details.weight = getVal('inp-weight')   || player.details.weight;
+    player.details.ekol       = getVal('sel-ekol')      || player.details.ekol;
+    player.details.sakatlik   = getVal('sel-sakatlik')  || player.details.sakatlik;
+    player.details.macsatma   = getVal('sel-macsatma')  || player.details.macsatma;
+    player.details.mizac      = getVal('sel-mizac')     || player.details.mizac;
+    player.details.lojistik   = getVal('sel-lojistik')  || player.details.lojistik;
 
-    // Update Player Object
-    player.details.age = getVal('inp-age') || player.details.age;
-    player.details.height = getVal('inp-height') || player.details.height;
-    player.details.weight = getVal('inp-weight') || player.details.weight;
-
-    player.details.ekol = getVal('sel-ekol') || player.details.ekol;
-    player.details.sakatlik = getVal('sel-sakatlik') || player.details.sakatlik;
-
-    player.details.macsatma = getVal('sel-macsatma') || player.details.macsatma;
-    player.details.mizac = getVal('sel-mizac') || player.details.mizac;
-    player.details.lojistik = getVal('sel-lojistik') || player.details.lojistik;
-
-    // Save to LocalStorage
     savePlayers();
 
-    // Visual Feedback
     const btn = document.getElementById('btn-save-details');
     if (btn) {
         const originalText = btn.innerHTML;
         btn.innerHTML = '✅ KAYDEDİLDİ';
         btn.style.setProperty('background-color', '#fff', 'important');
         btn.style.color = '#000';
-
         setTimeout(() => {
             btn.innerHTML = originalText;
             btn.style.background = 'var(--neon-green)';
             btn.style.color = 'black';
         }, 1500);
     }
-
-    // Refresh Headers
     updateUI();
 };
 
 
-// 4. TEAM MANAGEMENT
-// 4. TEAM MANAGEMENT
+// ======================================================
+// 11. TEAM MANAGEMENT
 // ======================================================
 
 function renderPlayerList() {
     const tbody = document.getElementById('player-list-body');
     if (!tbody) return;
-
     tbody.innerHTML = '';
 
+    const acc = getActiveAccount();
+
     players.forEach(p => {
-        // Calculate GEN
         const vals = Object.values(p.ratings);
         const gen = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+        const communityAvg = calcCommunityAvg(p);
 
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid #333';
         tr.style.cursor = 'pointer';
+        if (p.id === activePlayerId) tr.style.background = 'rgba(173, 255, 47, 0.1)';
 
-        // Highlight active
-        if (p.id === activePlayerId) {
-            tr.style.background = 'rgba(173, 255, 47, 0.1)';
-        }
-
-        // Click Handler -> Update Global State & Navigate
         tr.onclick = () => {
             activePlayerId = p.id;
             localStorage.setItem('activePlayerId', p.id);
-
-            // 1. Update Profile Data
             updateUI();
-            renderPlayerList(); // Update highlights
-
-            // 2. Auto-Navigate to Profile
+            renderPlayerList();
             showSection('profile');
-
-            // 3. Update Nav UI
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             const profileNav = document.querySelector('.nav-item[data-target="profile"]');
             if (profileNav) profileNav.classList.add('active');
         };
 
-        // Make Row Draggable
         tr.draggable = true;
         tr.ondragstart = (e) => {
-            e.dataTransfer.setData("text/plain", p.id);
-            e.dataTransfer.effectAllowed = "copy";
+            e.dataTransfer.setData('text/plain', p.id);
+            e.dataTransfer.effectAllowed = 'copy';
         };
+
+        const isEditable = acc && (acc.role === 'admin' || acc.playerId === p.id);
+        const communityStr = communityAvg > 0
+            ? `<span style="color:var(--neon-cyan); font-size:0.8rem;" title="Community puanı">⭐${communityAvg.toFixed(1)}</span>`
+            : '';
 
         tr.innerHTML = `
             <td style="padding:10px; display:flex; align-items:center; gap:10px;">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}" style="width:32px; height:32px; border-radius:50%; background:#222;">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}"
+                     style="width:32px; height:32px; border-radius:50%; background:#222;">
                 <span style="font-weight:600; color:#eee;">${p.name}</span>
+                ${communityStr}
             </td>
             <td>
-                <!-- Position Select -->
-                <select class="pos-select" onclick="event.stopPropagation()" onchange="updatePlayerPos('${p.id}', this.value)">
-                    <option value="KL" ${p.details.pos === 'KL' ? 'selected' : ''}>KL</option>
+                <select class="pos-select" onclick="event.stopPropagation()"
+                    onchange="updatePlayerPos('${p.id}', this.value)"
+                    ${!isEditable ? 'disabled' : ''}>
+                    <option value="KL"  ${p.details.pos === 'KL'  ? 'selected' : ''}>KL</option>
                     <option value="DEF" ${p.details.pos === 'DEF' ? 'selected' : ''}>DEF</option>
-                    <option value="OS" ${p.details.pos === 'OS' ? 'selected' : ''}>OS</option>
-                    <option value="FV" ${p.details.pos === 'FV' ? 'selected' : ''}>FV</option>
+                    <option value="OS"  ${p.details.pos === 'OS'  ? 'selected' : ''}>OS</option>
+                    <option value="FV"  ${p.details.pos === 'FV'  ? 'selected' : ''}>FV</option>
                 </select>
             </td>
             <td>
                 <span style="color:${gen >= 80 ? 'var(--neon-green)' : 'orange'}">
-                ${gen >= 80 ? '🔥' : '⚡'}
-                </span>
+                ${gen >= 80 ? '🔥' : '⚡'}</span>
             </td>
             <td>
-                 <span style="font-weight:800; color:var(--neon-green); font-size:1.1rem;">${gen}</span>
+                <span style="font-weight:800; color:var(--neon-green); font-size:1.1rem;">${gen}</span>
             </td>
             <td style="text-align:center;">
-                <!-- Red Delete Icon -->
-                <i class="fa-solid fa-circle-xmark" 
-                   style="color:#ff4444; cursor:pointer; font-size:1.2rem; transition: transform 0.2s;" 
-                   onmouseover="this.style.transform='scale(1.2)'" 
+                ${acc && acc.role === 'admin' ? `
+                <i class="fa-solid fa-circle-xmark"
+                   style="color:#ff4444; cursor:pointer; font-size:1.2rem; transition: transform 0.2s;"
+                   onmouseover="this.style.transform='scale(1.2)'"
                    onmouseout="this.style.transform='scale(1)'"
                    onclick="event.stopPropagation(); deletePlayer('${p.id}')"></i>
+                ` : '—'}
             </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-
-// --- DRAG AND DROP ENGINE ---
-window.allowDrop = function (e) {
-    e.preventDefault();
-};
+window.allowDrop = function (e) { e.preventDefault(); };
 
 window.handleDrop = function (e) {
     e.preventDefault();
-    const id = e.dataTransfer.getData("text/plain");
+    const id = e.dataTransfer.getData('text/plain');
     if (!id) return;
-
-    // ROBUST COORDINATE CALCULATION
     const pitch = document.querySelector('.pitch-container');
     const rect = pitch.getBoundingClientRect();
-
-    // Calculate relative to Pitch Container (regardless of what child element was dropped on)
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-
-    // Check bounds (optional, but good for safety)
     if (x < 0 || y < 0 || x > rect.width || y > rect.height) return;
-
-    // Add to Visuals
     addToPitch(id, x, y);
-
-    // SAVE STATE
     const player = players.find(p => p.id === id);
-    if (player) {
-        player.pitchPos = { left: x, top: y };
-        savePlayers();
-    }
+    if (player) { player.pitchPos = { left: x, top: y }; savePlayers(); }
 };
 
 window.addToPitch = function (id, x, y) {
     const player = players.find(p => p.id === id);
     if (!player) return;
-
     const pitch = document.querySelector('.pitch-container');
-
-    // Check if token already exists? Maybe allow duplicates for tactics board visual
-    // or remove existing one. Let's allow duplicates for now or just append.
-
     const token = document.createElement('div');
     token.className = 'pitch-player-token';
-
-    // Direct Placement (Expects Top-Left coordinates)
     token.style.left = (x !== undefined ? x : 50) + 'px';
-    token.style.top = (y !== undefined ? y : 50) + 'px';
-
-    // Default position if dropped without coords (e.g. click)
-    // Note: handleDrop ensures coords are passed.
-    if (x === undefined) {
-        token.style.top = '50%';
-        token.style.left = '50%';
-        token.style.transform = 'translate(-50%, -50%)'; // Center only default
-    }
-
+    token.style.top  = (y !== undefined ? y : 50) + 'px';
+    if (x === undefined) { token.style.top = '50%'; token.style.left = '50%'; token.style.transform = 'translate(-50%, -50%)'; }
     token.innerHTML = `
         <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${player.name}" class="token-avatar">
         <span class="token-name">${player.name} (${player.details.pos})</span>
     `;
-
-    // Make Token Draggable (within pitch)
-    let isDragging = false;
-    let startX, startY, initialLeft, initialTop;
-
+    let isDragging = false, startX, startY, initialLeft, initialTop;
     token.onmousedown = function (e) {
-        e.preventDefault();
-        e.stopPropagation(); // Prevent pitch drop? No, preventing default drag
-        isDragging = true;
-        startX = e.clientX;
-        startY = e.clientY;
-        initialLeft = token.offsetLeft;
-        initialTop = token.offsetTop;
-        token.style.cursor = 'grabbing';
-        token.style.zIndex = 1000;
-        token.style.transform = 'scale(1.1)';
+        e.preventDefault(); e.stopPropagation();
+        isDragging = true; startX = e.clientX; startY = e.clientY;
+        initialLeft = token.offsetLeft; initialTop = token.offsetTop;
+        token.style.cursor = 'grabbing'; token.style.zIndex = 1000; token.style.transform = 'scale(1.1)';
     };
-
-    // Attach mousemove to document to prevent losing focus
-    const mouseMoveHandler = function (e) {
+    const mmH = function (e) {
         if (!isDragging) return;
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-        token.style.left = `${initialLeft + dx}px`;
-        token.style.top = `${initialTop + dy}px`;
+        token.style.left = `${initialLeft + e.clientX - startX}px`;
+        token.style.top  = `${initialTop  + e.clientY - startY}px`;
     };
-
-    const mouseUpHandler = function () {
+    const muH = function () {
         if (isDragging) {
-            isDragging = false;
-            token.style.cursor = 'grab';
-            token.style.zIndex = 10;
-            token.style.transform = 'scale(1)';
-
-            // CHECK BOUNDS for REMOVAL
-            const pitchRect = pitch.getBoundingClientRect();
-            const tokenRect = token.getBoundingClientRect();
-
-            const centerX = tokenRect.left + tokenRect.width / 2;
-            const centerY = tokenRect.top + tokenRect.height / 2;
-
-            if (
-                centerX < pitchRect.left ||
-                centerX > pitchRect.right ||
-                centerY < pitchRect.top ||
-                centerY > pitchRect.bottom
-            ) {
-                // Remove Token + clear saved position
+            isDragging = false; token.style.cursor = 'grab'; token.style.zIndex = 10; token.style.transform = 'scale(1)';
+            const pR = pitch.getBoundingClientRect(), tR = token.getBoundingClientRect();
+            const cx = tR.left + tR.width/2, cy = tR.top + tR.height/2;
+            if (cx < pR.left || cx > pR.right || cy < pR.top || cy > pR.bottom) {
                 token.remove();
                 const p = players.find(pl => pl.id === id);
                 if (p) { delete p.pitchPos; savePlayers(); }
-                document.removeEventListener('mousemove', mouseMoveHandler);
-                document.removeEventListener('mouseup', mouseUpHandler);
+                document.removeEventListener('mousemove', mmH); document.removeEventListener('mouseup', muH);
             } else {
-                // ✅ SAVE NEW POSITION after intra-pitch drag
-                const newLeft = parseFloat(token.style.left);
-                const newTop  = parseFloat(token.style.top);
+                const nl = parseFloat(token.style.left), nt = parseFloat(token.style.top);
                 const p = players.find(pl => pl.id === id);
-                if (p && !isNaN(newLeft) && !isNaN(newTop)) {
-                    p.pitchPos = { left: newLeft, top: newTop };
-                    savePlayers();
-                }
+                if (p && !isNaN(nl) && !isNaN(nt)) { p.pitchPos = { left: nl, top: nt }; savePlayers(); }
             }
         }
     };
-
-    // We can attach these globally or to the pitch. 
-    // Document level is safer for smooth dragging.
-    document.addEventListener('mousemove', mouseMoveHandler);
-    document.addEventListener('mouseup', mouseUpHandler);
-
-    // Double click to remove from pitch
+    document.addEventListener('mousemove', mmH); document.addEventListener('mouseup', muH);
     token.ondblclick = function () {
         token.remove();
-        // Clear saved position
         const p = players.find(pl => pl.id === id);
         if (p) { delete p.pitchPos; savePlayers(); }
-        document.removeEventListener('mousemove', mouseMoveHandler);
-        document.removeEventListener('mouseup', mouseUpHandler);
+        document.removeEventListener('mousemove', mmH); document.removeEventListener('mouseup', muH);
     };
-
     pitch.appendChild(token);
 };
 
-
-
-
-// --- TEAM MANAGEMENT ACTIONS ---
-
 window.deletePlayer = function (id) {
-    if (id === 'p1' || (players.length > 0 && id === players[0].id)) {
-        return alert("Ana karakteri (Mikimon) takımdan kovamazsın!");
-    }
-
-    if (confirm("Bu oyuncuyu takımdan silmek istediğine emin misiniz?")) {
-        // Remove from array
+    const acc = getActiveAccount();
+    if (!acc || acc.role !== 'admin') return alert('Oyuncu silmek için admin yetkisi gereklidir.');
+    if (id === 'p1') return alert('Ana karakteri (Mikimon) takımdan kovamazsın!');
+    if (confirm('Bu oyuncuyu takımdan silmek istediğine emin misiniz?')) {
         players = players.filter(p => p.id !== id);
-
-        // Reset active if needed
+        // Also remove account if exists
+        accounts = accounts.filter(a => a.playerId !== id);
         if (activePlayerId === id) {
             activePlayerId = players[0] ? players[0].id : null;
+            const activeAcc = accounts.find(a => a.playerId === activePlayerId);
+            if (activeAcc) activeAccountId = activeAcc.id;
         }
-
-        savePlayers();
-        renderPlayerList();
-        updateUI();
+        savePlayers(); saveAccounts();
+        renderPlayerList(); renderAccountList(); updateUI();
     }
 };
 
@@ -807,75 +1202,54 @@ window.updatePlayerPos = function (id, newPos) {
     if (player) {
         player.details.pos = newPos;
         savePlayers();
-        console.log(`Position updated: ${player.name} -> ${newPos}`);
-
-        // If modified player is currently viewed, update profile header/data
-        if (activePlayerId === id) {
-            updateUI();
-        }
+        if (activePlayerId === id) updateUI();
     }
 };
 
 window.addNewPlayer = function () {
-    const name = document.getElementById('new-player-name').value;
-    if (!name) return alert("İsim giriniz");
+    const acc = getActiveAccount();
+    if (!acc || acc.role !== 'admin') return alert('Oyuncu eklemek için admin yetkisi gereklidir.');
+    const name = document.getElementById('new-player-name').value.trim();
+    if (!name) return alert('İsim giriniz');
 
     const newP = JSON.parse(JSON.stringify(DEFAULT_PLAYER));
     newP.id = 'p_' + Date.now();
     newP.name = name;
     newP.details.pos = document.getElementById('new-player-pos').value;
-
-    // Randomize stats
     Object.keys(newP.ratings).forEach(k => newP.ratings[k] = 50 + Math.floor(Math.random() * 40));
 
+    // Create account for new player
+    const newAcc = { id: 'acc_' + Date.now(), name, role: 'player', playerId: newP.id };
     players.push(newP);
-    savePlayers();
-    renderPlayerList();
+    accounts.push(newAcc);
+
+    savePlayers(); saveAccounts();
+    renderPlayerList(); renderAccountList();
     document.getElementById('new-player-name').value = '';
-    alert("Oyuncu eklendi!");
+    alert(`${name} eklendi! Hesap da oluşturuldu.`);
 };
 
-// --- RESTORE PITCH ---
 window.restorePitchState = function () {
     const pitch = document.querySelector('.pitch-container');
     if (!pitch) return;
-
-    // Clear tokens
     document.querySelectorAll('.pitch-player-token').forEach(t => t.remove());
-
     let restoredCount = 0;
-
-    // Safety Bounds (Pitch Size approx)
-    const MAX_W = 1200;
-    const MAX_H = 1200;
-
+    const MAX_W = 1200, MAX_H = 1200;
     players.forEach(p => {
         if (p.pitchPos && p.pitchPos.left !== undefined) {
-            let x = parseFloat(p.pitchPos.left);
-            let y = parseFloat(p.pitchPos.top);
-
-            // AGGRESSIVE SANITIZATION
-            // If data is weird (NaN, negative, or huge), DELETE IT.
+            let x = parseFloat(p.pitchPos.left), y = parseFloat(p.pitchPos.top);
             if (isNaN(x) || isNaN(y) || x < -20 || y < -20 || x > MAX_W || y > MAX_H) {
-                console.warn(`🗑️ Corrupted Pos for ${p.name} (${x},${y}) -> DELETING`);
                 delete p.pitchPos;
             } else {
-                addToPitch(p.id, x, y);
-                restoredCount++;
+                addToPitch(p.id, x, y); restoredCount++;
             }
         }
     });
-
-    // Always save to clean up deleted corrupted entries
     savePlayers();
     console.log(`✅ Restored ${restoredCount} players.`);
 };
 
-
-
-// Auto-restore on load (delayed to ensure DOM and Data)
-setTimeout(() => {
-    restorePitchState();
-    // Re-run once more in case of slow rendering or layout shifts
-    setTimeout(restorePitchState, 1000);
-}, 300);
+window.toggleMatchVerification = function (btn) {
+    btn.classList.toggle('verified');
+    btn.textContent = btn.classList.contains('verified') ? '✅ Onaylandı' : 'Ben de Vardım';
+};
