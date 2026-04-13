@@ -2275,4 +2275,263 @@ input[type="range"]::-webkit-slider-runnable-track {
     }
 }
 
+/* ======================================================
+   FAZ 1 — NAV BADGE & BİLDİRİM ZILI
+   ====================================================== */
+.nav-badge {
+    background: var(--neon-pink);
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 20px;
+    margin-left: auto;
+    min-width: 18px;
+    text-align: center;
+}
+
+.notif-bell {
+    position: absolute;
+    top: 1.1rem;
+    right: 0.9rem;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 50%;
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: #666;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    z-index: 200;
+}
+.notif-bell:hover, .notif-bell.has-notif {
+    color: #ffc800;
+    border-color: rgba(255,200,0,0.3);
+    background: rgba(255,200,0,0.08);
+}
+.notif-bell.has-notif { animation: bellShake 1.5s ease infinite; }
+@keyframes bellShake {
+    0%,100%{transform:rotate(0)} 10%{transform:rotate(15deg)} 20%{transform:rotate(-12deg)}
+    30%{transform:rotate(10deg)} 40%{transform:rotate(-8deg)} 50%{transform:rotate(5deg)}
+}
+.notif-count {
+    position: absolute;
+    top: -4px; right: -4px;
+    background: var(--neon-pink);
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 800;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--bg-dark);
+}
+
+/* Notif Panel */
+.notif-panel {
+    position: absolute;
+    bottom: calc(100% + 0.5rem);
+    left: 0.5rem; right: 0.5rem;
+    background: var(--card-bg);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: 0 -8px 40px rgba(0,0,0,0.4);
+    z-index: 300;
+}
+.notif-panel.open { max-height: 400px; }
+.notif-panel-header {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.85rem 1rem;
+    font-size: 0.8rem; font-weight: 700; color: var(--neon-green);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.notif-clear-btn {
+    margin-left: auto;
+    background: none; border: none;
+    color: #555; font-size: 0.72rem;
+    cursor: pointer; transition: color 0.2s;
+}
+.notif-clear-btn:hover { color: var(--neon-green); }
+.notif-list { overflow-y: auto; max-height: 340px; }
+.notif-item {
+    display: flex; align-items: flex-start; gap: 0.75rem;
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    cursor: pointer; transition: background 0.15s;
+    position: relative;
+}
+.notif-item:hover { background: rgba(255,255,255,0.03); }
+.notif-item.unread { background: rgba(173,255,47,0.03); }
+.notif-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 2px; }
+.notif-msg { font-size: 0.82rem; color: var(--text-main); line-height: 1.4; }
+.notif-time { font-size: 0.7rem; color: #444; margin-top: 3px; }
+.notif-dot {
+    width: 7px; height: 7px;
+    background: var(--neon-green); border-radius: 50%;
+    position: absolute; top: 50%; right: 1rem;
+    transform: translateY(-50%);
+}
+.notif-empty { text-align: center; color: #444; font-size: 0.82rem; padding: 2rem 1rem; line-height: 1.8; }
+
+
+/* ======================================================
+   FAZ 1 — SOSYAL AKIŞ (FEED)
+   ====================================================== */
+.feed-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.feed-post-btn {
+    background: var(--neon-cyan) !important;
+    color: black !important;
+    font-weight: 800;
+    white-space: nowrap;
+}
+.feed-filters {
+    display: flex; gap: 0.5rem; flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+.feed-filter {
+    padding: 0.45rem 1rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    color: #555; font-size: 0.8rem; font-weight: 600;
+    cursor: pointer; transition: all 0.18s ease;
+    display: flex; align-items: center; gap: 0.4rem;
+}
+.feed-filter:hover { color: #aaa; border-color: rgba(255,255,255,0.15); }
+.feed-filter.active {
+    background: rgba(173,255,47,0.1);
+    border-color: rgba(173,255,47,0.35);
+    color: var(--neon-green);
+}
+.feed-stream { display: flex; flex-direction: column; gap: 0; }
+.feed-card {
+    display: flex; gap: 1rem;
+    padding: 1.2rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    animation: feedCardIn 0.3s ease;
+}
+@keyframes feedCardIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+.feed-card-left { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+.feed-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.08);
+    background: #222; object-fit: cover;
+}
+.feed-timeline-line {
+    width: 1px; flex: 1; min-height: 20px;
+    background: rgba(255,255,255,0.05); margin-top: 6px;
+}
+.feed-card-body { flex: 1; min-width: 0; }
+.feed-card-header {
+    display: flex; align-items: center; gap: 0.5rem;
+    margin-bottom: 0.4rem;
+}
+.feed-type-icon { font-size: 0.8rem; }
+.feed-time { font-size: 0.72rem; color: #444; margin-left: auto; }
+.feed-text { font-size: 0.88rem; color: var(--text-main); line-height: 1.5; }
+.feed-actor { font-weight: 700; color: var(--neon-green); }
+.feed-link { color: var(--neon-cyan); font-weight: 700; cursor: pointer; text-decoration: none; }
+.feed-link:hover { text-decoration: underline; }
+.feed-detail-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+.feed-badge {
+    font-size: 0.72rem; font-weight: 700;
+    padding: 3px 9px; border-radius: 20px; display: inline-flex; align-items: center; gap: 3px;
+}
+.feed-badge.match    { background: rgba(173,255,47,0.1); color: var(--neon-green); border: 1px solid rgba(173,255,47,0.25); }
+.feed-badge.venue    { background: rgba(255,255,255,0.05); color: #888; border: 1px solid rgba(255,255,255,0.1); }
+.feed-badge.goal     { background: rgba(255,200,0,0.1); color: #ffc800; border: 1px solid rgba(255,200,0,0.25); }
+.feed-badge.assist   { background: rgba(0,229,255,0.08); color: var(--neon-cyan); border: 1px solid rgba(0,229,255,0.2); }
+.feed-badge.rating   { background: rgba(255,200,0,0.1); color: #ffc800; border: 1px solid rgba(255,200,0,0.25); }
+.feed-badge.invite   { background: rgba(0,229,255,0.08); color: var(--neon-cyan); border: 1px solid rgba(0,229,255,0.2); }
+.feed-comment {
+    font-size: 0.82rem; color: #888; font-style: italic;
+    margin-top: 0.4rem; padding-left: 0.5rem;
+    border-left: 2px solid #333;
+}
+.feed-invite-actions { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
+.btn-accept {
+    padding: 5px 14px; border-radius: 20px; border: none; font-size: 0.78rem; font-weight: 700;
+    background: rgba(173,255,47,0.15); color: var(--neon-green);
+    border: 1px solid rgba(173,255,47,0.3); cursor: pointer; transition: all 0.18s;
+}
+.btn-accept:hover { background: rgba(173,255,47,0.3); }
+.btn-decline {
+    padding: 5px 14px; border-radius: 20px; border: none; font-size: 0.78rem; font-weight: 700;
+    background: rgba(255,0,127,0.1); color: var(--neon-pink);
+    border: 1px solid rgba(255,0,127,0.25); cursor: pointer; transition: all 0.18s;
+}
+.btn-decline:hover { background: rgba(255,0,127,0.25); }
+.feed-status { font-size: 0.78rem; margin-top: 0.4rem; display: inline-block; }
+.feed-status.accepted { color: var(--neon-green); }
+.feed-status.declined { color: var(--neon-pink); }
+.feed-empty { text-align: center; color: #444; padding: 4rem 2rem; }
+
+
+/* ======================================================
+   FAZ 1 — MODAL (Maça Davet Et)
+   ====================================================== */
+.modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 2000; padding: 1rem;
+}
+.modal-box {
+    background: var(--card-bg);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    width: 100%; max-width: 480px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    animation: modalIn 0.25s ease;
+    overflow: hidden;
+}
+@keyframes modalIn { from { opacity:0; transform:translateY(-20px) scale(0.97); } to { opacity:1; transform:none; } }
+.modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.modal-header h3 { font-size: 1rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 0.5rem; }
+.modal-close {
+    background: rgba(255,255,255,0.06); border: none;
+    width: 30px; height: 30px; border-radius: 50%;
+    color: #666; cursor: pointer; font-size: 0.9rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+}
+.modal-close:hover { background: rgba(255,0,127,0.15); color: var(--neon-pink); }
+.modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+.modal-field { display: flex; flex-direction: column; gap: 0.4rem; }
+.modal-field label { font-size: 0.75rem; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: 0.8px; }
+.modal-footer {
+    display: flex; gap: 0.75rem; justify-content: flex-end;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid rgba(255,255,255,0.07);
+}
+
+
+/* ======================================================
+   FAZ 1 — TOAST
+   ====================================================== */
+.ss-toast {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--card-bg); border: 1px solid rgba(173,255,47,0.35);
+    color: var(--neon-green); font-size: 0.9rem; font-weight: 700;
+    padding: 0.75rem 1.5rem; border-radius: 40px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    z-index: 3000; opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    pointer-events: none;
+}
+.ss-toast.visible { transform: translateX(-50%) translateY(0); opacity: 1; }
+
 

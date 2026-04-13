@@ -16,7 +16,7 @@ Sosyal Sporcu Manager, halısaha futbolcularının kendi profil kartlarını olu
 
 ### 🏗️ Temel Altyapı
 - [x] Tek sayfalı uygulama (SPA) mimarisi — vanilla HTML/CSS/JS
-- [x] Sidebar navigasyon sistemi (Karakterim, Takımım, Maç Merkezi, Keşfet)
+- [x] Sidebar navigasyon sistemi (Karakterim, Takımım, Maç Merkezi, **Akış**, Keşfet)
 - [x] Collapsible sidebar — desktop ve mobil responsive
 - [x] Hamburger menü toggle butonu
 - [x] localStorage tabanlı veri persistance
@@ -27,52 +27,64 @@ Sosyal Sporcu Manager, halısaha futbolcularının kendi profil kartlarını olu
 
 ### 👤 Oyuncu Profili (Karakterim)
 - [x] Profil header — avatar, isim, takım, şehir, yaş
-- [x] Dinamik piyasa değeri hesaplama (rating ortalamasına göre)
+- [x] Dinamik piyasa değeri hesaplama
 - [x] **Genel Bakış** sekmesi — radar chart, kimlik kartı, istatistik kutuları
-- [x] **Detaylı Veriler** sekmesi — yaş, boy, kilo, ekol, sakatlık riski, mizaç, lojistik
-- [x] **Yetenekler** sekmesi — kilit/kilit açık skill kartları (Maestro, Tank, Makina, Fişek)
-- [x] **Puanla** sekmesi — community rating formu (başkasına puan verme)
+- [x] **Detaylı Veriler** sekmesi — 4 bölüm: Kimlik, Mevki & Oyun Tarzı, Saha İçi Karakter (7 trait segmented control), Karakteristik & Lojistik
+- [x] **Yetenekler** sekmesi — kilit/kilit açık skill kartları
+- [x] **Puanla** sekmesi — community rating formu + **yorum alanı (FAZ 1)**
 - [x] **Maç Geçmişi** sekmesi — "Ben de Vardım" doğrulama sistemi
-- [x] GEN (genel yetenek) badge — radar chart üzerinde görünür
-- [x] Radar chart real-time güncelleme (puan değişince yenilenir)
-- [x] **Community rating overlay** — radar chart'ta ikinci dataset olarak mavi kesikli çizgi
+- [x] GEN badge — radar chart üzerinde görünür
+- [x] Community rating overlay — mavi kesikli çizgi
 
-### 👥 Çoklu Kullanıcı Sistemi (YENİ - Nisan 2026)
-- [x] 1 Admin + 10 oyuncu hesabı — `MOCK_ACCOUNTS` ile initialize
-- [x] **Hesap geçiş paneli** — sidebar'ın altında, yukarı açılan dropdown
-- [x] Aktif hesap avatarı, ismi ve rolü sidebar'da görünür
-- [x] Her hesap kendi `playerId`'sine bağlı
-- [x] `switchAccount(id)` — hesap geçişinde profil, liste ve UI tam güncelleme
-- [x] Admin rolü: tüm profilleri düzenleyebilir, oyuncu silebilir, yeni oyuncu ekleyebilir
-- [x] Player rolü: yalnızca kendi profilini düzenleyebilir
+### 👥 Çoklu Kullanıcı Sistemi
+- [x] 1 Admin + 10 oyuncu hesabı
+- [x] Hesap geçiş paneli (sidebar altı dropdown)
+- [x] View-only profil modu + banner
 
-### 👁️ Profil Görüntüleme Modu (YENİ - Nisan 2026)
-- [x] Başkasının profiline girildiğinde **"salt okunur"** mod devreye girer
-- [x] Mavi **View-Only Banner** — "X'in profilini görüntülüyorsunuz" mesajı
-- [x] Detaylı Veriler input/select alanları disabled hale gelir
-- [x] Kaydet butonu devre dışı kalır
-- [x] Admin olarak başkasının profiline girildiğinde farklı banner mesajı
-
-### ⭐ Community Puanlama Sistemi (YENİ - Nisan 2026)
-- [x] `communityRatings[]` dizisi her player objesine eklendi
-- [x] Kendi profilinde "Puanla" sekmesine girildiğinde "Kendinizi puanlayamazsınız" mesajı
-- [x] Başkasının profilinde **6 kategori için slider**'lı puanlama formu (1-99)
-- [x] Her hesap, bir oyuncuya en fazla 1 puan verebilir — güncelleme yapabilir
-- [x] Verilen puanlar `communityRatings` dizisine eklenir ve localStorage'a kaydedilir
-- [x] **ORT. PUAN** kutusu — Genel Bakış'ta, community puanlarının ortalamasını gösterir
-- [x] Community radar chart overlay — kendi puanlarının üzerinde mavi kesikli çizgi
-- [x] Puanlama geçmişi listesi — kim ne kadar puan verdi
-- [x] "Puanla" sekme butonunda **verilen puan sayısı badge'i**
+### ⭐ Community Puanlama Sistemi
+- [x] 6 kategoride slider puanlama
+- [x] Kişi başı 1 puan (güncelleme yapılabilir)
+- [x] ORT. PUAN kutusu (community ortalaması)
+- [x] **Yorum alanı — puan verirken 120 karaktere kadar yorum (FAZ 1)**
+- [x] **Yorumlar puanlama geçmişinde görünür (FAZ 1)**
+- [x] **Puan verilince Feed'e otomatik event eklenir (FAZ 1)**
+- [x] **Puan verilen oyuncuya bildirim gider (FAZ 1)**
 
 ### 🏟️ Takım Yönetimi
 - [x] Drag-and-drop taktik tahtası (pitch canvas)
-- [x] Takım kadrosu tablosu — oyuncuya tıklayınca profil görüntüleme
-- [x] Oyuncuları sahaya sürükleyerek mevki atama
-- [x] Oyuncu token'larını sahanın dışına çekince silme
-- [x] Saha konumları localStorage'a kaydedilir
-- [x] Admin: Yeni oyuncu ekleme formu (isim, mevki, ekol)
-- [x] Admin: Oyuncu silme (kırmızı X ikonu)
-- [x] Roster tablosunda **community puan** badge'i (⭐ ORT.)
+- [x] Takım kadrosu tablosu
+- [x] Admin: oyuncu ekleme/silme
+
+### 📡 FAZ 1 — Sosyal Akış (YENİ - Nisan 2026)
+- [x] **Akış sekmesi** — sidebar'da RSS ikonlu "Akış" nav item
+- [x] **Feed stream** — zaman damgalı etkinlik kartları (maç, puan, davet, katılım)
+- [x] **Feed filtreleri** — Tümü / Maçlar / Puanlar / Davetler
+- [x] **Davete yanıt** — feed'deki daveti Kabul/Reddet butonları
+- [x] **Profil linki** — feed'den oyuncunun profiline tıklayarak erişim
+- [x] **Mock seed data** — 7 gerçekçi örnek etkinlik
+
+### 🔔 FAZ 1 — Bildirim Sistemi (YENİ - Nisan 2026)
+- [x] **Bildirim zili** — sidebar'da animasyonlu 🔔 butonu
+- [x] **Okunmamış badge** — kırmızı sayaç
+- [x] **Bildirim paneli** — yukarı açılan panel
+- [x] **Çarpraz bildirim** — puan, davet, kabul/ret bildirimleri
+- [x] **"Tümünü Oku" butonu** — tek tıkla hepsini okundu yap
+- [x] **Hesap bazlı bildirim** — her kullanıcının kendi bildirimleri
+
+### 📩 FAZ 1 — Maç Daveti (YENİ - Nisan 2026)
+- [x] **"Maça Davet Et" modal** — oyuncu seç, tarih, saat, saha, not
+- [x] **Akış'a kaldır** — davet Feed'e event olarak eklenir
+- [x] **Hedef oyuncuya bildirim** — davet alan kişi şeker bildirim alır
+- [x] **Toast mesajı** — "✅ Oyuncu davet edildi" animasyonlu toast
+- [x] **Davet durumu** — Bekliyor / Kabul / Reddedildi renk kodları
+
+### 🎨 Tasarım & UX
+- [x] Glassmorphism card sistemi
+- [x] Neon renk paleti (yeşil, cyan, pembe)
+- [x] Feed timeline — avatar + dikey çizgi + event card
+- [x] Modal backdrop + animasyon
+- [x] Toast bildirimi
+- [x] Bildirim zili sallantı animasyonu
 
 ### 🎨 Tasarım & UX
 - [x] Glassmorphism card sistemi

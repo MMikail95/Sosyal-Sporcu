@@ -518,7 +518,14 @@ function showSection(id) {
             updateChart(player);
         }, 100);
     }
+    if (id === 'feed') {
+        if (typeof window.renderFeed === 'function') window.renderFeed();
+    }
+    // Close panels on nav change
+    closeAccountPanel();
+    document.getElementById('notif-panel')?.classList.remove('open');
 }
+
 
 
 // ======================================================
@@ -928,13 +935,23 @@ function renderCommunityRatingForm(container) {
                     <span class="rating-val" id="cr-disp-${k}">${defaults[k]}</span>
                 </div>`).join('')}
 
-                <button id="btn-submit-community" class="btn-primary"
+                <div style="margin-top:1rem;">
+                    <label style="font-size:0.75rem; font-weight:700; color:#555; text-transform:uppercase; letter-spacing:0.8px; display:block; margin-bottom:0.4rem;">
+                        <i class="fa-solid fa-comment" style="color:var(--neon-cyan);"></i> Yorum (opsiyonel, max 120 karakter)
+                    </label>
+                    <input type="text" id="cr-comment-input" class="profile-input"
+                        maxlength="120" placeholder="Sahadaki en iyi 10 numara..."
+                        value="${existing ? (existing.comment || '') : ''}"
+                        style="width:100%; padding:0.6rem 0.8rem; border-radius:8px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:#ddd; font-size:0.88rem;">
+                </div>
+
+                <button id="btn-submit-community" class="btn-primary cr-submit-btn"
                     onclick="submitCommunityRating()"
-                    style="width:100%; margin-top:2rem; background:var(--neon-cyan); color:black; font-weight:800; padding:1rem; border:none; border-radius:8px; cursor:pointer; font-size:1rem;">
+                    style="width:100%; margin-top:1.25rem; background:var(--neon-cyan); color:black; font-weight:800; padding:1rem; border:none; border-radius:8px; cursor:pointer; font-size:1rem;">
                     <i class="fa-solid fa-paper-plane"></i>
                     ${existing ? 'PUANI GÜNCELLE' : 'PUANI GÖNDER'}
                 </button>
-                <div style="margin-top:1rem; text-align:center; font-size:0.85rem; color:#666;">
+                <div style="margin-top:0.5rem; text-align:center; font-size:0.82rem; color:#555;">
                     Puanlar ${targetPlayer.name}'nın Genel Bakış → ORT. PUAN bölümüne yansır
                 </div>
             </div>
@@ -961,16 +978,21 @@ function renderCommunityLog(player) {
         const avg = Math.round(vals.reduce((s, k) => s + (r[k] || 0), 0) / vals.length);
         const isMe = r.fromAccountId === activeAccountId;
         return `
-            <div style="display:flex; align-items:center; gap:1rem; padding:0.8rem; border-radius:8px;
+            <div style="padding:0.8rem; border-radius:10px;
                 background:${isMe ? 'rgba(0,229,255,0.05)' : 'rgba(255,255,255,0.02)'};
                 border:1px solid ${isMe ? 'rgba(0,229,255,0.2)' : '#2a2a2a'};
-                margin-bottom:0.5rem;">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${fromName}"
-                     style="width:30px;height:30px;border-radius:50%;">
-                <span style="font-weight:600; color:${isMe ? 'var(--neon-cyan)' : '#ddd'}">
-                    ${fromName}${isMe ? ' (Sen)' : ''}
-                </span>
-                <span style="margin-left:auto; font-weight:800; color:var(--neon-green);">${avg} GEN</span>
+                margin-bottom:0.6rem;">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${fromName}"
+                         style="width:30px;height:30px;border-radius:50%;">
+                    <span style="font-weight:600; color:${isMe ? 'var(--neon-cyan)' : '#ddd'}">
+                        ${fromName}${isMe ? ' <span style="color:#555;font-size:0.75rem;">(Sen)</span>' : ''}
+                    </span>
+                    <span style="margin-left:auto; font-weight:800; color:var(--neon-green); font-size:1rem;">${avg} GEN</span>
+                </div>
+                ${r.comment ? `<div style="margin-top:0.5rem; font-size:0.82rem; color:#888; font-style:italic; padding-left:0.4rem; border-left:2px solid #333;">
+                    "${r.comment}"
+                </div>` : ''}
             </div>
         `;
     }).join('');
@@ -1003,6 +1025,10 @@ window.submitCommunityRating = function () {
 
     if (!targetPlayer.communityRatings) targetPlayer.communityRatings = [];
 
+    // Read comment
+    const commentEl = document.getElementById('cr-comment-input');
+    newRating.comment = commentEl ? commentEl.value.trim().slice(0, 120) : '';
+
     // Update or insert
     const existingIdx = targetPlayer.communityRatings.findIndex(r => r.fromAccountId === activeAccountId);
     if (existingIdx >= 0) {
@@ -1012,6 +1038,26 @@ window.submitCommunityRating = function () {
     }
 
     savePlayers();
+
+    // Feed event & notification
+    const keys2 = ['teknik', 'sut', 'pas', 'hiz', 'fizik', 'kondisyon'];
+    const avg2 = Math.round(keys2.reduce((s, k) => s + (newRating[k] || 0), 0) / keys2.length);
+    if (typeof window.addFeedEvent === 'function') {
+        window.addFeedEvent('rating', {
+            targetId: activePlayerId,
+            targetName: targetPlayer.name,
+            avgScore: avg2,
+            comment: newRating.comment || null
+        });
+    }
+    const targetAcc = accounts.find(a => a.playerId === activePlayerId);
+    if (targetAcc && typeof window.addNotification === 'function') {
+        window.addNotification({
+            type: 'rating',
+            message: `${acc.name} sana ${avg2} GEN puan verdi${newRating.comment ? ` — "${newRating.comment}"` : ''}`,
+            targetAccountId: targetAcc.id
+        });
+    }
 
     // Visual feedback
     const btn = document.getElementById('btn-submit-community');
