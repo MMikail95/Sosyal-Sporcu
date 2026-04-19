@@ -8,6 +8,7 @@
     <meta name="description" content="Halısaha futbol yönetim platformu — profil, takım, maç merkezi ve keşfet.">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="team-fix.css">
+    <link rel="stylesheet" href="faz2-7.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -640,94 +641,172 @@
 
             </section>
 
-            <!-- Section: Takımım -->
+            <!-- Section: Takımım —— YENİ YAPI -->
             <section id="takimim" class="section">
-                <!-- Team Header Stats -->
-                <div class="team-dashboard-header">
-                    <div class="team-identity">
-                        <div class="team-logo-large">
-                            <i class="fa-solid fa-shield-cat"></i>
-                        </div>
-                        <div>
-                            <h1 style="font-size: 2rem; margin-bottom: 0.2rem;">Yıldızlar FC</h1>
-                            <div style="display:flex; align-items:center; gap:0.5rem;">
-                                <span style="background:var(--neon-green); color:black; padding:2px 8px; border-radius:4px; font-weight:700;">86 GEN</span>
-                                <span style="color:var(--text-muted);">Profesyonel Halısaha Ligi</span>
+
+                <!-- ══ TEAM MAIN HEADER (rendered by JS) ══ -->
+                <div id="team-main-header" class="team-main-header-block">
+                    <!-- Rendered by takimim.js → renderTeamHeader() -->
+                    <div class="team-header-skeleton">
+                        <i class="fa-solid fa-shield-cat fa-2x" style="color:var(--neon-green);"></i>
+                        <span style="color:#555; margin-left:1rem;">Yükleniyor...</span>
+                    </div>
+                </div>
+
+                <!-- ══ SUB-TAB NAVIGATION ══ -->
+                <div class="team-sub-tabs" id="team-sub-tabs">
+                    <button class="team-tab-btn active" data-tab="ttab-genel"
+                            onclick="switchTeamTab('ttab-genel')">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        <span>Genel Bakış</span>
+                    </button>
+                    <button class="team-tab-btn" data-tab="ttab-kadro"
+                            onclick="switchTeamTab('ttab-kadro')">
+                        <i class="fa-solid fa-users"></i>
+                        <span>Kadro & Davet</span>
+                    </button>
+                    <button class="team-tab-btn" data-tab="ttab-saha"
+                            onclick="switchTeamTab('ttab-saha')">
+                        <i class="fa-solid fa-futbol"></i>
+                        <span>Saha Düzeni</span>
+                    </button>
+                    <button class="team-tab-btn" data-tab="ttab-olustur"
+                            onclick="switchTeamTab('ttab-olustur')">
+                        <i class="fa-solid fa-shuffle"></i>
+                        <span>Takım Oluştur</span>
+                    </button>
+                    <button class="team-tab-btn" data-tab="ttab-basarimlar"
+                            onclick="switchTeamTab('ttab-basarimlar')">
+                        <i class="fa-solid fa-trophy"></i>
+                        <span>Başarımlar</span>
+                    </button>
+                    <button class="team-tab-btn" data-tab="ttab-rakipler"
+                            onclick="switchTeamTab('ttab-rakipler')">
+                        <i class="fa-solid fa-swords"></i>
+                        <span>Rakipler</span>
+                    </button>
+                    <button class="team-tab-btn" data-tab="ttab-odemeler"
+                            onclick="switchTeamTab('ttab-odemeler')">
+                        <i class="fa-solid fa-money-bill-wave"></i>
+                        <span>Ödemeler</span>
+                    </button>
+                    <button class="team-tab-btn" data-tab="ttab-sinerji"
+                            onclick="switchTeamTab('ttab-sinerji')">
+                        <i class="fa-solid fa-link"></i>
+                        <span>Sinerji</span>
+                    </button>
+                </div>
+
+                <!-- ══════════════════════════════════════
+                     SEKME 1: GENEL BAKIŞ
+                ══════════════════════════════════════ -->
+                <div id="ttab-genel" class="team-subtab" style="display:block;">
+                    <div class="team-overview-grid">
+
+                        <!-- LEFT: Radar Chart Card -->
+                        <div class="glass-card team-radar-card">
+                            <div class="team-radar-header">
+                                <div>
+                                    <h3 class="card-heading">TAKIM PROFİLİ</h3>
+                                    <p style="color:#555; font-size:0.85rem;">İlk 7 oyuncunun ort. değerleri</p>
+                                </div>
+                                <div class="team-gen-chip" id="team-gen-chip-radar">
+                                    <span id="team-gen-radar-val">—</span>
+                                    <span class="gen-label">GEN</span>
+                                </div>
+                            </div>
+                            <div style="position:relative; height:340px; width:100%;">
+                                <canvas id="team-radar-chart"></canvas>
                             </div>
                         </div>
-                    </div>
-                    <div class="team-stat-counters">
-                        <div class="counter-item"><span class="counter-val">42</span><span class="counter-label">Maç</span></div>
-                        <div class="counter-item"><span class="counter-val" style="color:var(--neon-green)">28</span><span class="counter-label">Galibiyet</span></div>
-                        <div class="counter-item"><span class="counter-val" style="color:#aaa">8</span><span class="counter-label">Beraberlik</span></div>
-                        <div class="counter-item"><span class="counter-val" style="color:var(--neon-pink)">6</span><span class="counter-label">Mağlubiyet</span></div>
-                    </div>
-                </div>
 
-                <!-- ADMIN PANEL: Add Player -->
-                <div class="glass-card admin-panel" style="margin-bottom: 2rem; border-left: 4px solid var(--neon-cyan);">
-                    <h3 style="color:var(--neon-cyan); margin-bottom:1rem;"><i class="fa-solid fa-user-plus"></i> YENİ OYUNCU EKLE (ADMIN)</h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items:end;">
-                        <div>
-                            <label style="color:#aaa; font-size:0.9rem;">Oyuncu İsmi</label>
-                            <input type="text" id="new-player-name" class="profile-input" placeholder="Örn: Ahmet" style="margin-top:5px;">
+                        <!-- RIGHT: Strength Bars -->
+                        <div class="glass-card team-strength-card">
+                            <div id="team-strength-badges">
+                                <!-- rendered by JS -->
+                            </div>
                         </div>
-                        <div>
-                            <label style="color:#aaa; font-size:0.9rem;">Mevki</label>
-                            <select id="new-player-pos" class="profile-select" style="margin-top:5px;">
-                                <option value="KL">KL (Kaleci)</option>
-                                <option value="DEF">DEF (Defans)</option>
-                                <option value="OS">OS (Orta Saha)</option>
-                                <option value="FV">FV (Forvet)</option>
-                            </select>
+
+                    </div>
+
+                    <!-- Core Squad / Başlangıç 7 -->
+                    <div class="glass-card" style="margin-bottom:1.5rem;">
+                        <div id="team-core-squad">
+                            <!-- rendered by JS -->
                         </div>
-                        <div>
-                            <label style="color:#aaa; font-size:0.9rem;">Ekol</label>
-                            <select id="new-player-ekol" class="profile-select" style="margin-top:5px;">
-                                <option value="Eski Lisanslı">Eski Lisanslı</option>
-                                <option value="Halısaha Gazisi">Halısaha Gazisi</option>
-                                <option value="Sokak Futbolu">Sokak Futbolu</option>
-                            </select>
-                        </div>
-                        <div>
-                            <button class="btn-primary" onclick="addNewPlayer()"
-                                style="width:100%; height:42px; background:var(--neon-green); color:black;">
-                                <i class="fa-solid fa-plus"></i> EKLE
-                            </button>
+                    </div>
+
+                    <!-- Full Member Grid -->
+                    <div class="glass-card">
+                        <div id="team-member-grid">
+                            <!-- rendered by JS -->
                         </div>
                     </div>
                 </div>
 
-                <!-- Tactical Layout -->
-                <div class="tactical-layout">
-                    <!-- Pitch -->
-                    <div class="pitch-container" ondragover="allowDrop(event)" ondrop="handleDrop(event)">
-                        <div class="center-circle"></div>
-                        <div class="mid-line"></div>
-                        <div class="box-area-top"></div>
-                        <div class="box-area-bottom"></div>
-                    </div>
-                    <!-- Roster -->
-                    <div class="roster-panel glass-card" style="margin:0;">
-                        <h3 style="margin-bottom: 1rem; color: var(--text-muted); font-size:1rem; text-transform:uppercase;">
-                            TAKIM KADROSU (Oyuncu Seç)
-                        </h3>
-                        <table class="roster-table">
-                            <thead>
-                                <tr>
-                                    <th>Oyuncu</th>
-                                    <th>Mevki</th>
-                                    <th>Form</th>
-                                    <th>GEN</th>
-                                    <th>İşlem</th>
-                                </tr>
-                            </thead>
-                            <tbody id="player-list-body">
-                                <tr><td colspan="5" style="text-align:center; color:#666;">Yükleniyor...</td></tr>
-                            </tbody>
-                        </table>
+                <!-- ══════════════════════════════════════
+                     SEKME 2: KADRO & DAVET
+                ══════════════════════════════════════ -->
+                <div id="ttab-kadro" class="team-subtab" style="display:none;">
+                    <div id="ttab-kadro-content">
+                        <!-- Rendered by renderKadroTab() — Faz 2 -->
                     </div>
                 </div>
+
+                <!-- ══════════════════════════════════════
+                     SEKME 3: SAHA DÜZENİ
+                ══════════════════════════════════════ -->
+                <div id="ttab-saha" class="team-subtab" style="display:none;">
+                    <div id="ttab-saha-content">
+                        <!-- Rendered by renderSahaTab() — Faz 3 -->
+                    </div>
+                </div>
+
+                <!-- ══════════════════════════════════════
+                     SEKME 4: TAKIM OLUŞTUR
+                ══════════════════════════════════════ -->
+                <div id="ttab-olustur" class="team-subtab" style="display:none;">
+                    <div id="ttab-olustur-content">
+                        <!-- Rendered by renderTakimOlusturTab() — Faz 4 -->
+                    </div>
+                </div>
+
+                <!-- ══════════════════════════════════════
+                     SEKME 5: BAŞARIMLAR
+                ══════════════════════════════════════ -->
+                <div id="ttab-basarimlar" class="team-subtab" style="display:none;">
+                    <div id="team-achievements-content">
+                        <!-- Rendered by renderTeamAchievements() -->
+                    </div>
+                </div>
+
+                <!-- ══════════════════════════════════════
+                     SEKME 6: RAKİPLER
+                ══════════════════════════════════════ -->
+                <div id="ttab-rakipler" class="team-subtab" style="display:none;">
+                    <div id="ttab-rakipler-content">
+                        <!-- Rendered by renderRakiplerTab() — Faz 6 -->
+                    </div>
+                </div>
+
+                <!-- ══════════════════════════════════════
+                     SEKME 7: ÖDEMELER
+                ══════════════════════════════════════ -->
+                <div id="ttab-odemeler" class="team-subtab" style="display:none;">
+                    <div id="ttab-odemeler-content">
+                        <!-- Rendered by renderOdemelerTab() — Faz 7 -->
+                    </div>
+                </div>
+
+                <!-- ══════════════════════════════════════
+                     SEKME 8: SİNERJİ
+                ══════════════════════════════════════ -->
+                <div id="ttab-sinerji" class="team-subtab" style="display:none;">
+                    <div id="ttab-sinerji-content">
+                        <!-- Rendered by renderSinerjiTab() — Faz 5 -->
+                    </div>
+                </div>
+
             </section>
 
             <!-- Section: Maç Merkezi -->
@@ -912,6 +991,8 @@
 
     <script src="script.js"></script>
     <script src="faz1.js"></script>
+    <script src="takimim.js"></script>
+    <script src="faz2-7.js"></script>
 </body>
 
 </html>

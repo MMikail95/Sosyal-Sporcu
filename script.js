@@ -509,8 +509,23 @@ function showSection(id) {
     }
 
     if (id === 'takimim') {
-        renderPlayerList();
-        setTimeout(() => restorePitchState(), 50);
+        // Faz 1: render new team overview
+        if (typeof renderTeamOverview === 'function') {
+            setTimeout(() => {
+                renderTeamOverview();
+                // Trigger placeholder renders for other tabs
+                if (typeof renderKadroTab      === 'function') renderKadroTab();
+                if (typeof renderSahaTab       === 'function') renderSahaTab();
+                if (typeof renderTakimOlusturTab === 'function') renderTakimOlusturTab();
+                if (typeof renderRakiplerTab   === 'function') renderRakiplerTab();
+                if (typeof renderOdemelerTab   === 'function') renderOdemelerTab();
+                if (typeof renderSinerjiTab    === 'function') renderSinerjiTab();
+            }, 80);
+        } else {
+            // Legacy fallback
+            renderPlayerList();
+            setTimeout(() => restorePitchState(), 50);
+        }
     }
     if (id === 'profile') {
         setTimeout(() => {
