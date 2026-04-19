@@ -1,0 +1,781 @@
+/* ================================================================
+   FIXES.CSS — Sosyal Sporcu Platform Düzeltmeleri
+   Kapsam:
+   1. Karanlık / Aydınlık Mod Sistemi
+   2. Modal CSS (takimim, faz2-7 modalleri)
+   3. Profile Tab CSS Çakışması Düzeltmesi
+   4. Team Sub-Tabs Mobil Overflow
+   5. Profil Header Mobil Stack
+   6. Responsive ek iyileştirmeler
+   7. Theme Toggle Butonu
+   ================================================================ */
+
+/* ──────────────────────────────────────────────────────────────
+   1. KARANLIKLK MODDA CSS DEĞİŞKENLERİ (varsayılan = dark)
+   ────────────────────────────────────────────────────────────── */
+:root {
+    /* Theme transition — tüm renk geçişleri smooth */
+    --theme-transition: background 0.4s ease, color 0.4s ease,
+                        border-color 0.4s ease, box-shadow 0.4s ease;
+
+    /* Karanlık mod renkleri (varsayılan) */
+    --bg-primary:    #121212;
+    --bg-secondary:  #1a1a1a;
+    --bg-card:       rgba(20, 20, 20, 0.9);
+    --bg-input:      rgba(255, 255, 255, 0.04);
+    --border-color:  rgba(255, 255, 255, 0.1);
+    --text-primary:  #ffffff;
+    --text-secondary:#888888;
+    --text-on-neon:  #000000;
+    --shadow-color:  rgba(0, 0, 0, 0.5);
+    --modal-bg:      rgba(0, 0, 0, 0.85);
+    --modal-card:    #1a1a1a;
+    --select-opt-bg: #222222;
+    --select-opt-fg: #ffffff;
+    --scrollbar-c:   rgba(255,255,255,0.12);
+    --overlay-bg:    rgba(0, 0, 0, 0.6);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   2. AYDINLIK MOD DEĞİŞKENLERİ
+   ────────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+    --bg-primary:    #f0f2f5;
+    --bg-secondary:  #e8eaed;
+    --bg-card:       rgba(255, 255, 255, 0.92);
+    --bg-input:      rgba(0, 0, 0, 0.04);
+    --border-color:  rgba(0, 0, 0, 0.12);
+    --text-primary:  #1a1a1a;
+    --text-secondary:#555555;
+    --text-on-neon:  #000000;
+    --shadow-color:  rgba(0, 0, 0, 0.12);
+    --modal-bg:      rgba(0, 0, 0, 0.55);
+    --modal-card:    #ffffff;
+    --select-opt-bg: #ffffff;
+    --select-opt-fg: #1a1a1a;
+    --scrollbar-c:   rgba(0,0,0,0.15);
+    --overlay-bg:    rgba(0, 0, 0, 0.3);
+    --glass-bg:      rgba(255,255,255,0.7);
+    --glass-border:  rgba(0,0,0,0.1);
+    --bg-dark:       #f0f2f5;
+    --bg-panel:      #e8eaed;
+    --text-main:     #1a1a1a;
+    --text-muted:    #666666;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   3. TEMA HASSASİYETİ — Temel Elementler
+   ────────────────────────────────────────────────────────────── */
+body {
+    transition: var(--theme-transition);
+    background-color: var(--bg-primary, var(--bg-dark, #121212));
+    color: var(--text-primary, #fff);
+}
+
+[data-theme="light"] body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+[data-theme="light"] .sidebar {
+    background: rgba(255, 255, 255, 0.97);
+    border-right-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .nav-item {
+    color: var(--text-secondary);
+}
+[data-theme="light"] .nav-item:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-primary);
+    border-color: rgba(0,0,0,0.1);
+}
+[data-theme="light"] .nav-item.active {
+    background: linear-gradient(90deg, rgba(173,255,47,0.12), transparent);
+    color: #3d8b00;
+}
+
+[data-theme="light"] .glass-card {
+    background: var(--bg-card) !important;
+    border-color: var(--border-color);
+    box-shadow: 0 4px 20px var(--shadow-color);
+}
+
+[data-theme="light"] .section {
+    background: transparent;
+}
+
+[data-theme="light"] .account-current {
+    background: rgba(0,0,0,0.04);
+    border-color: rgba(0,0,0,0.1);
+}
+[data-theme="light"] .account-current:hover {
+    background: rgba(173,255,47,0.08);
+}
+
+[data-theme="light"] .profile-input,
+[data-theme="light"] .profile-select {
+    background: rgba(0,0,0,0.04);
+    border-color: rgba(0,0,0,0.15);
+    color: var(--text-primary);
+}
+[data-theme="light"] .profile-input:focus,
+[data-theme="light"] .profile-select:focus {
+    border-color: var(--neon-green);
+    background: rgba(173,255,47,0.05);
+}
+
+[data-theme="light"] .profile-select option,
+[data-theme="light"] .profile-select-mini option {
+    background: var(--select-opt-bg);
+    color: var(--select-opt-fg);
+}
+
+[data-theme="light"] .seg-control {
+    background: rgba(0,0,0,0.04);
+}
+[data-theme="light"] .seg-opt {
+    color: var(--text-secondary);
+}
+[data-theme="light"] .seg-opt.active.good {
+    background: rgba(0,200,60,0.15);
+    color: #1a7a00;
+    border-color: rgba(0,200,60,0.3);
+}
+[data-theme="light"] .seg-opt.active.neutral {
+    background: rgba(0,0,0,0.08);
+    color: #333;
+    border-color: rgba(0,0,0,0.2);
+}
+[data-theme="light"] .seg-opt.active.bad {
+    background: rgba(255,0,80,0.1);
+    color: #c0002a;
+    border-color: rgba(255,0,80,0.25);
+}
+
+[data-theme="light"] .tab-btn {
+    color: var(--text-secondary);
+}
+[data-theme="light"] .tab-btn:hover {
+    background: rgba(0,0,0,0.06);
+    color: var(--text-primary);
+}
+[data-theme="light"] .tab-btn.active {
+    background: var(--neon-green);
+    color: #000;
+}
+
+[data-theme="light"] .profile-tabs {
+    background: rgba(255,255,255,0.85);
+    border-color: rgba(0,0,0,0.1);
+}
+
+[data-theme="light"] .team-tab-btn {
+    color: var(--text-secondary);
+}
+[data-theme="light"] .team-tab-btn.active {
+    background: var(--neon-green);
+    color: #000;
+}
+[data-theme="light"] .team-sub-tabs {
+    background: rgba(255,255,255,0.85);
+    border-color: rgba(0,0,0,0.1);
+}
+
+[data-theme="light"] .logo {
+    color: #2a7a00;
+}
+
+[data-theme="light"] .sidebar-toggle {
+    box-shadow: 0 4px 20px rgba(173,255,47,0.3);
+}
+
+[data-theme="light"] .info-label { color: #666; }
+[data-theme="light"] .info-val   { color: #2a7a00; }
+[data-theme="light"] .text-muted,
+[data-theme="light"] [class*="muted"] { color: var(--text-secondary); }
+
+/* History table aydınlık mod */
+[data-theme="light"] .history-table th { color: #666; }
+[data-theme="light"] .history-table td { color: #333; border-bottom-color: rgba(0,0,0,0.06); }
+[data-theme="light"] .history-table tbody tr:hover td { background: rgba(173,255,47,0.05); }
+
+/* Kadro tablosu aydınlık */
+[data-theme="light"] .kadro-table-head,
+[data-theme="light"] .kadro-table-row { border-bottom-color: rgba(0,0,0,0.06); }
+[data-theme="light"] .kadro-table-row:hover { background: rgba(0,0,0,0.03); }
+[data-theme="light"] .krow-name { color: var(--text-primary); }
+
+/* ──────────────────────────────────────────────────────────────
+   4. TEMA TOGGLE BUTONU — Sidebar'a eklenir
+   ────────────────────────────────────────────────────────────── */
+.theme-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border-radius: 10px;
+    border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+    background: transparent;
+    color: var(--text-secondary, #888);
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 0.7rem;
+}
+.theme-toggle-btn:hover {
+    background: rgba(173,255,47,0.08);
+    border-color: rgba(173,255,47,0.3);
+    color: var(--neon-green, #adff2f);
+}
+.theme-toggle-btn .theme-icon { font-size: 1rem; transition: transform 0.4s ease; }
+[data-theme="light"] .theme-toggle-btn .theme-icon { transform: rotate(180deg); }
+
+/* ──────────────────────────────────────────────────────────────
+   5. MODAL CSS (takimim.js + faz2-7.js modalleri için)
+   ────────────────────────────────────────────────────────────── */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: var(--modal-bg, rgba(0,0,0,0.85));
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    animation: backdropFadeIn 0.25s ease;
+}
+.modal-backdrop.open,
+.modal-backdrop[style*="flex"] {
+    display: flex;
+}
+@keyframes backdropFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.modal-box {
+    background: var(--modal-card, #1a1a1a);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 18px;
+    padding: 0;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    animation: modalSlideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    position: relative;
+}
+@keyframes modalSlideUp {
+    from { opacity: 0; transform: translateY(30px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.3rem 1.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.modal-header h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    color: var(--text-primary, #fff);
+}
+
+.modal-body {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.7rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid rgba(255,255,255,0.07);
+}
+
+.modal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.modal-field label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-secondary, #888);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.modal-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    color: var(--text-secondary, #888);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+.modal-close:hover {
+    background: rgba(255,0,80,0.15);
+    border-color: rgba(255,0,80,0.3);
+    color: #ff007f;
+}
+
+/* Aydınlık mod modal */
+[data-theme="light"] .modal-box {
+    background: #ffffff;
+    border-color: rgba(0,0,0,0.1);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.15);
+}
+[data-theme="light"] .modal-header,
+[data-theme="light"] .modal-footer {
+    border-color: rgba(0,0,0,0.08);
+}
+[data-theme="light"] .modal-header h3 { color: #1a1a1a; }
+[data-theme="light"] .modal-close {
+    border-color: rgba(0,0,0,0.1);
+    background: rgba(0,0,0,0.04);
+    color: #666;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   6. PROFILE TABS — Çakışma Giderme (style.css satır 1244-1277 override)
+   ────────────────────────────────────────────────────────────── */
+/* Sol sidebar'a yakın profile tabs konteyner */
+.profile-tabs {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 6px;
+    background: rgba(26, 26, 26, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 6px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 1.5rem;
+    /* Remove old border-bottom override */
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    padding-bottom: 6px !important;
+}
+
+.tab-btn {
+    background: transparent !important;
+    border: none !important;
+    padding: 0.65rem 1.2rem !important;
+    color: var(--text-muted, #888) !important;
+    font-family: 'Outfit', sans-serif !important;
+    font-weight: 500 !important;
+    font-size: 0.9rem !important;
+    cursor: pointer !important;
+    border-radius: 10px !important;
+    transition: all 0.25s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    white-space: nowrap;
+    /* Remove old border-radius hack and border-bottom */
+    border-bottom: none !important;
+}
+.tab-btn:hover {
+    color: var(--neon-green, #adff2f) !important;
+    background: rgba(255,255,255,0.05) !important;
+    transform: none !important;
+}
+.tab-btn.active {
+    background: var(--neon-green, #adff2f) !important;
+    color: #000 !important;
+    font-weight: 700 !important;
+    box-shadow: 0 0 15px rgba(173,255,47,0.35) !important;
+    /* Override the border-bottom hack from second definition */
+    border-bottom: none !important;
+    border-radius: 10px !important;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   7. TEAM SUB-TABS — Mobil Overflow Fix
+   ────────────────────────────────────────────────────────────── */
+.team-sub-tabs {
+    display: flex;
+    gap: 0.25rem;
+    background: rgba(26,26,26,0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 6px;
+    margin-bottom: 1.5rem;
+    /* Scroll on small screens */
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex-shrink: 0;
+}
+.team-sub-tabs::-webkit-scrollbar { display: none; }
+
+.team-tab-btn {
+    background: transparent;
+    border: none;
+    padding: 0.6rem 1rem;
+    color: var(--text-muted, #888);
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 0.88rem;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.team-tab-btn:hover {
+    background: rgba(255,255,255,0.06);
+    color: var(--neon-green, #adff2f);
+}
+.team-tab-btn.active {
+    background: var(--neon-green, #adff2f);
+    color: #000;
+    font-weight: 700;
+    box-shadow: 0 0 12px rgba(173,255,47,0.3);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   8. PROFİL HEADER — Mobil Stack Düzeltme
+   ────────────────────────────────────────────────────────────── */
+
+/* Ana profil header kartı — flex col mobilde */
+#profile > .glass-card:first-of-type {
+    flex-wrap: wrap;
+    gap: 1.2rem;
+}
+
+/* Mobil altında market value sağa yaslanmaz, alta iner */
+@media (max-width: 600px) {
+    #profile > .glass-card:first-of-type {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    #profile > .glass-card:first-of-type > div:last-child {
+        /* market value */
+        text-align: left !important;
+        margin-left: 0 !important;
+        width: 100%;
+    }
+    #profile > .glass-card:first-of-type > div:first-child {
+        /* avatar */
+        width: 70px;
+        height: 70px;
+    }
+
+    /* Profile tabs scroll */
+    .profile-tabs {
+        flex-wrap: nowrap !important;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .profile-tabs::-webkit-scrollbar { display: none; }
+
+    .tab-btn {
+        font-size: 0.8rem !important;
+        padding: 0.5rem 0.8rem !important;
+    }
+
+    /* Bottom stats 2 col */
+    .gb-bottom-stats {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    /* Detail sections */
+    .detail-identity-grid,
+    .detail-mevki-grid,
+    .detail-charakteristik-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   9. DETAIL TAB — Segmented Control İyileştirme
+   ────────────────────────────────────────────────────────────── */
+.seg-control {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    background: rgba(0,0,0,0.2);
+    padding: 5px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+
+.seg-opt {
+    flex: 1;
+    min-width: 120px;
+    padding: 0.5rem 0.6rem;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #777;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+.seg-opt:hover { background: rgba(255,255,255,0.05); color: #bbb; }
+.seg-opt:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.seg-opt.active.good {
+    background: rgba(0,255,136,0.12);
+    border-color: rgba(0,255,136,0.3);
+    color: #00ff88;
+}
+.seg-opt.active.neutral {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+    color: #ddd;
+}
+.seg-opt.active.bad {
+    background: rgba(255,0,127,0.12);
+    border-color: rgba(255,0,127,0.3);
+    color: #ff007f;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   10. TRAIT CARDS GRID — Responsive
+   ────────────────────────────────────────────────────────────── */
+.trait-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+@media (max-width: 600px) {
+    .trait-cards-grid { grid-template-columns: 1fr; }
+    .seg-opt { min-width: 80px; font-size: 0.75rem; padding: 0.45rem 0.4rem; }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   11. KADRO TABLOSU — Mobil İyileştirme
+   ────────────────────────────────────────────────────────────── */
+.kadro-player-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 480px) {
+    .kadro-table-head,
+    .kadro-table-row {
+        grid-template-columns: 24px 1fr 60px 42px !important;
+    }
+    /* Kemik ve akcio alanlarını gizle çok küçüklerde */
+    .kadro-table-head > span:nth-child(5),
+    .kadro-table-head > span:nth-child(6),
+    .kadro-table-row .krow-core,
+    .kadro-table-row .krow-actions {
+        display: none;
+    }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   12. TEAM OVERVIEW GRID — Responsive
+   ────────────────────────────────────────────────────────────── */
+.team-overview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 900px) {
+    .team-overview-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Team radar ve strength card eşit yükseklik */
+.team-radar-card,
+.team-strength-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.team-strength-card {
+    justify-content: center;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   13. SCROLLBAR — Aydınlık modda görünür
+   ────────────────────────────────────────────────────────────── */
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.15);
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0,0,0,0.25);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   14. SIDEBAR TOGGLE KONUM DÜZELTMESİ
+   ────────────────────────────────────────────────────────────── */
+/* Sidebar açıkken toggle sağ kenarda */
+.sidebar-toggle {
+    /* z-index already 1100 */
+    transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
+                background 0.25s ease, 
+                transform 0.25s ease;
+}
+
+/* Küçük mobilde toggle çok büyük olmasın */
+@media (max-width: 360px) {
+    .sidebar-toggle {
+        width: 36px;
+        height: 36px;
+        font-size: 0.95rem;
+    }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   15. TOAST BİLDİRİM — Aydınlık mod uyumu
+   ────────────────────────────────────────────────────────────── */
+[data-theme="light"] .ss-toast {
+    background: rgba(255,255,255,0.95);
+    border-color: rgba(0,0,0,0.1);
+    color: #1a1a1a;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   16. ACHIVEMENT CARDS — Aydınlık mod
+   ────────────────────────────────────────────────────────────── */
+[data-theme="light"] .ach-card {
+    background: rgba(255,255,255,0.9);
+    border-color: rgba(0,0,0,0.1);
+}
+[data-theme="light"] .ach-cat-title { color: #666; }
+[data-theme="light"] .ach-cat-count { background: rgba(0,0,0,0.04); color: #888; }
+
+/* ──────────────────────────────────────────────────────────────
+   17. SECTION OVERFLOW FIX
+   ────────────────────────────────────────────────────────────── */
+.section {
+    overflow-x: hidden;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   18. POOL PLAYER GRID — Tablet'te 3 kolon
+   ────────────────────────────────────────────────────────────── */
+@media (min-width: 601px) and (max-width: 900px) {
+    .pool-player-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   19. RIVAL SUMMARY — Küçük ekran
+   ────────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .rival-summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .odeme-summary-grid {
+        grid-template-columns: 1fr;
+    }
+    .balanced-teams-grid {
+        grid-template-columns: 1fr;
+    }
+    .vs-divider { display: none; }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   20. FORM FIELD — Aydınlık mod seçim kutucukları
+   ────────────────────────────────────────────────────────────── */
+[data-theme="light"] .form-input,
+[data-theme="light"] .form-select {
+    background: rgba(0,0,0,0.04);
+    color: #1a1a1a;
+    border-color: rgba(0,0,0,0.15);
+}
+[data-theme="light"] .form-input:focus,
+[data-theme="light"] .form-select:focus {
+    border-color: var(--neon-green);
+    background: rgba(173,255,47,0.05);
+    box-shadow: 0 0 10px rgba(173,255,47,0.1);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   21. NOTIF PANEL & ACCOUNT PANEL — Aydınlık mod
+   ────────────────────────────────────────────────────────────── */
+[data-theme="light"] .notif-panel,
+[data-theme="light"] .account-panel {
+    background: rgba(255,255,255,0.97);
+    border-color: rgba(0,0,0,0.1);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+[data-theme="light"] .notif-panel-header,
+[data-theme="light"] .account-panel-header {
+    border-bottom-color: rgba(0,0,0,0.08);
+    color: #333;
+}
+[data-theme="light"] .account-list-item:hover {
+    background: rgba(173,255,47,0.06);
+}
+[data-theme="light"] .account-list-item.active {
+    background: rgba(173,255,47,0.1);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   22. SAHA DÜZENİ — Mobil iyileştirme
+   ────────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+    .saha-main-layout {
+        grid-template-columns: 1fr;
+    }
+    .bench-card {
+        order: -1;
+    }
+    .bench-players {
+        flex-direction: row;
+        flex-wrap: wrap;
+        max-height: 160px;
+        overflow-y: auto;
+    }
+    .bench-player-chip {
+        min-width: 130px;
+    }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   23. INPUT RANGE — Aydınlık mod track rengi
+   ────────────────────────────────────────────────────────────── */
+[data-theme="light"] input[type="range"] {
+    background: rgba(0,0,0,0.1);
+}
+[data-theme="light"] input[type="range"]::-webkit-slider-runnable-track {
+    background: rgba(0,0,0,0.12);
+}

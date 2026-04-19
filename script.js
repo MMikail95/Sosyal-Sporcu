@@ -81,8 +81,37 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         updateTogglePosition(true);
     }
+
+    // Apply saved theme on load
+    applyTheme(localStorage.getItem('ss_theme') || 'dark');
 });
 
+
+// ======================================================
+// TEMA YÖNETİMİ (Dark / Light Mode)
+// ======================================================
+
+function applyTheme(theme) {
+    const html   = document.documentElement;
+    const icon   = document.getElementById('theme-icon');
+    const label  = document.getElementById('theme-label');
+
+    if (theme === 'light') {
+        html.setAttribute('data-theme', 'light');
+        if (icon)  icon.className  = 'fa-solid fa-sun theme-icon';
+        if (label) label.textContent = 'Aydınlık Mod';
+    } else {
+        html.removeAttribute('data-theme');
+        if (icon)  icon.className  = 'fa-solid fa-moon theme-icon';
+        if (label) label.textContent = 'Karanlık Mod';
+    }
+    localStorage.setItem('ss_theme', theme);
+}
+
+window.toggleTheme = function() {
+    const current = localStorage.getItem('ss_theme') || 'dark';
+    applyTheme(current === 'dark' ? 'light' : 'dark');
+};
 
 // ======================================================
 // 1. MOCK DATA DEFINITIONS
@@ -474,10 +503,39 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAccountUI();
     updateUI();
     renderPlayerList();
+
+    // Load team data after players are ready
+    if (typeof loadTeamData === 'function') {
+        loadTeamData();
+    }
+
     // Chart resize fix
     setTimeout(restorePitchState, 300);
     setTimeout(restorePitchState, 1000);
 });
+
+/**
+ * Takımım sayfasından bir oyuncunun profiline geç
+ */
+window.viewPlayerFromTeam = function(playerId) {
+    const player = players.find(p => p.id === playerId);
+    if (!player) return;
+
+    // Switch the viewed profile
+    activePlayerId = playerId;
+
+    // Navigate to profile section
+    showSection('profile');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const profileNav = document.querySelector('.nav-item[data-target="profile"]');
+    if (profileNav) profileNav.classList.add('active');
+
+    // Update profile UI
+    updateUI();
+
+    // Show view-only banner if different from active user's player
+    applyProfileViewMode();
+};
 
 function setupNavigation() {
     const navItems = document.querySelectorAll('.nav-item');
@@ -1597,6 +1655,12 @@ window.syncProfileData = function () {
     savePlayers();
     const ageEl = document.getElementById('disp-age-header');
     if (ageEl) ageEl.innerHTML = `<i class="fa-solid fa-cake-candles"></i> ${player.details.age} Yaş`;
+
+    // Genel Bakış sekmesindeki boy/kilo display güncelle
+    const hEl = document.getElementById('disp-height-gb');
+    if (hEl) hEl.textContent = `${player.details.height} cm`;
+    const wEl = document.getElementById('disp-weight-gb');
+    if (wEl) wEl.textContent = `${player.details.weight} kg`;
 };
 
 // Segmented control trait setter
@@ -1604,7 +1668,12 @@ window.setSegTrait = function(field, val, btnEl) {
     const player = players.find(p => p.id === activePlayerId);
     if (!player) return;
     if (!canEditPlayer(activePlayerId)) return;
-    player.details[field] = val;
+
+    // Eğer val eksikse veya undefined ise, data-val attribute'ından oku
+    const finalVal = (val !== undefined && val !== null && val !== '') ? val : (btnEl ? btnEl.dataset.val : '');
+    if (!finalVal) return;
+
+    player.details[field] = finalVal;
     savePlayers();
     const container = btnEl.closest('.seg-control');
     if (container) container.querySelectorAll('.seg-opt').forEach(b => b.classList.remove('active'));

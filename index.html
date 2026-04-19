@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="team-fix.css">
     <link rel="stylesheet" href="faz2-7.css">
+    <link rel="stylesheet" href="fixes.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -52,6 +53,12 @@
                     <span>Keşfet</span>
                 </li>
             </ul>
+
+            <!-- Theme Toggle -->
+            <button class="theme-toggle-btn" id="theme-toggle-btn" onclick="toggleTheme()">
+                <i class="fa-solid fa-moon theme-icon" id="theme-icon"></i>
+                <span id="theme-label">Karanlık Mod</span>
+            </button>
 
             <!-- Notification Bell -->
             <button class="notif-bell" id="notif-bell-btn" onclick="toggleNotifPanel()">
@@ -388,8 +395,8 @@
                                             <span>Maç Sonu</span>
                                         </div>
                                         <div class="seg-control" id="seg-macSonu">
-                                            <button class="seg-opt good" data-val="Çay & Muhabbet'te"
-                                                onclick="setSegTrait('macSonu',&quot;Çay & Muhabbet'te&quot;,this)">
+                                            <button class="seg-opt good" data-val="Çay &amp; Muhabbet'te"
+                                                onclick="setSegTrait('macSonu', this.dataset.val, this)">
                                                 ☕ Çay & Muhabbet'te
                                             </button>
                                             <button class="seg-opt neutral active" data-val="Bir Çay İçip Gider"
