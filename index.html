@@ -11,6 +11,31 @@
     <link rel="stylesheet" href="faz2-7.css">
     <link rel="stylesheet" href="fixes.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Supabase Client Config -->
+    <script src="supabase.js"></script>
+    <!-- =====================================================
+         OTURUM KORUMASI — Giriş yapılmamışsa auth.html'e yönlendir
+    ===================================================== -->
+    <script>
+      (async function guardSession() {
+        if (!window.sbClient) return; // Supabase yüklenmediyse devam et (geliştirme)
+        try {
+          const { data: { session } } = await window.sbClient.auth.getSession();
+          if (!session) {
+            window.location.replace('auth.html');
+            return;
+          }
+          // Oturum var → kullanıcıyı global'e kaydet
+          window.__AUTH_USER__ = session.user;
+          console.log('🔐 Oturum aktif:', session.user.email);
+        } catch (e) {
+          console.warn('Session check failed, proceeding offline:', e.message);
+        }
+      })();
+    </script>
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
@@ -862,49 +887,110 @@
                 </div>
             </section>
 
-            <!-- Section: Keşfet -->
+            <!-- Section: Keşfet (FAZ 2 — Supabase) -->
             <section id="explore" class="section">
                 <div class="section-header">
-                    <h1 class="section-title">Keşfet</h1>
-                    <p class="section-subtitle">Rakip Takımlar ve Saha Rezervasyonu</p>
+                    <h1 class="section-title"><i class="fa-solid fa-compass" style="color:var(--neon-cyan);"></i> Keşfet</h1>
+                    <p class="section-subtitle">Oyuncuları keşfet, arkadaş ekle, toplulukla bağlan</p>
                 </div>
-                <h3 class="section-title" style="font-size: 1.2rem; margin-bottom: 1rem; color:var(--text-muted);">LİG RAKİPLERİ</h3>
-                <div class="explore-grid" style="margin-bottom: 3rem;">
-                    <div class="explore-card">
-                        <div class="explore-img-container">
-                            <div style="width: 100%; height: 100%; background: #222; display:flex; align-items:center; justify-content:center; color: #555;">
-                                <i class="fa-solid fa-users-viewfinder" style="font-size: 3rem;"></i>
+
+                <!-- Sekmeler -->
+                <div class="glass-card" style="padding:0.5rem; margin-bottom:1.25rem; display:flex; gap:0.4rem;">
+                    <button class="explore-tab-btn active" onclick="switchExploreTab('players', this)">
+                        <i class="fa-solid fa-users"></i> Oyuncular
+                    </button>
+                    <button class="explore-tab-btn" onclick="switchExploreTab('friends', this)">
+                        <i class="fa-solid fa-user-group"></i> Arkadaşlarım
+                    </button>
+                    <button class="explore-tab-btn" onclick="switchExploreTab('invite', this)">
+                        <i class="fa-solid fa-share-nodes"></i> Davet Et
+                    </button>
+                </div>
+
+                <!-- ── OYUNCULAR SEKMESİ ── -->
+                <div id="explore-players-section">
+                    <!-- Arama & Filtreler -->
+                    <div class="glass-card" style="padding:1rem 1.5rem; margin-bottom:1.5rem;">
+                        <div class="explore-filter-row">
+                            <div class="explore-search-wrap">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="explore-search" class="explore-search-input"
+                                       placeholder="Oyuncu ara..."
+                                       oninput="filterExplore()">
                             </div>
+                            <select id="explore-pos-filter" class="profile-select" style="max-width:160px;"
+                                    onchange="filterExplore()">
+                                <option value="">Tüm Mevkiler</option>
+                                <option value="KL">🧤 Kaleci</option>
+                                <option value="DEF">🛡️ Defans</option>
+                                <option value="OS">⚡ Orta Saha</option>
+                                <option value="FV">⚽ Forvet</option>
+                            </select>
+                            <button class="btn-primary" onclick="initExplore()" style="padding:0.6rem 1.2rem; white-space:nowrap;">
+                                <i class="fa-solid fa-rotate"></i> Yenile
+                            </button>
                         </div>
-                        <div class="explore-content">
-                            <h4 class="explore-title">Kuzey Kaplanları</h4>
-                            <div class="explore-meta">
-                                <span><i class="fa-solid fa-trophy"></i> Lig A</span>
-                                <span><i class="fa-solid fa-star" style="color: gold;"></i> 4.5</span>
-                            </div>
-                            <button class="btn-outline">Maç İste</button>
+                    </div>
+                    <!-- Oyuncu Grid -->
+                    <div class="explore-player-grid" id="explore-player-grid">
+                        <div style="text-align:center; padding:3rem; color:#555; grid-column:1/-1;">
+                            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                            <p style="margin-top:1rem;">Oyuncular yükleniyor...</p>
                         </div>
                     </div>
                 </div>
-                <h3 class="section-title" style="font-size: 1.2rem; margin-bottom: 1rem; color:var(--text-muted);">SAHA EŞLEŞTİRME</h3>
-                <div class="explore-grid">
-                    <div class="explore-card">
-                        <div class="explore-img-container">
-                            <div style="width: 100%; height: 100%; background: #1a331a; display:flex; align-items:center; justify-content:center; color: #adff2f;">
-                                <i class="fa-solid fa-futbol" style="font-size: 3rem;"></i>
-                            </div>
+
+                <!-- ── ARKAŞLARIM SEKMESİ ── -->
+                <div id="explore-friends-section" style="display:none;">
+                    <div class="glass-card" style="padding:0.75rem 1.25rem; margin-bottom:1.25rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
+                        <span style="font-weight:700; color:#888; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px;">
+                            <i class="fa-solid fa-user-group"></i> Arkadaş Listem
+                        </span>
+                        <button class="btn-outline" onclick="loadFriendsList()" style="padding:0.4rem 0.9rem; font-size:0.8rem;">
+                            <i class="fa-solid fa-rotate"></i> Yenile
+                        </button>
+                    </div>
+                    <div class="explore-player-grid" id="friends-list-grid">
+                        <div style="text-align:center; padding:3rem; color:#555; grid-column:1/-1;">
+                            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                            <p style="margin-top:1rem;">Arkadaşlar yükleniyor...</p>
                         </div>
-                        <div class="explore-content">
-                            <h4 class="explore-title">Mecidiyeköy Arena</h4>
-                            <div class="explore-meta">
-                                <span><i class="fa-solid fa-location-dot"></i> Şişli</span>
-                                <span>₺2000/saat</span>
+                    </div>
+                </div>
+
+                <!-- ── DAVET ET SEKMESİ ── -->
+                <div id="explore-invite-section" style="display:none;">
+                    <div class="glass-card" style="padding:2rem; text-align:center;">
+                        <div style="font-size:3rem; margin-bottom:1rem;">🔗</div>
+                        <h3 style="font-size:1.3rem; font-weight:800; margin:0 0 0.5rem;">Arkadaşlarını Davet Et</h3>
+                        <p style="color:#666; font-size:0.9rem; margin-bottom:1.5rem;">
+                            Kayıt linkini kopyala ve arkadaşlarınla paylaş.<br>
+                            <span style="color:#555; font-size:0.8rem;">Not: Site bir sunucuda host edilmemişse link sadece aynı bilgisayarda çalışır.</span>
+                        </p>
+                        <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:10px;
+                                    padding:0.75rem 1rem; font-family:monospace; font-size:0.8rem; color:#aaa;
+                                    margin-bottom:1.25rem; word-break:break-all;" id="invite-link-preview">
+                            <i class="fa-solid fa-spinner fa-spin"></i> Link hesaplanıyor...
+                        </div>
+                        <button class="btn-primary" onclick="copyInviteLink()"
+                                style="background:linear-gradient(135deg,var(--neon-green),#6fff00); color:#0a0a0f; padding:0.75rem 2rem;">
+                            <i class="fa-solid fa-copy"></i> Linki Kopyala
+                        </button>
+                        <div style="margin-top:2rem; padding-top:1.5rem; border-top:1px solid rgba(255,255,255,0.06);">
+                            <p style="color:#555; font-size:0.85rem; margin-bottom:0.75rem;">🌐 Siteyi ücretsiz yayınlamak için:</p>
+                            <div style="display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap;">
+                                <a href="https://pages.github.com" target="_blank" class="btn-outline" style="text-decoration:none; font-size:0.8rem; padding:0.5rem 1rem;">
+                                    <i class="fa-brands fa-github"></i> GitHub Pages
+                                </a>
+                                <a href="https://netlify.com" target="_blank" class="btn-outline" style="text-decoration:none; font-size:0.8rem; padding:0.5rem 1rem;">
+                                    <i class="fa-solid fa-globe"></i> Netlify
+                                </a>
                             </div>
-                            <button class="btn-outline">Rezervasyon Yap</button>
                         </div>
                     </div>
                 </div>
             </section>
+
 
             <!-- ================================================
                  Section: Akış (Feed)
@@ -917,9 +1003,15 @@
                         </h1>
                         <p style="color:#555; font-size:0.9rem;">Takımından ve topluluğundan son gelişmeler</p>
                     </div>
-                    <button class="btn-primary feed-post-btn" onclick="openMatchInviteModal()">
-                        <i class="fa-solid fa-paper-plane"></i> Maça Davet Et
-                    </button>
+                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                        <button class="btn-primary feed-post-btn" onclick="openPostModal()"
+                            style="background:linear-gradient(135deg,var(--neon-green),#6fff00); color:#0a0a0f;">
+                            <i class="fa-solid fa-pen-to-square"></i> Paylaş
+                        </button>
+                        <button class="btn-outline feed-post-btn" onclick="openMatchInviteModal()">
+                            <i class="fa-solid fa-paper-plane"></i> Davet Et
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Feed Filter Tabs -->
@@ -996,10 +1088,14 @@
         </div>
     </div>
 
+    <!-- DB Adaptör Katmanı (Supabase) -->
+    <script src="db.js"></script>
+    <!-- Uygulama Mantığı -->
     <script src="script.js"></script>
     <script src="faz1.js"></script>
     <script src="takimim.js"></script>
     <script src="faz2-7.js"></script>
+    <script src="faz2-social.js"></script>
 </body>
 
 </html>

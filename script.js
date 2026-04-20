@@ -326,10 +326,11 @@ function migratePlayerData(player) {
 // 2. DATA LOADING & PERSISTENCE
 // ======================================================
 
-let players = [];
-let accounts = [];
-let activeAccountId = 'acc_admin';
-let activePlayerId = 'p1';
+var players = [];
+var accounts = [];
+var activeAccountId = 'acc_admin';
+var activePlayerId = 'p1';
+
 
 function loadData() {
     // --- Players ---
@@ -495,11 +496,182 @@ window.closeAccountPanel = function () {
 // 4. INITIALIZATION & NAVIGATION
 // ======================================================
 
-document.addEventListener('DOMContentLoaded', () => {
+// ── FAZ 1: Supabase oturum entegrasyonu ──
+// Oturum açmış kullanıcının profilini Supabase'den yükler
+// ve mevcut activePlayerId ile senkronize eder.
+async function initSupabaseUser() {
+    if (!window.sbClient || !window.DB) return;
+
+    try {
+        const session = await window.DB.Auth.getSession();
+        if (!session) {
+            // Oturum yok → auth.html'e yönlendir (index.html guard'ı zaten yapar)
+            return;
+        }
+
+        const userId = session.user.id;
+        const profile = await window.DB.Profiles.get(userId);
+
+        if (profile) {
+            // Supabase profilini localStorage mock sistemiyle köprüle:
+            // Mevcut oyuncular içinde username eşleşmesi var mı?
+            let existingPlayer = players.find(p =>
+                p.name.toLowerCase() === (profile.username || '').toLowerCase()
+            );
+
+            if (!existingPlayer) {
+                // Yeni kullanıcı — geçici player objesi oluştur
+                const newPlayer = {
+                    id:   `sb_${userId}`,
+                    name: profile.username || profile.full_name || 'Oyuncu',
+                    supabase_id: userId,
+                    details: {
+                        pos:           profile.position || 'OS',
+                        age:           profile.age || 24,
+                        height:        profile.height || 180,
+                        weight:        profile.weight || 75,
+                        ekol:          profile.ekol || 'Halısaha Gazisi',
+                        sakatlik:      profile.sakatlik || 'Maç Seçer',
+                        macsatma:      profile.macsatma || 'Keyfine Bağlı',
+                        mizac:         profile.mizac || 'Makara Yapıcı',
+                        lojistik:      profile.lojistik || 'Kendi Gelir',
+                        anaMevki:      profile.ana_mevki || 'Ofansif OS (10 Numara)',
+                        altPos:        profile.alt_pos || '',
+                        oyunTarzi:     profile.oyun_tarzi || 'Box-to-Box',
+                        dakiklik:      profile.dakiklik || 'Son Dakika Yetişir',
+                        sahaIletisim:  profile.saha_iletisim || 'Sessiz Oynar',
+                        macSonu:       profile.mac_sonu || 'Bir Çay İçip Gider',
+                        mevkiSadakat:  profile.mevki_sadakat || 'Bazen Gezer',
+                        presGucu:      profile.pres_gucu || 'Yorgunsa Yavaş',
+                        pasTercihi:    profile.pas_tercihi || 'Dengeli',
+                        markaj:        profile.markaj || 'Yakın Takip'
+                    },
+                    ratings: {
+                        teknik:    profile.rating_teknik    || 70,
+                        sut:       profile.rating_sut       || 70,
+                        pas:       profile.rating_pas       || 70,
+                        hiz:       profile.rating_hiz       || 70,
+                        fizik:     profile.rating_fizik     || 70,
+                        kondisyon: profile.rating_kondisyon || 70
+                    },
+                    communityRatings: []
+                };
+
+                players.unshift(newPlayer);
+                existingPlayer = newPlayer;
+
+                // Hesabı da oluştur
+                const newAccount = {
+                    id:       `acc_${userId}`,
+                    name:     profile.username || profile.full_name || 'Oyuncu',
+                    role:     profile.is_admin ? 'admin' : 'player',
+                    playerId: newPlayer.id,
+                    supabase_id: userId
+                };
+                accounts.unshift(newAccount);
+                activeAccountId = newAccount.id;
+                activePlayerId  = newPlayer.id;
+            } else {
+                // Mevcut mock oyuncu bulundu → aktif hesaba geç
+                const acc = accounts.find(a => a.playerId === existingPlayer.id);
+                if (acc) {
+                    activeAccountId = acc.id;
+                    activePlayerId  = existingPlayer.id;
+                }
+            }
+
+            // Sidebar'daki hesap bilgisini güncelle
+            // Oturum kapatma butonunu göster
+            addLogoutButton(profile);
+
+            savePlayers();
+            saveAccounts();
+            console.log(`✅ Supabase kullanıcısı yüklendi: ${profile.username}`);
+        }
+
+    } catch (err) {
+        console.warn('Supabase user init failed (offline mode):', err.message);
+    }
+}
+
+// Sidebar'a oturum kapatma butonu ekle + mock hesap panelini gizle
+function addLogoutButton(profile) {
+    if (document.getElementById('btn-logout')) return;
+
+    // ── Gerçek kullanıcı bilgilerini güncelle ──
+    const nameEl = document.getElementById('current-account-name');
+    if (nameEl) nameEl.textContent = profile.username || profile.full_name || 'Oyuncu';
+
+    const roleEl = document.getElementById('current-account-role');
+    if (roleEl) {
+        roleEl.textContent = profile.is_admin ? '⚡ Admin' : '🎮 Oyuncu';
+    }
+
+    const avatarEl = document.getElementById('current-account-avatar');
+    if (avatarEl) {
+        const seed = profile.username || profile.full_name || 'user';
+        avatarEl.src = profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
+    }
+
+    // ── Mock hesap listesini/panelıni gizle (gerçek auth varken kullanılmaz) ──
+    const accountPanel = document.getElementById('account-panel');
+    if (accountPanel) accountPanel.style.display = 'none';
+
+    // Chevron ikonunu gizle
+    const chevron = document.getElementById('acc-chevron-icon');
+    if (chevron) chevron.style.display = 'none';
+
+    // Account current butonunun tıklama/hover efektini kaldır
+    const accountCurrentBtn = document.getElementById('account-current-btn');
+    if (accountCurrentBtn) {
+        accountCurrentBtn.onclick = null;
+        accountCurrentBtn.style.cursor = 'default';
+        accountCurrentBtn.style.pointerEvents = 'none';
+    }
+
+    // ── Çıkış butonu ekle ──
+    const switcherEl = document.querySelector('.account-switcher');
+    if (!switcherEl) return;
+
+    const logoutBtn = document.createElement('button');
+    logoutBtn.id = 'btn-logout';
+    logoutBtn.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> Çıkış Yap';
+    logoutBtn.style.cssText = `
+        width: 100%; margin-top: 0.5rem; padding: 0.6rem 1rem;
+        background: rgba(255,0,127,0.1); border: 1px solid rgba(255,0,127,0.2);
+        border-radius: 8px; color: #ff007f; font-family: inherit; font-size: 0.78rem;
+        font-weight: 700; cursor: pointer; transition: all 0.2s ease; letter-spacing: 0.5px;
+    `;
+    logoutBtn.onmouseenter = () => { logoutBtn.style.background = 'rgba(255,0,127,0.2)'; };
+    logoutBtn.onmouseleave = () => { logoutBtn.style.background = 'rgba(255,0,127,0.1)'; };
+    logoutBtn.onclick = handleLogout;
+    switcherEl.appendChild(logoutBtn);
+}
+
+// Oturumu kapat
+window.handleLogout = async function() {
+    if (!confirm('Oturumu kapatmak istediğinize emin misiniz?')) return;
+
+    try {
+        if (window.DB) await window.DB.Auth.signOut();
+        // localStorage temizle
+        localStorage.removeItem('ss_active_account');
+        window.location.replace('auth.html');
+    } catch (err) {
+        console.error('Logout error:', err);
+        window.location.replace('auth.html');
+    }
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 App Initializing...');
 
     loadData();
     setupNavigation();
+
+    // FAZ 1: Supabase kullanıcısını yükle
+    await initSupabaseUser();
+
     updateAccountUI();
     updateUI();
     renderPlayerList();
@@ -745,7 +917,10 @@ window.switchProfileTab = function (tabId) {
 };
 
 window.updateUI = function () {
-    const player = players.find(p => p.id === activePlayerId) || players[0];
+    // Cross-script erişim için window.activePlayerId öncelikli
+    const _activeId = window.activePlayerId || activePlayerId;
+    const _players  = window.players || players;
+    const player = _players.find(p => p.id === _activeId) || _players[0];
     if (!player) return;
 
     // --- Header ---

@@ -256,33 +256,59 @@ window.closeMatchInviteModal = function() {
     document.body.style.overflow = '';
 };
 
-window.sendMatchInvite = function() {
+window.sendMatchInvite = async function() {
     const targetId = document.getElementById('invite-player-select')?.value;
     const date    = document.getElementById('invite-date')?.value;
     const time    = document.getElementById('invite-time')?.value || '20:00';
     const venue   = document.getElementById('invite-venue')?.value?.trim();
     const note    = document.getElementById('invite-note')?.value?.trim();
-    if (!targetId)   { alert('Oyuncu seçin.'); return; }
-    if (!date)       { alert('Tarih seçin.'); return; }
-    if (!venue)      { alert('Saha / Yer girin.'); return; }
 
-    const pls = typeof players !== 'undefined' ? players : [];
+    if (!targetId) { showToast('⚠️ Oyuncu seçin.'); return; }
+    if (!date)     { showToast('⚠️ Tarih seçin.'); return; }
+    if (!venue)    { showToast('⚠️ Saha / Yer girin.'); return; }
+
+    // ÖNCE MODAL KAPAT
+    closeMatchInviteModal();
+
+    const pls  = typeof players !== 'undefined' ? players : [];
     const accs = typeof accounts !== 'undefined' ? accounts : [];
     const targetPlayer = pls.find(p => p.id === targetId);
     const acc = typeof getActiveAccount === 'function' ? getActiveAccount() : null;
     const dateStr = new Date(date + 'T12:00:00').toLocaleDateString('tr-TR', { weekday:'long', day:'numeric', month:'long' });
 
+    // localStorage feed'e kaydet
     addFeedEvent('invite', { targetId, targetName: targetPlayer?.name || '?', venue, date:`${dateStr} ${time}`, note:note||null, status:'pending' });
+
+    // Yerel bildirim
     const targetAcc = accs.find(a => a.playerId === targetId);
     if (targetAcc) {
         addNotification({ type:'invite', message:`${acc?.name||'Biri'} seni ${dateStr} ${time}'de ${venue}'a maça davet etti`, targetAccountId: targetAcc.id });
     }
-    closeMatchInviteModal();
+
+    // Supabase bildirim (Supabase kullanıcısıysa)
+    const user = window.__AUTH_USER__;
+    const targetSupabaseId = targetPlayer?.supabase_id;
+    if (user && targetSupabaseId && window.DB) {
+        try {
+            await window.DB.Notifications.send(
+                targetSupabaseId, 'match_invite',
+                'Maç Daveti!',
+                `${user.email?.split('@')[0] || 'Biri'} seni ${venue}'a ${dateStr} ${time}'de maça davet etti.`,
+                user.id
+            );
+            await window.DB.Feed.createPost(user.id,
+                `${targetPlayer.name}'ı maça davet ettim! 📅 ${dateStr} ${time} — 🏟️ ${venue}${note ? ` — "${note}"` : ''}`,
+                'invitation'
+            );
+        } catch(e) { console.warn('Supabase invite notify failed:', e); }
+    }
+
+    // Feed'e git
     showSection('feed');
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelector('.nav-item[data-target="feed"]')?.classList.add('active');
     renderFeed();
-    showToast(`✅ ${targetPlayer?.name||'Oyuncu'} davet edildi!`);
+    showToast(`✅ ${targetPlayer?.name || 'Oyuncu'} davet edildi!`);
 };
 
 
