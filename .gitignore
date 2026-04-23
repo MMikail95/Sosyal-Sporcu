@@ -1,7 +1,5 @@
 # Sosyal Sporcu — .gitignore
 
-# ⚠️ SUPABASE KREDENSİYELLERİ — ASLA PUSH ETME!
-supabase.js
 
 # Sistem dosyaları
 .DS_Store
