@@ -1133,6 +1133,15 @@ window.updateUI = function () {
     setVal('inp-total-matches', pStats.totalMatches ?? '');
     setVal('inp-total-goals',   pStats.totalGoals   ?? '');
     setVal('inp-total-assists', pStats.totalAssists  ?? '');
+
+    // Genel Bakış tablosuna statları yansıt
+    const dMatches = document.getElementById('disp-total-matches');
+    const dGoals   = document.getElementById('disp-total-goals');
+    const dAssists = document.getElementById('disp-total-assists');
+    if (dMatches) dMatches.textContent = pStats.totalMatches || 0;
+    if (dGoals)   dGoals.textContent   = pStats.totalGoals || 0;
+    if (dAssists) dAssists.textContent = pStats.totalAssists || 0;
+
     // Segment controls (character traits)
     const segFields = ['dakiklik','sahaIletisim','macSonu','mevkiSadakat','presGucu','pasTercihi','markaj'];
     segFields.forEach(field => {
@@ -1993,7 +2002,34 @@ window.syncProfileData = function () {
     player.details.altPos     = getVal('inp-alt-pos')    !== null ? getVal('inp-alt-pos') : player.details.altPos;
     player.details.oyunTarzi  = getVal('sel-oyun-tarzi') || player.details.oyunTarzi;
 
+    if (!player.stats) player.stats = {};
+    const tMatches = getVal('inp-total-matches');
+    const tGoals   = getVal('inp-total-goals');
+    const tAssists = getVal('inp-total-assists');
+    if (tMatches !== null) player.stats.totalMatches = parseInt(tMatches) || 0;
+    if (tGoals !== null)   player.stats.totalGoals   = parseInt(tGoals)   || 0;
+    if (tAssists !== null) player.stats.totalAssists = parseInt(tAssists) || 0;
+
     savePlayers();
+
+    // Supabase entegrasyonu: otomatik kaydet
+    const user = window.__AUTH_USER__;
+    if (user && window.DB && user.id === (player.supabase_id || user.id)) {
+        window.DB.Profiles.update(user.id, {
+            age: player.details.age,
+            height: player.details.height,
+            weight: player.details.weight,
+            ekol: player.details.ekol,
+            sakatlik: player.details.sakatlik,
+            ana_mevki: player.details.anaMevki,
+            alt_pos: player.details.altPos,
+            oyun_tarzi: player.details.oyunTarzi,
+            total_matches: player.stats.totalMatches,
+            total_goals: player.stats.totalGoals,
+            total_assists: player.stats.totalAssists
+        }).catch(err => console.error("Detaylar DB'ye kaydedilemedi:", err));
+    }
+
     const ageEl = document.getElementById('disp-age-header');
     if (ageEl) ageEl.innerHTML = `<i class="fa-solid fa-cake-candles"></i> ${player.details.age} Yaş`;
 

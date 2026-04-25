@@ -17,6 +17,7 @@ let _tmState = {
   realtimeSub: null,
   loading:     false,
 };
+window._tmState = _tmState; // Expose globally for faz2-7.js
 
 // Geriye uyumluluk için eski takımım.js global değişkenleri
 let teamData = null; // eski referansları kırmamak için
@@ -474,12 +475,17 @@ function _tmRenderHeader() {
         <div class="ts-counter draw"><span class="ts-val">${t.total_draws||0}</span><span class="ts-lbl">Beraberlik</span></div>
         <div class="ts-counter loss"><span class="ts-val">${t.total_losses||0}</span><span class="ts-lbl">Mağlubiyet</span></div>
       </div>
-      ${isCA ? `<button class="btn-edit-team" onclick="openTeamEditModal()">
-        <i class="fa-solid fa-pen-to-square"></i> Takımı Düzenle
-      </button>` : ''}
-      <button class="btn-leave-team" onclick="_tmLeaveOrDissolve()">
-        ${_tmIsCapOrAdmin() ? '<i class="fa-solid fa-bomb"></i> Takımı Dağıt' : '<i class="fa-solid fa-right-from-bracket"></i> Ayrıl'}
-      </button>
+      <div class="team-header-btns">
+        <button class="btn-invite-team" onclick="_tmOpenInviteModal()">
+          <i class="fa-solid fa-user-plus"></i> Oyuncu Davet Et
+        </button>
+        ${isCA ? `<button class="btn-edit-team" onclick="openTeamEditModal()">
+          <i class="fa-solid fa-pen-to-square"></i> Düzenle
+        </button>` : ''}
+        <button class="btn-leave-team" onclick="_tmLeaveOrDissolve()">
+          ${_tmIsCapOrAdmin() ? '<i class="fa-solid fa-bomb"></i> Dağıt' : '<i class="fa-solid fa-right-from-bracket"></i> Ayrıl'}
+        </button>
+      </div>
     </div>
   `;
 }
@@ -489,6 +495,174 @@ window._tmCopyCode = function(slug) {
   navigator.clipboard?.writeText(slug).then(() => {
     window.showToast?.(`📋 Davet kodu kopyalandı: ${slug}`, 'success');
   });
+};
+
+// ──────────────────────────────────────────────────────
+// DAVET MODALI
+// ──────────────────────────────────────────────────────
+
+window._tmOpenInviteModal = function() {
+  // Varsa temizle
+  document.getElementById('tm-invite-modal')?.remove();
+
+  const t = _tmState.team;
+  if (!t) return;
+
+  const slug = t.slug || '—';
+  const shareUrl = `${location.origin}${location.pathname}?join=${slug}`;
+
+  const modal = document.createElement('div');
+  modal.id = 'tm-invite-modal';
+  modal.className = 'tm-modal-overlay';
+  modal.innerHTML = `
+    <div class="tm-modal-box tm-invite-box">
+      <div class="tm-modal-header">
+        <i class="fa-solid fa-user-plus" style="color:var(--neon-green)"></i>
+        <span>Oyuncu Davet Et</span>
+        <button class="tm-modal-close" onclick="document.getElementById('tm-invite-modal').remove()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Sekmeler -->
+      <div class="tm-invite-tabs">
+        <button class="tm-invite-tab active" id="itab-btn-code" onclick="_tmInviteTab('code')">
+          <i class="fa-solid fa-key"></i> Davet Kodu
+        </button>
+        <button class="tm-invite-tab" id="itab-btn-search" onclick="_tmInviteTab('search')">
+          <i class="fa-solid fa-magnifying-glass"></i> Oyuncu Ara
+        </button>
+      </div>
+
+      <!-- Davet Kodu Tab -->
+      <div id="itab-code" class="tm-invite-tab-content" style="display:block">
+        <p class="tm-invite-hint">Bu kodu paylaş, arkadaşların "Takıma Katıl" ekranından girebilir.</p>
+        <div class="tm-invite-code-display">
+          <span class="tm-inv-code-text" id="tm-inv-code-text">${slug}</span>
+          <button class="tm-inv-copy-btn" onclick="_tmCopyCode('${slug}')">
+            <i class="fa-solid fa-copy"></i> Kopyala
+          </button>
+        </div>
+        <button class="tm-inv-share-btn" onclick="_tmShareInvite('${slug}','${shareUrl}')">
+          <i class="fa-solid fa-share-nodes"></i> Linki Paylaş
+        </button>
+      </div>
+
+      <!-- Oyuncu Arama Tab -->
+      <div id="itab-search" class="tm-invite-tab-content" style="display:none">
+        <p class="tm-invite-hint">Kullanıcı adıyla oyuncu arayın ve davet bildirimi gönderin.</p>
+        <div class="tm-invite-search-row">
+          <input type="text" id="tm-inv-search-input" class="profile-input"
+                 placeholder="Kullanıcı adı..." maxlength="30"
+                 onkeydown="if(event.key==='Enter') _tmSearchPlayers()">
+          <button class="ntc-lookup-btn" onclick="_tmSearchPlayers()">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
+        </div>
+        <div id="tm-inv-results" class="tm-inv-results-list"></div>
+      </div>
+    </div>
+  `;
+
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+  requestAnimationFrame(() => modal.classList.add('visible'));
+};
+
+window._tmInviteTab = function(tab) {
+  document.getElementById('itab-code').style.display   = tab === 'code'   ? 'block' : 'none';
+  document.getElementById('itab-search').style.display = tab === 'search' ? 'block' : 'none';
+  document.querySelectorAll('.tm-invite-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById(`itab-btn-${tab}`)?.classList.add('active');
+  if (tab === 'search') setTimeout(() => document.getElementById('tm-inv-search-input')?.focus(), 50);
+};
+
+window._tmShareInvite = function(slug, url) {
+  if (navigator.share) {
+    navigator.share({ title: `${_tmState.team?.name} takımına katıl!`, text: `Davet kodum: ${slug}`, url })
+      .catch(() => {});
+  } else {
+    navigator.clipboard?.writeText(url).then(() => {
+      window.showToast?.('🔗 Davet linki kopyalandı!', 'success');
+    });
+  }
+};
+
+window._tmSearchPlayers = async function() {
+  const q = document.getElementById('tm-inv-search-input')?.value?.trim();
+  if (!q || q.length < 2) { window.showToast?.('En az 2 karakter girin', 'error'); return; }
+
+  const resultsEl = document.getElementById('tm-inv-results');
+  if (!resultsEl) return;
+  resultsEl.innerHTML = `<div class="tm-inv-searching"><i class="fa-solid fa-spinner fa-spin"></i> Aranıyor…</div>`;
+
+  try {
+    const { data, error } = await window.sbClient
+      .from('profiles')
+      .select('id, username, avatar_url, position, ana_mevki, gen_score, current_team_id')
+      .ilike('username', `%${q}%`)
+      .neq('id', _tmState.userId)
+      .limit(8);
+
+    if (error) throw error;
+
+    const members = _tmState.members.map(m => m.player_id || m.player?.id);
+
+    if (!data || data.length === 0) {
+      resultsEl.innerHTML = `<div class="tm-inv-empty"><i class="fa-solid fa-user-slash"></i> Oyuncu bulunamadı.</div>`;
+      return;
+    }
+
+    resultsEl.innerHTML = data.map(p => {
+      const isMember = members.includes(p.id);
+      const hasTeam  = !!p.current_team_id;
+      const avatar   = p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.username||'u')}`;
+      const pos      = p.ana_mevki || p.position || 'OS';
+      const gen      = p.gen_score || 70;
+
+      return `
+        <div class="tm-inv-result-row">
+          <img src="${avatar}" class="tm-inv-result-avatar" alt="${p.username}">
+          <div class="tm-inv-result-info">
+            <span class="tm-inv-result-name">${p.username}</span>
+            <span class="tm-inv-result-meta">${pos} · ${gen} GEN${hasTeam ? ' · <span style="color:#ff6b35">Takımlı</span>' : ''}</span>
+          </div>
+          ${isMember
+            ? `<span class="tm-inv-badge-member"><i class="fa-solid fa-check"></i> Üye</span>`
+            : `<button class="tm-inv-send-btn" onclick="_tmSendInvite('${p.id}','${p.username}',this)">
+                 <i class="fa-solid fa-paper-plane"></i> Davet Et
+               </button>`
+          }
+        </div>`;
+    }).join('');
+
+  } catch (e) {
+    resultsEl.innerHTML = `<div class="tm-inv-empty" style="color:#ff007f">Hata: ${e.message}</div>`;
+  }
+};
+
+window._tmSendInvite = async function(targetUserId, targetUsername, btn) {
+  const t = _tmState.team;
+  if (!t) return;
+
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+
+  try {
+    // Bildirim gönder
+    await DB.Notifications.send(
+      targetUserId,
+      'team_invite',
+      `${t.name} Takımına Davet`,
+      `${_tmState.profile?.username || 'Kaptan'} seni ${t.name} takımına davet etti! Davet kodu: ${t.slug || ''}`,
+      _tmState.userId
+    );
+
+    window.showToast?.(`✅ ${targetUsername} davet edildi!`, 'success');
+    if (btn) { btn.innerHTML = '<i class="fa-solid fa-check"></i> Gönderildi'; btn.style.color = 'var(--neon-green)'; }
+  } catch (e) {
+    window.showToast?.('❌ Davet gönderilemedi: ' + e.message, 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Davet Et'; }
+  }
 };
 
 window._tmLeaveOrDissolve = async function() {

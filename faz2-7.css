@@ -613,3 +613,374 @@
     .no-team-cards-row { grid-template-columns: 1fr; }
     .no-team-title { font-size: 1.4rem; }
 }
+
+/* ═══════════════════════════════════════
+   DAVET BUTONU & HEADER BTNS
+   ═══════════════════════════════════════ */
+.team-header-btns {
+    display: flex; flex-wrap: wrap; gap: 0.5rem;
+    align-items: center; margin-top: 0.75rem;
+}
+
+.btn-invite-team {
+    background: linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,229,255,0.1));
+    border: 1px solid rgba(0,255,136,0.4); color: var(--neon-green);
+    border-radius: 10px; padding: 0.55rem 1.1rem;
+    font-family: 'Outfit'; font-weight: 700; font-size: 0.88rem;
+    cursor: pointer; transition: all 0.2s ease;
+    display: flex; align-items: center; gap: 0.5rem;
+}
+.btn-invite-team:hover {
+    background: linear-gradient(135deg, rgba(0,255,136,0.28), rgba(0,229,255,0.18));
+    transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,255,136,0.2);
+}
+
+/* ═══════════════════════════════════════
+   DAVET MODALI
+   ═══════════════════════════════════════ */
+.tm-modal-overlay {
+    position: fixed; inset: 0; z-index: 9990;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem; opacity: 0; transition: opacity 0.25s ease;
+}
+.tm-modal-overlay.visible { opacity: 1; }
+
+.tm-modal-box {
+    background: #12121a; border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px; width: 100%; max-width: 520px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.7);
+    animation: slideInUp 0.3s ease;
+    overflow: hidden;
+}
+@keyframes slideInUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
+.tm-modal-header {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-weight: 800; font-size: 1rem;
+}
+.tm-modal-close {
+    margin-left: auto; background: none; border: none;
+    color: #666; cursor: pointer; font-size: 1.1rem;
+    transition: color 0.2s; line-height: 1;
+}
+.tm-modal-close:hover { color: #fff; }
+
+/* Invite tabs */
+.tm-invite-tabs {
+    display: flex; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.tm-invite-tab {
+    flex: 1; padding: 0.9rem; background: none; border: none;
+    color: #666; font-family: 'Outfit'; font-weight: 700; font-size: 0.88rem;
+    cursor: pointer; transition: all 0.2s; display: flex; align-items: center;
+    justify-content: center; gap: 0.4rem;
+    border-bottom: 2px solid transparent;
+}
+.tm-invite-tab:hover { color: #aaa; }
+.tm-invite-tab.active { color: var(--neon-green); border-bottom-color: var(--neon-green); }
+
+.tm-invite-tab-content { padding: 1.5rem; }
+
+.tm-invite-hint {
+    color: #666; font-size: 0.85rem; margin-bottom: 1.2rem;
+    line-height: 1.5;
+}
+
+/* Kod kutusu */
+.tm-invite-code-display {
+    display: flex; align-items: center; gap: 0.75rem;
+    background: rgba(0,229,255,0.06); border: 1px solid rgba(0,229,255,0.25);
+    border-radius: 12px; padding: 0.8rem 1rem; margin-bottom: 0.75rem;
+}
+.tm-inv-code-text {
+    font-family: monospace; font-size: 1.5rem; font-weight: 900;
+    letter-spacing: 3px; color: var(--neon-cyan); flex: 1;
+}
+.tm-inv-copy-btn {
+    background: rgba(0,229,255,0.15); border: 1px solid rgba(0,229,255,0.3);
+    color: var(--neon-cyan); border-radius: 8px; padding: 0.45rem 0.9rem;
+    font-family: 'Outfit'; font-weight: 700; font-size: 0.82rem;
+    cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.4rem;
+    white-space: nowrap;
+}
+.tm-inv-copy-btn:hover { background: rgba(0,229,255,0.28); }
+
+.tm-inv-share-btn {
+    width: 100%; padding: 0.7rem; border-radius: 10px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);
+    color: #aaa; font-family: 'Outfit'; font-weight: 700; font-size: 0.88rem;
+    cursor: pointer; transition: all 0.2s; display: flex; align-items: center;
+    justify-content: center; gap: 0.5rem;
+}
+.tm-inv-share-btn:hover { background: rgba(255,255,255,0.09); color: #fff; }
+
+/* Oyuncu arama */
+.tm-invite-search-row {
+    display: flex; gap: 0.5rem; margin-bottom: 1rem;
+}
+.tm-invite-search-row .profile-input { flex: 1; }
+.tm-invite-search-row .ntc-lookup-btn { width: auto; padding: 0.6rem 1rem; flex-shrink: 0; }
+
+.tm-inv-results-list { display: flex; flex-direction: column; gap: 0.4rem; max-height: 280px; overflow-y: auto; }
+
+.tm-inv-result-row {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.65rem 0.8rem;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px; transition: background 0.2s;
+}
+.tm-inv-result-row:hover { background: rgba(255,255,255,0.06); }
+.tm-inv-result-avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; }
+.tm-inv-result-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.tm-inv-result-name { font-weight: 700; font-size: 0.9rem; }
+.tm-inv-result-meta { font-size: 0.75rem; color: #666; }
+
+.tm-inv-send-btn {
+    background: rgba(0,255,136,0.1); border: 1px solid rgba(0,255,136,0.3);
+    color: var(--neon-green); border-radius: 8px; padding: 0.4rem 0.8rem;
+    font-family: 'Outfit'; font-weight: 700; font-size: 0.8rem;
+    cursor: pointer; transition: all 0.2s; display: flex; align-items: center;
+    gap: 0.4rem; white-space: nowrap; flex-shrink: 0;
+}
+.tm-inv-send-btn:hover { background: rgba(0,255,136,0.22); }
+.tm-inv-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.tm-inv-badge-member {
+    background: rgba(255,255,255,0.07); color: #555;
+    border-radius: 8px; padding: 0.4rem 0.8rem; font-size: 0.8rem;
+    font-weight: 700; flex-shrink: 0; display: flex; align-items: center; gap: 0.3rem;
+}
+.tm-inv-searching, .tm-inv-empty {
+    text-align: center; padding: 1.5rem; color: #555; font-size: 0.9rem;
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+}
+
+@media (max-width: 540px) {
+    .tm-modal-box { border-radius: 16px; }
+    .tm-inv-code-text { font-size: 1.1rem; letter-spacing: 2px; }
+    .team-header-btns { gap: 0.4rem; }
+    .btn-invite-team { font-size: 0.8rem; padding: 0.5rem 0.85rem; }
+}
+
+/* ═══════════════════════════════════════
+   PES/FIFA TAKTİK SAHASI
+   ═══════════════════════════════════════ */
+
+.psn-wrapper { display: flex; flex-direction: column; gap: 1.2rem; }
+
+/* Formasyon seçici */
+.psn-formation-card { padding: 1.2rem !important; }
+.psn-section-title {
+    font-weight: 700; font-size: 0.8rem; text-transform: uppercase;
+    letter-spacing: 1px; color: #666; margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 0.5rem;
+}
+.psn-formation-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.psn-form-btn {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 0.55rem 1rem; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03);
+    cursor: pointer; transition: all 0.2s; color: #aaa;
+    font-family: 'Outfit'; min-width: 72px;
+}
+.psn-form-btn:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
+.psn-form-btn.active {
+    border-color: var(--neon-green); background: rgba(0,255,136,0.08);
+    color: var(--neon-green); box-shadow: 0 0 12px rgba(0,255,136,0.15);
+}
+.psn-form-name { font-size: 1rem; font-weight: 800; }
+.psn-form-desc { font-size: 0.68rem; color: #666; margin-top: 2px; text-align: center; }
+
+/* Layout */
+.psn-main-layout {
+    display: grid; grid-template-columns: 1fr 220px; gap: 1.2rem; align-items: start;
+}
+
+/* Saha kartı */
+.psn-field-card { padding: 1rem !important; }
+.psn-field-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;
+}
+
+/* Saha alanı */
+.psn-pitch {
+    position: relative; width: 100%; padding-top: 142%;
+    border-radius: 12px; overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.1);
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.6), 0 8px 30px rgba(0,0,0,0.5);
+}
+
+/* Şeritli yeşil zemin */
+.psn-field-bg {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    background: #1a5c1a;
+}
+.psn-stripe {
+    flex: 1; background: #1e6b1e;
+}
+.psn-stripe.dark { background: #175217; }
+
+/* Çizgiler katmanı */
+.psn-lines {
+    position: absolute; inset: 0; pointer-events: none;
+}
+
+.psn-halfway-line {
+    position: absolute; width: 96%; height: 2px;
+    background: rgba(255,255,255,0.35); top: 50%; left: 2%;
+}
+.psn-center-circle {
+    position: absolute; width: 20%; padding-top: 20%;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 50%; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+}
+.psn-center-dot {
+    position: absolute; width: 6px; height: 6px;
+    border-radius: 50%; background: rgba(255,255,255,0.5);
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+}
+.psn-penalty-top, .psn-penalty-bot {
+    position: absolute; width: 44%; height: 14%;
+    border: 2px solid rgba(255,255,255,0.3); left: 28%;
+}
+.psn-penalty-top { top: 0; border-top: none; border-radius: 0 0 6px 6px; }
+.psn-penalty-bot { bottom: 0; border-bottom: none; border-radius: 6px 6px 0 0; }
+
+.psn-goal-top, .psn-goal-bot {
+    position: absolute; width: 18%; height: 5%;
+    border: 2px solid rgba(255,255,255,0.4); left: 41%;
+}
+.psn-goal-top {
+    top: 0; border-top: 3px solid rgba(255,255,255,0.7);
+    border-radius: 0 0 4px 4px;
+}
+.psn-goal-bot {
+    bottom: 0; border-bottom: 3px solid rgba(255,255,255,0.7);
+    border-radius: 4px 4px 0 0;
+}
+
+.psn-corner {
+    position: absolute; width: 3%; padding-top: 3%;
+    border: 2px solid rgba(255,255,255,0.25); border-radius: 0;
+}
+.psn-corner.tl { top: 0; left: 0; border-top: none; border-left: none; border-bottom-right-radius: 100%; }
+.psn-corner.tr { top: 0; right: 0; border-top: none; border-right: none; border-bottom-left-radius: 100%; }
+.psn-corner.bl { bottom: 0; left: 0; border-bottom: none; border-left: none; border-top-right-radius: 100%; }
+.psn-corner.br { bottom: 0; right: 0; border-bottom: none; border-right: none; border-top-left-radius: 100%; }
+
+.psn-formation-label {
+    position: absolute; top: 1.5%; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.5); color: rgba(255,255,255,0.4);
+    padding: 2px 8px; border-radius: 6px; font-size: 0.72rem;
+    font-weight: 800; letter-spacing: 1px; z-index: 5; pointer-events: none;
+}
+
+/* Oyuncu Slotları */
+.pitch-slot-new {
+    position: absolute; transform: translate(-50%, -50%);
+    width: 58px; z-index: 10; cursor: pointer;
+    transition: filter 0.15s, transform 0.15s;
+}
+.pitch-slot-new:hover { filter: brightness(1.15); z-index: 20; }
+.pitch-slot-new.drag-over-new .psn-empty { border-color: rgba(255,255,255,0.8) !important; background: rgba(255,255,255,0.12) !important; }
+
+/* FIFA tarzı oyuncu kartı */
+.psn-card {
+    display: flex; flex-direction: column; align-items: center;
+    background: rgba(0,0,0,0.75); border-radius: 10px;
+    padding: 4px 4px 5px; border: 1.5px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(4px); cursor: grab; position: relative;
+    transition: transform 0.15s, box-shadow 0.15s;
+    width: 58px;
+}
+.psn-card:hover { transform: scale(1.08); box-shadow: 0 6px 18px rgba(0,0,0,0.6); }
+.psn-card:active { cursor: grabbing; }
+
+.psn-gen {
+    position: absolute; top: -6px; right: -6px;
+    min-width: 22px; height: 22px; border-radius: 6px;
+    font-size: 0.7rem; font-weight: 900; display: flex;
+    align-items: center; justify-content: center;
+    border: 2px solid rgba(0,0,0,0.4);
+    font-family: 'Outfit', sans-serif;
+}
+.psn-avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.05);
+}
+.psn-name {
+    font-size: 0.6rem; font-weight: 700; color: #fff;
+    text-align: center; width: 100%; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+    margin-top: 2px; line-height: 1;
+}
+.psn-pos {
+    font-size: 0.62rem; font-weight: 800; margin-top: 1px;
+}
+
+/* Boş slot */
+.psn-empty {
+    width: 54px; height: 66px; border-radius: 10px;
+    border: 2px dashed rgba(255,255,255,0.2);
+    background: rgba(0,0,0,0.3);
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 3px;
+    transition: border-color 0.2s, background 0.2s;
+}
+.psn-empty-pos {
+    font-size: 0.72rem; font-weight: 800;
+}
+
+/* Kaydet butonu */
+.psn-save-btn {
+    width: 100%; margin-top: 0.8rem;
+    padding: 0.6rem; border-radius: 10px; border: none;
+    background: linear-gradient(135deg, var(--neon-green), var(--neon-cyan));
+    color: #000; font-family: 'Outfit'; font-weight: 800; font-size: 0.88rem;
+    cursor: pointer; transition: filter 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+}
+.psn-save-btn:hover { filter: brightness(1.1); }
+
+/* Yedek kulübesi */
+.psn-bench-card { padding: 1rem !important; }
+.psn-bench-list { display: flex; flex-direction: column; gap: 0.4rem; max-height: 520px; overflow-y: auto; }
+.psn-bench-chip {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.55rem 0.7rem;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px; cursor: grab; transition: all 0.2s;
+}
+.psn-bench-chip:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); transform: translateX(2px); }
+.psn-bench-chip:active { cursor: grabbing; }
+.psn-bench-avatar { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.15); }
+.psn-bench-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.psn-bench-name { font-size: 0.82rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.psn-bench-pos { font-size: 0.7rem; }
+.psn-bench-gen { font-weight: 800; font-size: 0.85rem; flex-shrink: 0; }
+.psn-bench-empty {
+    text-align: center; padding: 2rem; color: #555; font-size: 0.85rem;
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+}
+
+@media (max-width: 860px) {
+    .psn-main-layout { grid-template-columns: 1fr; }
+    .psn-bench-card { order: -1; }
+    .psn-bench-list { flex-direction: row; flex-wrap: wrap; max-height: 140px; overflow-x: auto; }
+    .psn-bench-chip { min-width: 130px; }
+}
+@media (max-width: 480px) {
+    .psn-formation-row { gap: 0.3rem; }
+    .psn-form-btn { padding: 0.45rem 0.6rem; min-width: 60px; }
+}
+
+

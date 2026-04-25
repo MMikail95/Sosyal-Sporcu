@@ -2,6 +2,14 @@
 <html lang="tr">
 
 <head>
+    <!-- 🚨 HATA YAKALAYICI (Geçici) 🚨 -->
+    <script>
+        window.addEventListener('error', function(e) {
+            if (e.filename && e.filename.includes('faz2-7.js')) {
+                alert("🚨 FAZ2-7.JS YÜKLENEMEDİ! (SYNTAX ERROR) 🚨\n\nSatır: " + e.lineno + "\nHata: " + e.message);
+            }
+        });
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sosyal Sporcu Manager</title>
@@ -335,14 +343,14 @@
                             <div class="gb-bottom-stats"
                                 style="margin-top:1.5rem; display:grid; grid-template-columns:repeat(4, 1fr); gap:1.5rem;">
                                 <div class="glass-card stat-box-bottom">
-                                    <span class="sb-val">45</span><span class="sb-label">MAÇ</span>
+                                    <span class="sb-val" id="disp-total-matches">45</span><span class="sb-label">MAÇ</span>
                                 </div>
                                 <div class="glass-card stat-box-bottom">
-                                    <span class="sb-val" style="color:var(--neon-green)">32</span>
+                                    <span class="sb-val" id="disp-total-goals" style="color:var(--neon-green)">32</span>
                                     <span class="sb-label">GOL</span>
                                 </div>
                                 <div class="glass-card stat-box-bottom">
-                                    <span class="sb-val" style="color:var(--neon-cyan)">18</span>
+                                    <span class="sb-val" id="disp-total-assists" style="color:var(--neon-cyan)">18</span>
                                     <span class="sb-label">ASİST</span>
                                 </div>
                                 <div class="glass-card stat-box-bottom">
@@ -446,6 +454,28 @@
                                             <option value="Sweeper Keeper">🧤 Sweeper Keeper</option>
                                             <option value="Libero">🔓 Libero</option>
                                         </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SECTION 2.5: KARİYER İSTATİSTİKLERİ -->
+                            <div class="detail-section glass-card">
+                                <div class="detail-section-header">
+                                    <i class="fa-solid fa-chart-line"></i>
+                                    <h4>KARİYER İSTATİSTİKLERİ</h4>
+                                </div>
+                                <div class="detail-identity-grid">
+                                    <div class="detail-field">
+                                        <label class="detail-label">Maç</label>
+                                        <input type="number" id="inp-total-matches" class="profile-input detail-inp" placeholder="0" onchange="syncProfileData()">
+                                    </div>
+                                    <div class="detail-field">
+                                        <label class="detail-label" style="color:var(--neon-green)">Gol</label>
+                                        <input type="number" id="inp-total-goals" class="profile-input detail-inp" placeholder="0" onchange="syncProfileData()">
+                                    </div>
+                                    <div class="detail-field">
+                                        <label class="detail-label" style="color:var(--neon-cyan)">Asist</label>
+                                        <input type="number" id="inp-total-assists" class="profile-input detail-inp" placeholder="0" onchange="syncProfileData()">
                                     </div>
                                 </div>
                             </div>
