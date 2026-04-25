@@ -835,12 +835,10 @@ window.toggleProfileEditPanel = function() {
             const cityEl = document.getElementById('inp-city');
             const ayakEl = document.getElementById('sel-ayak');
             const ageGbEl = document.getElementById('inp-age-gb');
-            const htGbEl = document.getElementById('inp-height-gb');
             if (unEl)    unEl.value   = player.name || '';
             if (cityEl)  cityEl.value = player.details?.city || player.city || '';
             if (ayakEl)  ayakEl.value = player.details?.ayak || 'Sağ';
             if (ageGbEl) ageGbEl.value = player.details?.age || '';
-            if (htGbEl)  htGbEl.value  = player.details?.height || '';
         }
         editPanel.style.display  = '';
         viewPanel.style.display  = 'none';
@@ -858,35 +856,42 @@ window.saveQuickProfile = async function() {
     const getV = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
     const username = getV('inp-username');
     const city     = getV('inp-city');
-    const ayak     = getV('sel-ayak');
+    const ayak     = getV('sel-ayak');  // sadece lokal (şemada yok)
     const age      = parseInt(getV('inp-age-gb')) || null;
-    const height   = parseInt(getV('inp-height-gb')) || null;
 
     // Yerel player objesini güncelle
     if (username) player.name = username;
-    if (city)     { player.city = city; if (!player.details) player.details = {}; player.details.city = city; }
-    if (ayak)     { if (!player.details) player.details = {}; player.details.ayak = ayak; }
-    if (age)      { if (!player.details) player.details = {}; player.details.age = age; }
-    if (height)   { if (!player.details) player.details = {}; player.details.height = height; }
+    if (!player.details) player.details = {};
+    if (city)  { player.city = city;  player.details.city = city; }
+    if (ayak)  { player.details.ayak = ayak; }
+    if (age)   { player.details.age  = age; }
 
     savePlayers();
     updateUI();
 
-    // Supabase
+    // Görüntüleme modundaki değerleri hemen güncelle
+    const cityEl  = document.getElementById('disp-city-gb');
+    const ayakEl  = document.getElementById('disp-ayak-gb');
+    const ageHEl  = document.getElementById('disp-age-header');
+    if (cityEl)  cityEl.textContent  = city  || '—';
+    if (ayakEl)  ayakEl.textContent  = ayak  || '—';
+    if (ageHEl)  ageHEl.innerHTML    = age ? `<i class="fa-solid fa-cake-candles"></i> ${age} Yaş` : ageHEl.innerHTML;
+
+    // Supabase — sadece şemada olan alanlar
     const user = window.__AUTH_USER__;
     if (user && window.DB) {
         const updates = {};
         if (username) updates.username = username;
-        if (city)     updates.city = city;
-        if (ayak)     updates.ayak = ayak;
-        if (age)      updates.age = age;
-        if (height)   updates.height = height;
+        if (city)     updates.city     = city;
+        if (age)      updates.age      = age;
+        // Ayak: şemada 'ayak' kolonu yok, ileride eklenirse buraya yazılır
 
         try {
             await window.DB.Profiles.update(user.id, updates);
             showToast('✅ Profil bilgileri kaydedildi!');
         } catch(e) {
             showToast('❌ Kayıt hatası: ' + e.message);
+            console.error('Profile save error:', e);
         }
     } else {
         showToast('✅ Değişiklikler yerel olarak kaydedildi.');
@@ -1078,7 +1083,16 @@ window.updateUI = function () {
         }
     }
 
-    // --- Stat boxes ---
+    // --- Genel Bakış kimlik alanları ---
+    const mevkiGbEl = document.getElementById('disp-mevki-gb');
+    if (mevkiGbEl) mevkiGbEl.textContent = player.details.anaMevki || player.details.pos || '—';
+    const ayakGbEl = document.getElementById('disp-ayak-gb');
+    if (ayakGbEl) ayakGbEl.textContent = player.details.ayak || '—';
+    const ageGbEl = document.getElementById('disp-age-gb');
+    if (ageGbEl) ageGbEl.textContent = player.details.age ? `${player.details.age}` : '—';
+    const cityGbEl = document.getElementById('disp-city-gb');
+    if (cityGbEl) cityGbEl.textContent = player.details.city || player.city || '—';
+    // Boy/Kilo gizli elementleri (uyumluluk için güncelle ama görünmez)
     const hEl = document.getElementById('disp-height-gb');
     if (hEl) hEl.textContent = `${player.details.height} cm`;
     const wEl = document.getElementById('disp-weight-gb');

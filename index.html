@@ -214,24 +214,23 @@
                                         <div id="profile-view-mode">
                                             <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
                                                 <span class="info-label">Mevki</span>
-                                                <span class="info-val" id="disp-mevki-gb" style="color:var(--neon-green)">OS / 10 Numara</span>
+                                                <span class="info-val" id="disp-mevki-gb" style="color:var(--neon-green)">—</span>
                                             </div>
                                             <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
                                                 <span class="info-label">Ayak</span>
-                                                <span class="info-val" id="disp-ayak-gb">Sağ</span>
+                                                <span class="info-val" id="disp-ayak-gb">—</span>
                                             </div>
                                             <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                                                <span class="info-label">Boy</span>
-                                                <span class="info-val" id="disp-height-gb">1.82 m</span>
-                                            </div>
-                                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                                                <span class="info-label">Kilo</span>
-                                                <span class="info-val" id="disp-weight-gb">76 kg</span>
+                                                <span class="info-label">Yaş</span>
+                                                <span class="info-val" id="disp-age-gb">—</span>
                                             </div>
                                             <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
                                                 <span class="info-label">Şehir</span>
                                                 <span class="info-val" id="disp-city-gb">—</span>
                                             </div>
+                                            <!-- Gizli — script.js uyumluluğu için -->
+                                            <span id="disp-height-gb" style="display:none;"></span>
+                                            <span id="disp-weight-gb" style="display:none;"></span>
                                         </div>
 
                                         <!-- Düzenleme modu (gizli) -->
@@ -271,14 +270,6 @@
                                                         </label>
                                                         <input type="number" id="inp-age-gb" class="profile-input"
                                                                placeholder="24" min="10" max="60"
-                                                               style="width:100%; padding:0.5rem 0.7rem; border-radius:8px;">
-                                                    </div>
-                                                    <div>
-                                                        <label style="font-size:0.72rem; color:#888; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; display:block;">
-                                                            <i class="fa-solid fa-ruler-vertical"></i> Boy (cm)
-                                                        </label>
-                                                        <input type="number" id="inp-height-gb" class="profile-input"
-                                                               placeholder="180" min="140" max="220"
                                                                style="width:100%; padding:0.5rem 0.7rem; border-radius:8px;">
                                                     </div>
                                                 </div>

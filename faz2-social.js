@@ -967,24 +967,21 @@ window.saveProfileDetails = async function() {
     const getVal = (id) => { const el = document.getElementById(id); return el ? el.value : null; };
 
     const updates = {
-        // Kimlik bilgileri
+        // Kimlik bilgileri (Detaylı Veriler sekmesindeki alanlar)
         age:           parseInt(getVal('inp-age'))    || null,
         height:        parseInt(getVal('inp-height')) || null,
         weight:        parseInt(getVal('inp-weight')) || null,
-        // Profil başlığı alanları (Genel Bakış düzenleme panelinden)
-        username:      getVal('inp-username')         || undefined,
-        city:          getVal('inp-city')             || undefined,
-        ayak:          getVal('sel-ayak')             || undefined,
         // Mevki & Oyun Tarzı
         ana_mevki:     getVal('sel-ana-mevki')        || null,
         alt_pos:       getVal('inp-alt-pos')          || null,
         oyun_tarzi:    getVal('sel-oyun-tarzi')       || null,
-        // Karakteristik
+        // Karakteristik (şemada olan alanlar)
         ekol:          getVal('sel-ekol')             || null,
         sakatlik:      getVal('sel-sakatlik')         || null,
         macsatma:      getVal('sel-macsatma')         || null,
         mizac:         getVal('sel-mizac')            || null,
         lojistik:      getVal('sel-lojistik')         || null,
+        // NOT: 'ayak' şemada yok — saveQuickProfile lokal olarak saklar
     };
 
     // undefined alanları temizle (değiştirilmemiş alanları korumak için)
@@ -1243,56 +1240,42 @@ window.openUserProfile = async function(supabaseId, username) {
     // UI güncelle — activePlayerId değiştikten sonra
     if (typeof updateUI === 'function') updateUI();
 
-    // Görüntüleme banner'ı ekle (updateUI'dan sonra ki yerinden silinmesin)
-    setTimeout(() => addProfileViewBanner(profile.username || username, supabaseId), 50);
+    // Çift banner sorunu: addProfileViewBanner() yerine mevcut view-only-banner kullan
+    // applyProfileViewMode() zaten view-only-banner'ı gösteriyor
+    // previousSection'ı ayarla ki "Geri Dön" butonu çalışsın
+    if (typeof previousSection !== 'undefined') {
+        previousSection = 'explore';
+    }
+    if (typeof applyProfileViewMode === 'function') {
+        setTimeout(() => applyProfileViewMode(), 60);
+    }
+
     showToast(`👤 ${profile.username || username}'in profili açıldı — puan verebilirsin!`);
 
 };
 
-// Profil görüntüleme banner'ı
+// Profil görüntüleme banner'ı — artık view-only-banner kullanıldığı için devre dışı
+// (eski kod bırakıldı uyumluluk için, hiçbir şey yapmaz)
 function addProfileViewBanner(name, supabaseId) {
-    document.getElementById('profile-view-banner')?.remove();
-    const banner = document.createElement('div');
-    banner.id = 'profile-view-banner';
-    banner.style.cssText = `
-        position: sticky; top: 0; z-index: 100;
-        background: linear-gradient(135deg, rgba(0,229,255,0.12), rgba(0,229,255,0.04));
-        border: 1px solid rgba(0,229,255,0.3); border-radius: 14px;
-        padding: 0.8rem 1.25rem; display: flex; align-items: center;
-        justify-content: space-between; margin-bottom: 1rem;
-        backdrop-filter: blur(12px); gap: 0.75rem; flex-wrap: wrap;
-    `;
-    banner.innerHTML = `
-        <span style="color:var(--neon-cyan); font-weight:700; font-size:0.9rem;">
-            <i class="fa-solid fa-eye"></i> <strong>${name}</strong>'in profilini görüntülüyorsun
-        </span>
-        <div style="display:flex; gap:0.5rem;">
-            <button onclick="window.returnToMyProfile()" style="
-                background: rgba(0,229,255,0.12); border: 1px solid rgba(0,229,255,0.3);
-                border-radius: 8px; color: var(--neon-cyan); padding: 0.4rem 0.8rem;
-                font-family: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer;">
-                <i class="fa-solid fa-arrow-left"></i> Kendi Profilime Dön
-            </button>
-        </div>`;
-
-    const profileSection = document.getElementById('profile');
-    if (profileSection) {
-        profileSection.insertBefore(banner, profileSection.firstChild);
-        profileSection.scrollTo(0,0);
-        document.querySelector('.main-content')?.scrollTo(0, 0);
-    }
+    // Artık view-only-banner (index.html) + applyProfileViewMode() kullanılıyor
+    // Çift banner oluşmaması için bu fonksiyon kasıtlı olarak boş bırakıldı
 }
 
-// Kendi profiline dön
+// Kendi profiline dön — script.js'deki goBackFromProfile'ı kullan
 window.returnToMyProfile = function() {
     document.getElementById('profile-view-banner')?.remove();
     if (_savedMyPlayerId) {
         window.activePlayerId = _savedMyPlayerId;
-        activePlayerId = _savedMyPlayerId; // local ref güncelle
+        activePlayerId = _savedMyPlayerId;
         _savedMyPlayerId = null;
     }
-    if (typeof updateUI === 'function') updateUI();
-    showToast('↩️ Kendi profiline döndün');
+    // Mevcut geri dönüş sistemini kullan
+    if (typeof window.goBackFromProfile === 'function') {
+        window.goBackFromProfile();
+    } else {
+        if (typeof updateUI === 'function') updateUI();
+        showToast('↩️ Kendi profiline döndün');
+    }
 };
 
 // Modal'a "Profil Sayfasına Git" butonunu ekle (showProfileModal override)
