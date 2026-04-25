@@ -222,6 +222,11 @@
       transition: all 0.25s ease;
       outline: none;
     }
+    /* Şifre alanı sağda buton için padding */
+    .auth-input[type="password"],
+    .auth-input.has-toggle {
+      padding-right: 3rem;
+    }
     .auth-input:focus {
       border-color: var(--neon-green);
       background: rgba(173,255,47,0.04);
@@ -234,14 +239,19 @@
     /* Şifre göster/gizle butonu */
     .toggle-pass {
       position: absolute;
-      right: 1rem;
+      right: 0.75rem;
       background: none;
       border: none;
       color: var(--text-muted);
       cursor: pointer;
-      font-size: 0.85rem;
-      padding: 0;
+      font-size: 1rem;
+      padding: 0.25rem;
       transition: color 0.2s;
+      z-index: 5;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .toggle-pass:hover { color: var(--neon-green); }
 
@@ -485,10 +495,10 @@
       <div class="form-group">
         <label class="form-label">Şifre</label>
         <div class="input-wrapper">
-          <input type="password" id="login-password" class="auth-input"
+          <input type="password" id="login-password" class="auth-input has-toggle"
                  placeholder="••••••••" autocomplete="current-password" required>
           <i class="fa-solid fa-lock"></i>
-          <button type="button" class="toggle-pass" onclick="togglePassword('login-password', this)">
+          <button type="button" class="toggle-pass" onclick="togglePassword('login-password', this)" title="Şifreyi göster/gizle">
             <i class="fa-solid fa-eye"></i>
           </button>
         </div>
@@ -551,12 +561,12 @@
       <div class="form-group">
         <label class="form-label">Şifre</label>
         <div class="input-wrapper">
-          <input type="password" id="reg-password" class="auth-input"
+          <input type="password" id="reg-password" class="auth-input has-toggle"
                  placeholder="En az 6 karakter" autocomplete="new-password"
                  required minlength="6"
                  oninput="updatePasswordStrength(this.value)">
           <i class="fa-solid fa-lock"></i>
-          <button type="button" class="toggle-pass" onclick="togglePassword('reg-password', this)">
+          <button type="button" class="toggle-pass" onclick="togglePassword('reg-password', this)" title="Şifreyi göster/gizle">
             <i class="fa-solid fa-eye"></i>
           </button>
         </div>

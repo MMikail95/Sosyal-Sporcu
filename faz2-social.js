@@ -953,7 +953,7 @@ window.toggleNotifPanel = function() {
 // BÖLÜM 5: PROFİL GÜNCELLEME → SUPABASE
 // =====================================================
 
-// saveProfileDetails override — localStorage + Supabase
+// saveProfileDetails override — Supabase'e kapsamlı kayıt
 const _origSaveProfileDetails = window.saveProfileDetails;
 window.saveProfileDetails = async function() {
     // Önce mevcut localStorage kaydı
@@ -963,28 +963,48 @@ window.saveProfileDetails = async function() {
     const user = window.__AUTH_USER__;
     if (!user || !window.DB) return;
 
-    const player = typeof players !== 'undefined'
-        ? players.find(p => p.supabase_id === user.id || p.id === `sb_${user.id}`)
-        : null;
-    if (!player) return;
+    // Tüm form alanlarını oku
+    const getVal = (id) => { const el = document.getElementById(id); return el ? el.value : null; };
+
+    const updates = {
+        // Kimlik bilgileri
+        age:           parseInt(getVal('inp-age'))    || null,
+        height:        parseInt(getVal('inp-height')) || null,
+        weight:        parseInt(getVal('inp-weight')) || null,
+        // Profil başlığı alanları (Genel Bakış düzenleme panelinden)
+        username:      getVal('inp-username')         || undefined,
+        city:          getVal('inp-city')             || undefined,
+        ayak:          getVal('sel-ayak')             || undefined,
+        // Mevki & Oyun Tarzı
+        ana_mevki:     getVal('sel-ana-mevki')        || null,
+        alt_pos:       getVal('inp-alt-pos')          || null,
+        oyun_tarzi:    getVal('sel-oyun-tarzi')       || null,
+        // Karakteristik
+        ekol:          getVal('sel-ekol')             || null,
+        sakatlik:      getVal('sel-sakatlik')         || null,
+        macsatma:      getVal('sel-macsatma')         || null,
+        mizac:         getVal('sel-mizac')            || null,
+        lojistik:      getVal('sel-lojistik')         || null,
+    };
+
+    // undefined alanları temizle (değiştirilmemiş alanları korumak için)
+    Object.keys(updates).forEach(k => updates[k] === undefined && delete updates[k]);
 
     try {
-        await window.DB.Profiles.update(user.id, {
-            age:           parseInt(document.getElementById('inp-age')?.value) || player.details.age,
-            height:        parseInt(document.getElementById('inp-height')?.value) || player.details.height,
-            weight:        parseInt(document.getElementById('inp-weight')?.value) || player.details.weight,
-            ekol:          document.getElementById('sel-ekol')?.value || player.details.ekol,
-            sakatlik:      document.getElementById('sel-sakatlik')?.value || player.details.sakatlik,
-            macsatma:      document.getElementById('sel-macsatma')?.value || player.details.macsatma,
-            mizac:         document.getElementById('sel-mizac')?.value || player.details.mizac,
-            lojistik:      document.getElementById('sel-lojistik')?.value || player.details.lojistik,
-            ana_mevki:     document.getElementById('sel-ana-mevki')?.value || player.details.anaMevki,
-            alt_pos:       document.getElementById('inp-alt-pos')?.value || player.details.altPos,
-            oyun_tarzi:    document.getElementById('sel-oyun-tarzi')?.value || player.details.oyunTarzi,
-        });
-        console.log('✅ Profil Supabase\'e kaydedildi');
+        await window.DB.Profiles.update(user.id, updates);
+
+        // Username değiştiyse sidebar'ı da güncelle
+        if (updates.username) {
+            const nameEl = document.getElementById('current-account-name');
+            if (nameEl) nameEl.textContent = updates.username;
+            const playerNameEl = document.getElementById('player-name');
+            if (playerNameEl) playerNameEl.textContent = updates.username;
+        }
+
+        console.log('✅ Profil Supabase\'e kaydedildi', updates);
     } catch(e) {
         console.warn('Supabase profile update failed:', e);
+        showToast('❌ Profil kaydedilemedi: ' + (e.message || ''));
     }
 };
 
@@ -1544,3 +1564,218 @@ window.copyInviteLink = function() {
         });
     }
 };
+
+
+// =====================================================
+// BÖLÜM 11: AVATAR YÜKLEME — Supabase Storage
+// =====================================================
+
+/**
+ * Resmi maksimum boyuta indirgeyen ve base64'e çeviren yardımcı fonksiyon
+ */
+function resizeImage(file, maxWidth = 400, maxHeight = 400, quality = 0.85) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let { width, height } = img;
+
+                // Oranı koru
+                if (width > maxWidth || height > maxHeight) {
+                    const ratio = Math.min(maxWidth / width, maxHeight / height);
+                    width  = Math.round(width  * ratio);
+                    height = Math.round(height * ratio);
+                }
+
+                canvas.width  = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob(
+                    (blob) => resolve(blob),
+                    'image/webp',
+                    quality
+                );
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+/**
+ * Avatar upload işlemini yönetir.
+ * Trigger: <input id="avatar-upload" onchange="handleAvatarUpload(this)">
+ */
+window.handleAvatarUpload = async function(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+
+    // Dosya tipi kontrolü
+    if (!file.type.startsWith('image/')) {
+        showToast('❌ Lütfen bir resim dosyası seçin.');
+        input.value = '';
+        return;
+    }
+
+    // 10 MB limit
+    if (file.size > 10 * 1024 * 1024) {
+        showToast('❌ Dosya boyutu 10 MB\'dan büyük olamaz.');
+        input.value = '';
+        return;
+    }
+
+    const user = window.__AUTH_USER__;
+    if (!user) {
+        showToast('❌ Fotoğraf yüklemek için giriş yapmalısınız.');
+        return;
+    }
+
+    // UI: yükleniyor göster
+    const avatarImg = document.getElementById('profile-avatar');
+    const cameraOverlay = document.querySelector('.camera-overlay');
+    if (cameraOverlay) {
+        cameraOverlay.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        cameraOverlay.style.background = 'rgba(0,0,0,0.7)';
+    }
+
+    try {
+        // 1. Resmi yeniden boyutlandır (400x400 max, WebP)
+        const resizedBlob = await resizeImage(file, 400, 400, 0.85);
+
+        // 2. Supabase Storage'a yükle
+        if (!window.sbClient) throw new Error('Supabase bağlantısı yok');
+
+        const fileName = `${user.id}/avatar.webp`;
+        const { data: uploadData, error: uploadError } = await window.sbClient
+            .storage
+            .from('avatars')
+            .upload(fileName, resizedBlob, {
+                contentType: 'image/webp',
+                upsert: true   // Üzerine yaz
+            });
+
+        if (uploadError) throw uploadError;
+
+        // 3. Public URL al
+        const { data: urlData } = window.sbClient
+            .storage
+            .from('avatars')
+            .getPublicUrl(fileName);
+
+        const publicUrl = urlData?.publicUrl;
+        if (!publicUrl) throw new Error('URL alınamadı');
+
+        // Cache buster ekle (tarayıcı eski resmi göstermesin)
+        const avatarUrl = `${publicUrl}?t=${Date.now()}`;
+
+        // 4. Supabase profiles tablosunu güncelle
+        if (window.DB) {
+            await window.DB.Profiles.update(user.id, { avatar_url: avatarUrl });
+        } else {
+            await window.sbClient
+                .from('profiles')
+                .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
+                .eq('id', user.id);
+        }
+
+        // 5. UI güncelle — tüm avatar elementleri
+        if (avatarImg) {
+            avatarImg.src = avatarUrl;
+            avatarImg.onerror = () => {
+                avatarImg.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.email || 'user')}`;
+            };
+        }
+
+        // Sidebar'daki hesap avatarını da güncelle
+        const sidebarAvatar = document.getElementById('current-account-avatar');
+        if (sidebarAvatar) sidebarAvatar.src = avatarUrl;
+
+        // Explore'daki kendi kartını güncelle (varsa)
+        const myExploreAvatar = document.querySelector(`#epc-${user.id} .epc-avatar`);
+        if (myExploreAvatar) myExploreAvatar.src = avatarUrl;
+
+        showToast('✅ Profil fotoğrafı başarıyla güncellendi!');
+        console.log('✅ Avatar yüklendi:', avatarUrl);
+
+    } catch (err) {
+        console.error('Avatar yükleme hatası:', err);
+
+        let msg = '❌ Fotoğraf yüklenirken hata oluştu.';
+        if (err.message?.includes('Bucket not found') || err.message?.includes('bucket')) {
+            msg = '❌ Storage bucket bulunamadı. Supabase\'de "avatars" bucket\'ını oluşturun.';
+        } else if (err.message?.includes('not authorized') || err.message?.includes('policy')) {
+            msg = '❌ Yükleme yetkisi yok. Storage politikalarını kontrol edin.';
+        } else if (err.message?.includes('413') || err.message?.includes('too large')) {
+            msg = '❌ Dosya çok büyük.';
+        }
+
+        showToast(msg);
+    } finally {
+        // UI: yükleniyor göstergesini kaldır
+        if (cameraOverlay) {
+            cameraOverlay.innerHTML = '<i class="fa-solid fa-camera"></i>';
+            cameraOverlay.style.background = '';
+        }
+        // Input'u sıfırla (aynı dosyayı tekrar seçmeye izin ver)
+        input.value = '';
+    }
+};
+
+/**
+ * Sayfa yüklenince avatar-upload input'una handler bağla
+ * ve mevcut kullanıcı avatarını Supabase'den yükle
+ */
+async function initAvatarUpload() {
+    const input = document.getElementById('avatar-upload');
+    if (input) {
+        input.addEventListener('change', function() {
+            window.handleAvatarUpload(this);
+        });
+    }
+
+    // Kullanıcının mevcut avatar'ını yükle
+    const user = window.__AUTH_USER__;
+    if (!user) return;
+
+    try {
+        let profile = null;
+        if (window.DB) {
+            profile = await window.DB.Profiles.get(user.id);
+        } else if (window.sbClient) {
+            const { data } = await window.sbClient
+                .from('profiles')
+                .select('avatar_url, username')
+                .eq('id', user.id)
+                .single();
+            profile = data;
+        }
+
+        if (profile?.avatar_url) {
+            const avatarImg = document.getElementById('profile-avatar');
+            if (avatarImg) {
+                avatarImg.src = profile.avatar_url;
+                avatarImg.onerror = () => {
+                    avatarImg.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profile.username || user.email || 'user')}`;
+                };
+            }
+            // Sidebar avatar
+            const sidebarAvatar = document.getElementById('current-account-avatar');
+            if (sidebarAvatar) sidebarAvatar.src = profile.avatar_url;
+        }
+    } catch(e) {
+        console.warn('Avatar yükleme başlangıç hatası:', e);
+    }
+}
+
+// DOMContentLoaded hook'una ekle
+document.addEventListener('DOMContentLoaded', () => {
+    // Kısa gecikme ile — auth user yüklenmesini bekle
+    setTimeout(() => initAvatarUpload(), 1200);
+});
+

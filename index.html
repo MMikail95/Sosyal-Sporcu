@@ -137,7 +137,9 @@
                 <div id="view-only-banner" class="view-only-banner" style="display:none;">
                     <i class="fa-solid fa-eye"></i>
                     <span class="view-banner-text">Bu profili görüntülüyorsunuz</span>
-                    <button onclick="switchAccount(getActiveAccount()?.id)" class="view-banner-btn" style="display:none;"></button>
+                    <button onclick="goBackFromProfile()" class="view-banner-btn" id="view-back-btn" style="margin-left:auto; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#fff; border-radius:8px; padding:0.35rem 0.9rem; cursor:pointer; font-size:0.8rem; font-family:inherit; display:none;">
+                        <i class="fa-solid fa-arrow-left"></i> Geri Dön
+                    </button>
                 </div>
 
                 <!-- Profile Header Summary -->
@@ -160,9 +162,9 @@
                         </div>
                     </div>
                     <div style="margin-left: auto; text-align: right;">
-                        <div style="font-size: 0.9rem; color: var(--text-muted);">Piyasa Değeri</div>
-                        <div id="market-value" style="font-size: 1.8rem; font-weight: 800; color: var(--neon-green);">€12.5M</div>
-                        <div style="font-size: 0.8rem; color: #888;">Maaş: €1.2M / Yıl</div>
+                        <div style="font-size: 0.9rem; color: var(--text-muted);">Toplam</div>
+                        <div id="overall-rating-display" style="font-size: 1.8rem; font-weight: 800; color: var(--neon-green);" title="GEN Skoru">—</div>
+                        <div style="font-size: 0.8rem; color: #888;">GEN Skoru</div>
                     </div>
                 </div>
 
@@ -199,29 +201,107 @@
                                 <!-- LEFT: ID CARD -->
                                 <div class="gb-left-col">
                                     <div class="glass-card info-card">
-                                        <h4 class="attr-header">KİMLİK BİLGİLERİ</h4>
-                                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                                            <span class="info-label">Mevki</span>
-                                            <span class="info-val" style="color:var(--neon-green)">OS / 10 Numara</span>
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                                            <h4 class="attr-header" style="margin:0;">KİMLİK BİLGİLERİ</h4>
+                                            <button id="btn-edit-profile-toggle"
+                                                onclick="toggleProfileEditPanel()"
+                                                style="background:rgba(173,255,47,0.1); border:1px solid rgba(173,255,47,0.3); color:var(--neon-green); border-radius:8px; padding:0.3rem 0.7rem; font-size:0.75rem; font-weight:700; cursor:pointer; font-family:inherit; display:none;">
+                                                <i class="fa-solid fa-pen-to-square"></i> Düzenle
+                                            </button>
                                         </div>
-                                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                                            <span class="info-label">Ayak</span><span class="info-val">Sağ</span>
+
+                                        <!-- Görüntüleme modu -->
+                                        <div id="profile-view-mode">
+                                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                                                <span class="info-label">Mevki</span>
+                                                <span class="info-val" id="disp-mevki-gb" style="color:var(--neon-green)">OS / 10 Numara</span>
+                                            </div>
+                                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                                                <span class="info-label">Ayak</span>
+                                                <span class="info-val" id="disp-ayak-gb">Sağ</span>
+                                            </div>
+                                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                                                <span class="info-label">Boy</span>
+                                                <span class="info-val" id="disp-height-gb">1.82 m</span>
+                                            </div>
+                                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                                                <span class="info-label">Kilo</span>
+                                                <span class="info-val" id="disp-weight-gb">76 kg</span>
+                                            </div>
+                                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                                                <span class="info-label">Şehir</span>
+                                                <span class="info-val" id="disp-city-gb">—</span>
+                                            </div>
                                         </div>
-                                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                                            <span class="info-label">Boy</span>
-                                            <span class="info-val" id="disp-height-gb">1.82 m</span>
-                                        </div>
-                                        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                                            <span class="info-label">Kilo</span>
-                                            <span class="info-val" id="disp-weight-gb">76 kg</span>
+
+                                        <!-- Düzenleme modu (gizli) -->
+                                        <div id="profile-edit-panel" style="display:none;">
+                                            <div style="display:flex; flex-direction:column; gap:0.6rem;">
+                                                <div>
+                                                    <label style="font-size:0.72rem; color:#888; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; display:block;">
+                                                        <i class="fa-solid fa-user" style="color:var(--neon-green);"></i> Kullanıcı Adı
+                                                    </label>
+                                                    <input type="text" id="inp-username" class="profile-input"
+                                                           placeholder="Kullanıcı adı..." maxlength="30"
+                                                           style="width:100%; padding:0.5rem 0.7rem; border-radius:8px;">
+                                                </div>
+                                                <div>
+                                                    <label style="font-size:0.72rem; color:#888; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; display:block;">
+                                                        <i class="fa-solid fa-location-dot" style="color:var(--neon-cyan);"></i> Şehir
+                                                    </label>
+                                                    <input type="text" id="inp-city" class="profile-input"
+                                                           placeholder="İstanbul, Ankara..." maxlength="50"
+                                                           style="width:100%; padding:0.5rem 0.7rem; border-radius:8px;">
+                                                </div>
+                                                <div>
+                                                    <label style="font-size:0.72rem; color:#888; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; display:block;">
+                                                        <i class="fa-solid fa-shoe-prints" style="color:var(--neon-pink);"></i> Kullandığı Ayak
+                                                    </label>
+                                                    <select id="sel-ayak" class="profile-select"
+                                                            style="width:100%; padding:0.5rem 0.7rem; border-radius:8px;">
+                                                        <option value="Sağ">👟 Sağ Ayak</option>
+                                                        <option value="Sol">👟 Sol Ayak</option>
+                                                        <option value="Her İkisi">✨ Her İkisi</option>
+                                                    </select>
+                                                </div>
+                                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                                                    <div>
+                                                        <label style="font-size:0.72rem; color:#888; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; display:block;">
+                                                            <i class="fa-solid fa-cake-candles"></i> Yaş
+                                                        </label>
+                                                        <input type="number" id="inp-age-gb" class="profile-input"
+                                                               placeholder="24" min="10" max="60"
+                                                               style="width:100%; padding:0.5rem 0.7rem; border-radius:8px;">
+                                                    </div>
+                                                    <div>
+                                                        <label style="font-size:0.72rem; color:#888; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; display:block;">
+                                                            <i class="fa-solid fa-ruler-vertical"></i> Boy (cm)
+                                                        </label>
+                                                        <input type="number" id="inp-height-gb" class="profile-input"
+                                                               placeholder="180" min="140" max="220"
+                                                               style="width:100%; padding:0.5rem 0.7rem; border-radius:8px;">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
+                                                <button onclick="saveQuickProfile()" class="btn-primary"
+                                                        style="flex:1; padding:0.6rem; background:linear-gradient(135deg,var(--neon-green),#6fff00); color:#0a0a0f; font-weight:800; border:none; border-radius:8px; cursor:pointer; font-size:0.85rem; font-family:inherit;">
+                                                    <i class="fa-solid fa-floppy-disk"></i> Kaydet
+                                                </button>
+                                                <button onclick="toggleProfileEditPanel()" class="btn-outline"
+                                                        style="padding:0.6rem 0.8rem; border-radius:8px; cursor:pointer; font-size:0.85rem;">
+                                                    İptal
+                                                </button>
+                                            </div>
                                         </div>
 
                                         <button id="btn-mac-davet" class="btn-primary"
-                                            style="width: 100%; margin-top: 1.5rem; background: var(--neon-pink); color: white; border:none; padding:1rem; border-radius:8px; font-weight:800; cursor:pointer;">
+                                            style="width: 100%; margin-top: 1.5rem; background: var(--neon-pink); color: white; border:none; padding:1rem; border-radius:8px; font-weight:800; cursor:pointer; display:none;">
                                             <i class="fa-solid fa-envelope-open-text"></i> MAÇA DAVET ET
                                         </button>
                                     </div>
                                 </div>
+
 
                                 <!-- RIGHT: CHART -->
                                 <div class="gb-right-col">

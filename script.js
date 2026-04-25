@@ -693,6 +693,9 @@ window.viewPlayerFromTeam = function(playerId) {
     const player = players.find(p => p.id === playerId);
     if (!player) return;
 
+    // Önceki sekmeyi kaydet (geri dönüş için)
+    previousSection = 'takimim';
+
     // Switch the viewed profile
     activePlayerId = playerId;
 
@@ -778,12 +781,120 @@ function showSection(id) {
 // ======================================================
 
 /**
+ * Geri dönüş için önceki sekme izleyicisi
+ */
+let previousSection = null;
+
+/**
+ * Profil görüntülemede geri dön — hangi sekmeden geldiyse oraya döner
+ */
+window.goBackFromProfile = function() {
+    const acc = getActiveAccount();
+    // Aktif kullanıcının kendi playerID'sine geri dön
+    if (acc) {
+        activePlayerId = acc.playerId;
+        updateUI();
+    }
+    const target = previousSection || 'takimim';
+    previousSection = null;
+    showSection(target);
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const nav = document.querySelector(`.nav-item[data-target="${target}"]`);
+    if (nav) nav.classList.add('active');
+};
+
+/**
  * Returns true if we're viewing someone else's profile (not ours)
  */
 function isViewingOtherProfile() {
     const acc = getActiveAccount();
     return acc && acc.playerId !== activePlayerId;
 }
+
+/**
+ * Genel Bakış sekmesinde düzenleme panelini aç/kapat
+ */
+window.toggleProfileEditPanel = function() {
+    const viewPanel  = document.getElementById('profile-view-mode');
+    const editPanel  = document.getElementById('profile-edit-panel');
+    const editBtn    = document.getElementById('btn-edit-profile-toggle');
+    if (!viewPanel || !editPanel) return;
+
+    const isEditing = editPanel.style.display !== 'none';
+
+    if (isEditing) {
+        // Kapat
+        editPanel.style.display  = 'none';
+        viewPanel.style.display  = '';
+        if (editBtn) editBtn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Düzenle';
+    } else {
+        // Aç — mevcut değerleri doldur
+        const player = players.find(p => p.id === activePlayerId);
+        if (player) {
+            const unEl = document.getElementById('inp-username');
+            const cityEl = document.getElementById('inp-city');
+            const ayakEl = document.getElementById('sel-ayak');
+            const ageGbEl = document.getElementById('inp-age-gb');
+            const htGbEl = document.getElementById('inp-height-gb');
+            if (unEl)    unEl.value   = player.name || '';
+            if (cityEl)  cityEl.value = player.details?.city || player.city || '';
+            if (ayakEl)  ayakEl.value = player.details?.ayak || 'Sağ';
+            if (ageGbEl) ageGbEl.value = player.details?.age || '';
+            if (htGbEl)  htGbEl.value  = player.details?.height || '';
+        }
+        editPanel.style.display  = '';
+        viewPanel.style.display  = 'none';
+        if (editBtn) editBtn.innerHTML = '<i class="fa-solid fa-xmark"></i> Kapat';
+    }
+};
+
+/**
+ * Genel Bakış düzenleme panelinden hızlı kayıt
+ */
+window.saveQuickProfile = async function() {
+    const player = players.find(p => p.id === activePlayerId);
+    if (!player) return;
+
+    const getV = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+    const username = getV('inp-username');
+    const city     = getV('inp-city');
+    const ayak     = getV('sel-ayak');
+    const age      = parseInt(getV('inp-age-gb')) || null;
+    const height   = parseInt(getV('inp-height-gb')) || null;
+
+    // Yerel player objesini güncelle
+    if (username) player.name = username;
+    if (city)     { player.city = city; if (!player.details) player.details = {}; player.details.city = city; }
+    if (ayak)     { if (!player.details) player.details = {}; player.details.ayak = ayak; }
+    if (age)      { if (!player.details) player.details = {}; player.details.age = age; }
+    if (height)   { if (!player.details) player.details = {}; player.details.height = height; }
+
+    savePlayers();
+    updateUI();
+
+    // Supabase
+    const user = window.__AUTH_USER__;
+    if (user && window.DB) {
+        const updates = {};
+        if (username) updates.username = username;
+        if (city)     updates.city = city;
+        if (ayak)     updates.ayak = ayak;
+        if (age)      updates.age = age;
+        if (height)   updates.height = height;
+
+        try {
+            await window.DB.Profiles.update(user.id, updates);
+            showToast('✅ Profil bilgileri kaydedildi!');
+        } catch(e) {
+            showToast('❌ Kayıt hatası: ' + e.message);
+        }
+    } else {
+        showToast('✅ Değişiklikler yerel olarak kaydedildi.');
+    }
+
+    // Paneli kapat
+    toggleProfileEditPanel();
+};
 
 /**
  * Sets profile to view-only or edit mode based on permissions
@@ -796,22 +907,26 @@ function applyProfileViewMode() {
     // If admin, always can edit. If viewing own profile, can edit.
     const canEdit = !viewingOther || isAdmin;
 
-    // Show/hide the view banner
+    // Show/hide the view banner + geri dön butonu
     const banner = document.getElementById('view-only-banner');
+    const backBtn = document.getElementById('view-back-btn');
     if (banner) {
         if (viewingOther && !isAdmin) {
             const viewedPlayer = players.find(p => p.id === activePlayerId);
             banner.style.display = 'flex';
             banner.querySelector('.view-banner-text').textContent =
                 `👁️ ${viewedPlayer ? viewedPlayer.name : 'Oyuncu'}'nın profilini görüntülüyorsunuz`;
+            if (backBtn) backBtn.style.display = previousSection ? 'inline-flex' : 'none';
         } else if (viewingOther && isAdmin) {
             const viewedPlayer = players.find(p => p.id === activePlayerId);
             banner.style.display = 'flex';
             banner.querySelector('.view-banner-text').textContent =
                 `⚡ Admin olarak ${viewedPlayer ? viewedPlayer.name : 'Oyuncu'}'nın profilini düzenliyorsunuz`;
             banner.style.borderColor = 'var(--neon-cyan)';
+            if (backBtn) backBtn.style.display = previousSection ? 'inline-flex' : 'none';
         } else {
             banner.style.display = 'none';
+            if (backBtn) backBtn.style.display = 'none';
         }
     }
 
@@ -836,14 +951,24 @@ function applyProfileViewMode() {
         btnSaveDetails.style.cursor = canEdit ? 'pointer' : 'not-allowed';
     }
 
-    // Maça davet butonu
+    // "Düzenle" butonu — sadece kendi profilinde görünsün
+    const editToggleBtn = document.getElementById('btn-edit-profile-toggle');
+    if (editToggleBtn) {
+        editToggleBtn.style.display = (!viewingOther || isAdmin) ? 'inline-flex' : 'none';
+    }
+
+    // Başkasının profilindeyken düzenleme panelini kapat
+    if (viewingOther && !isAdmin) {
+        const editPanel = document.getElementById('profile-edit-panel');
+        const viewPanel = document.getElementById('profile-view-mode');
+        if (editPanel) editPanel.style.display = 'none';
+        if (viewPanel) viewPanel.style.display = '';
+    }
+
+    // Maça davet butonu — sadece başkasının profilindeyken görünsün
     const davetBtn = document.getElementById('btn-mac-davet');
     if (davetBtn) {
-        if (viewingOther) {
-            davetBtn.style.display = 'block';
-        } else {
-            davetBtn.style.display = 'block';
-        }
+        davetBtn.style.display = viewingOther ? 'block' : 'none';
     }
 
     // Puanla tab - hide/disable if viewing own profile
@@ -931,14 +1056,14 @@ window.updateUI = function () {
     const ageEl = document.getElementById('disp-age-header');
     if (ageEl) ageEl.innerHTML = `<i class="fa-solid fa-cake-candles"></i> ${player.details.age} Yaş`;
 
-    // --- Value Calculation (own ratings) ---
+    // --- GEN skoru başlığında göster ---
     const totalRating = Object.values(player.ratings).reduce((a, b) => a + b, 0);
     const avg = Math.round(totalRating / 6);
-    const value = (totalRating * 200000) * (avg > 80 ? 1.5 : 1);
-    const mvEl = document.getElementById('market-value');
-    if (mvEl) mvEl.textContent = `€${(value / 1000000).toFixed(1)}M`;
     const orEl = document.getElementById('overall-rating-disp');
     if (orEl) orEl.textContent = avg;
+    // Yeni header'daki GEN göstergesi
+    const genHeaderEl = document.getElementById('overall-rating-display');
+    if (genHeaderEl) genHeaderEl.textContent = avg;
 
     // --- Community avg score for ORT. PUAN ---
     const communityAvg = calcCommunityAvg(player);
