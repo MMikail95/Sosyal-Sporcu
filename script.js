@@ -699,17 +699,17 @@ window.viewPlayerFromTeam = function(playerId) {
     // Switch the viewed profile
     activePlayerId = playerId;
 
+    // Flag: showSection'a bu çağrının nav click'ten değil programdan geldiğini bildir
+    showSection._fromViewPlayer = true;
+
     // Navigate to profile section
     showSection('profile');
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const profileNav = document.querySelector('.nav-item[data-target="profile"]');
     if (profileNav) profileNav.classList.add('active');
 
-    // Update profile UI
-    updateUI();
-
-    // Show view-only banner if different from active user's player
-    applyProfileViewMode();
+    // View-only banner göster
+    setTimeout(() => applyProfileViewMode(), 150);
 };
 
 function setupNavigation() {
@@ -761,8 +761,20 @@ function showSection(id) {
         }
     }
     if (id === 'profile') {
+        // Doğrudan nav click mi yoksa viewPlayerFromTeam'den mi gelindi?
+        // _fromViewPlayer flag'i yoksa nav'dan gelindi = kendi profiline dön
+        if (!showSection._fromViewPlayer) {
+            const acc = getActiveAccount();
+            if (acc && acc.playerId && activePlayerId !== acc.playerId) {
+                activePlayerId = acc.playerId;
+                previousSection = null;
+            }
+        }
+        delete showSection._fromViewPlayer;
+
         setTimeout(() => {
             const player = players.find(p => p.id === activePlayerId) || players[0];
+            updateUI();
             updateChart(player);
         }, 100);
     }
@@ -831,14 +843,16 @@ window.toggleProfileEditPanel = function() {
         // Aç — mevcut değerleri doldur
         const player = players.find(p => p.id === activePlayerId);
         if (player) {
-            const unEl = document.getElementById('inp-username');
-            const cityEl = document.getElementById('inp-city');
-            const ayakEl = document.getElementById('sel-ayak');
-            const ageGbEl = document.getElementById('inp-age-gb');
-            if (unEl)    unEl.value   = player.name || '';
-            if (cityEl)  cityEl.value = player.details?.city || player.city || '';
-            if (ayakEl)  ayakEl.value = player.details?.ayak || 'Sağ';
-            if (ageGbEl) ageGbEl.value = player.details?.age || '';
+            const unEl    = document.getElementById('inp-username');
+            const cityEl   = document.getElementById('inp-city');
+            const ayakEl   = document.getElementById('sel-ayak');
+            const mevkiEl  = document.getElementById('sel-ana-mevki-gb');
+            const ageGbEl  = document.getElementById('inp-age-gb');
+            if (unEl)    unEl.value    = player.name || '';
+            if (cityEl)  cityEl.value  = player.details?.city || player.city || '';
+            if (ayakEl)  ayakEl.value  = player.details?.ayak || 'Sağ';
+            if (mevkiEl) mevkiEl.value = player.details?.anaMevki || '';
+            if (ageGbEl) ageGbEl.value = player.details?.age  || '';
         }
         editPanel.style.display  = '';
         viewPanel.style.display  = 'none';
@@ -856,15 +870,17 @@ window.saveQuickProfile = async function() {
     const getV = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
     const username = getV('inp-username');
     const city     = getV('inp-city');
-    const ayak     = getV('sel-ayak');  // sadece lokal (şemada yok)
+    const ayak     = getV('sel-ayak');
+    const anaMevki = getV('sel-ana-mevki-gb');
     const age      = parseInt(getV('inp-age-gb')) || null;
 
     // Yerel player objesini güncelle
     if (username) player.name = username;
     if (!player.details) player.details = {};
-    if (city)  { player.city = city;  player.details.city = city; }
-    if (ayak)  { player.details.ayak = ayak; }
-    if (age)   { player.details.age  = age; }
+    if (city)      { player.city = city;  player.details.city = city; }
+    if (ayak)      { player.details.ayak = ayak; }
+    if (anaMevki)  { player.details.anaMevki = anaMevki; }
+    if (age)       { player.details.age  = age; }
 
     savePlayers();
     updateUI();
@@ -881,10 +897,11 @@ window.saveQuickProfile = async function() {
     const user = window.__AUTH_USER__;
     if (user && window.DB) {
         const updates = {};
-        if (username) updates.username = username;
-        if (city)     updates.city     = city;
-        if (age)      updates.age      = age;
-        // Ayak: şemada 'ayak' kolonu yok, ileride eklenirse buraya yazılır
+        if (username)  updates.username  = username;
+        if (city)      updates.city      = city;
+        if (age)       updates.age       = age;
+        if (ayak)      updates.ayak      = ayak;
+        if (anaMevki)  updates.ana_mevki = anaMevki;
 
         try {
             await window.DB.Profiles.update(user.id, updates);
@@ -1111,6 +1128,11 @@ window.updateUI = function () {
     setVal('sel-ana-mevki', player.details.anaMevki);
     setVal('inp-alt-pos', player.details.altPos);
     setVal('sel-oyun-tarzi', player.details.oyunTarzi);
+    // Kişisel istatistikler
+    const pStats = player.stats || {};
+    setVal('inp-total-matches', pStats.totalMatches ?? '');
+    setVal('inp-total-goals',   pStats.totalGoals   ?? '');
+    setVal('inp-total-assists', pStats.totalAssists  ?? '');
     // Segment controls (character traits)
     const segFields = ['dakiklik','sahaIletisim','macSonu','mevkiSadakat','presGucu','pasTercihi','markaj'];
     segFields.forEach(field => {
@@ -1758,23 +1780,28 @@ const ACHIEVEMENT_DEFS = [
 ];
 
 /**
- * Player istatistikleri mock verisi
+ * Player istatistikleri — artık player.stats'tan okunuyor (mock kaldırıldı)
+ * Kullanıcılar kendi istatistiklerini Detaylı Veriler sekmesinden girebilir.
  */
 function getPlayerStats(player) {
-    const mockStatsMap = {
-        'p1':  { totalMatches: 45, totalGoals: 32, totalAssists: 18 },
-        'p2':  { totalMatches: 38, totalGoals: 54, totalAssists: 8  },
-        'p3':  { totalMatches: 52, totalGoals: 4,  totalAssists: 12 },
-        'p4':  { totalMatches: 29, totalGoals: 22, totalAssists: 15 },
-        'p5':  { totalMatches: 41, totalGoals: 47, totalAssists: 9  },
-        'p6':  { totalMatches: 61, totalGoals: 6,  totalAssists: 5  },
-        'p7':  { totalMatches: 55, totalGoals: 0,  totalAssists: 2  },
-        'p8':  { totalMatches: 18, totalGoals: 14, totalAssists: 20 },
-        'p9':  { totalMatches: 33, totalGoals: 39, totalAssists: 7  },
-        'p10': { totalMatches: 70, totalGoals: 8,  totalAssists: 14 },
-        'p11': { totalMatches: 24, totalGoals: 18, totalAssists: 22 }
-    };
-    return mockStatsMap[player.id] || { totalMatches: 0, totalGoals: 0, totalAssists: 0 };
+    // Kullanıcının girdiği gerçek veriler (saveProfileDetails ile kaydedildi)
+    if (player.stats && (player.stats.totalMatches || player.stats.totalGoals || player.stats.totalAssists)) {
+        return {
+            totalMatches: player.stats.totalMatches || 0,
+            totalGoals:   player.stats.totalGoals   || 0,
+            totalAssists: player.stats.totalAssists  || 0,
+        };
+    }
+    // Supabase'den yüklendiyse (faz2-social.js tempPlayer)
+    if (player.supabase_matches !== undefined) {
+        return {
+            totalMatches: player.supabase_matches || 0,
+            totalGoals:   player.supabase_goals   || 0,
+            totalAssists: player.supabase_assists  || 0,
+        };
+    }
+    // Henüz veri girilmemiş
+    return { totalMatches: 0, totalGoals: 0, totalAssists: 0 };
 }
 
 /**

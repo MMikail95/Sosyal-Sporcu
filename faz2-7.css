@@ -423,3 +423,193 @@
     .pool-player-grid { grid-template-columns: 1fr 1fr; }
     .odeme-summary-grid { grid-template-columns: 1fr; }
 }
+
+/* ═══════════════════════════════════════
+   FAZ 2: TAKIMSIZ ONBOARDING EKRANI
+   ═══════════════════════════════════════ */
+.no-team-onboarding {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 2rem; padding: 2rem 1rem; max-width: 900px; margin: 0 auto;
+    animation: fadeInUp 0.5s ease;
+}
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.no-team-hero { text-align: center; }
+.no-team-icon-ring {
+    width: 96px; height: 96px; border-radius: 50%;
+    background: rgba(0,255,136,0.08);
+    border: 2px solid rgba(0,255,136,0.25);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1.2rem;
+    font-size: 2.8rem; color: var(--neon-green);
+    box-shadow: 0 0 30px rgba(0,255,136,0.15);
+    animation: pulse-ring 2.5s ease-in-out infinite;
+}
+@keyframes pulse-ring {
+    0%,100% { box-shadow: 0 0 20px rgba(0,255,136,0.15); }
+    50%      { box-shadow: 0 0 40px rgba(0,255,136,0.35); }
+}
+.no-team-title {
+    font-size: 1.8rem; font-weight: 900;
+    background: linear-gradient(135deg, #fff, #888);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+}
+.no-team-sub { color: #666; font-size: 1rem; }
+
+.no-team-cards-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; width: 100%; }
+
+.no-team-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 16px; padding: 2rem 1.5rem;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 0.8rem; text-align: center;
+    transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+}
+.no-team-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255,255,255,0.2);
+    box-shadow: 0 12px 35px rgba(0,0,0,0.4);
+}
+.ntc-icon { font-size: 2.2rem; }
+.ntc-title { font-size: 1.2rem; font-weight: 800; }
+.ntc-desc  { color: #666; font-size: 0.88rem; line-height: 1.5; }
+
+.ntc-btn {
+    margin-top: 0.5rem; padding: 0.75rem 1.5rem; border: none;
+    border-radius: 10px; font-family: 'Outfit', sans-serif;
+    font-weight: 800; font-size: 0.9rem; cursor: pointer;
+    transition: all 0.2s ease; display: flex; align-items: center; gap: 0.5rem;
+}
+.ntc-btn-create {
+    background: linear-gradient(135deg, #00ff88, #6fff00);
+    color: #0a0a0f;
+}
+.ntc-btn-create:hover { filter: brightness(1.1); transform: scale(1.04); }
+.ntc-btn-join {
+    background: linear-gradient(135deg, #00e5ff, #007bff);
+    color: #0a0a0f;
+}
+.ntc-btn-join:hover { filter: brightness(1.1); transform: scale(1.04); }
+
+/* Form Panel */
+.ntc-form-panel {
+    width: 100%; background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px; overflow: hidden;
+    animation: fadeInUp 0.3s ease;
+}
+.ntc-form-header {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background: rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    font-weight: 700; font-size: 1rem;
+}
+.ntc-form-close {
+    margin-left: auto; background: none; border: none;
+    color: #666; cursor: pointer; font-size: 1.1rem;
+    transition: color 0.2s;
+}
+.ntc-form-close:hover { color: #fff; }
+.ntc-form-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+.ntc-form-footer {
+    display: flex; justify-content: flex-end; gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid rgba(255,255,255,0.07);
+}
+
+.ntc-field { display: flex; flex-direction: column; gap: 0.4rem; }
+.ntc-field label { font-size: 0.8rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+
+.ntc-slug-preview {
+    padding: 0.6rem 0.9rem; background: rgba(0,229,255,0.07);
+    border: 1px solid rgba(0,229,255,0.25); border-radius: 8px;
+    color: var(--neon-cyan); font-weight: 800; font-size: 1.05rem;
+    letter-spacing: 2px; font-family: monospace;
+}
+
+.ntc-color-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.ntc-color-dot {
+    width: 28px; height: 28px; border-radius: 50%;
+    cursor: pointer; border: 2px solid transparent;
+    transition: transform 0.2s, border-color 0.2s;
+}
+.ntc-color-dot:hover { transform: scale(1.2); }
+.ntc-color-dot.selected { border-color: #fff; transform: scale(1.2); }
+
+.ntc-submit-btn {
+    padding: 0.65rem 1.4rem; border: none; border-radius: 10px;
+    font-family: 'Outfit', sans-serif; font-weight: 800;
+    font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease;
+    display: flex; align-items: center; gap: 0.5rem;
+}
+.ntc-submit-create { background: linear-gradient(135deg,#00ff88,#6fff00); color: #0a0a0f; }
+.ntc-submit-create:hover { filter: brightness(1.1); }
+.ntc-submit-create:disabled { background: #333; color: #666; cursor: not-allowed; }
+.ntc-submit-join   { background: linear-gradient(135deg,#00e5ff,#0077ff); color: #0a0a0f; }
+.ntc-submit-join:hover { filter: brightness(1.1); }
+.ntc-submit-join:disabled { background: #333; color: #666; cursor: not-allowed; }
+
+.ntc-cancel-btn {
+    padding: 0.65rem 1.2rem; border-radius: 10px; cursor: pointer;
+    font-family: 'Outfit'; font-size: 0.9rem; font-weight: 700;
+}
+
+.ntc-code-input {
+    text-transform: uppercase; letter-spacing: 3px;
+    font-size: 1.2rem; font-weight: 800; text-align: center;
+}
+.ntc-lookup-btn {
+    width: 100%; padding: 0.7rem; border-radius: 10px;
+    background: rgba(0,229,255,0.1); border: 1px solid rgba(0,229,255,0.3);
+    color: var(--neon-cyan); font-family: 'Outfit'; font-weight: 700;
+    font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease;
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+}
+.ntc-lookup-btn:hover { background: rgba(0,229,255,0.2); }
+
+.ntc-join-preview-box { border-radius: 10px; overflow: hidden; }
+.ntc-join-not-found {
+    padding: 1rem; background: rgba(255,0,127,0.07);
+    border: 1px solid rgba(255,0,127,0.25); border-radius: 10px;
+    display: flex; align-items: center; gap: 0.7rem; color: #ff007f; font-weight: 600;
+}
+.ntc-join-found {
+    padding: 1rem; background: rgba(0,255,136,0.06);
+    border: 1px solid rgba(0,255,136,0.2); border-radius: 10px;
+}
+.ntc-found-row { display: flex; align-items: center; gap: 1rem; }
+.ntc-found-avatar { width: 48px; height: 48px; border-radius: 50%; }
+.ntc-found-name { font-weight: 800; font-size: 1.1rem; margin-bottom: 0.3rem; }
+.ntc-found-meta { display: flex; gap: 1rem; font-size: 0.82rem; color: #888; flex-wrap: wrap; }
+
+/* Davet kodu badge */
+.team-invite-code {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: rgba(0,229,255,0.08); border: 1px solid rgba(0,229,255,0.25);
+    border-radius: 8px; padding: 0.2rem 0.7rem;
+    font-weight: 800; font-size: 0.85rem; letter-spacing: 1.5px;
+    cursor: pointer; transition: background 0.2s;
+    font-family: monospace;
+}
+.team-invite-code:hover { background: rgba(0,229,255,0.18); }
+
+/* Ayrıl/Dağıt butonu */
+.btn-leave-team {
+    background: rgba(255,0,127,0.1); border: 1px solid rgba(255,0,127,0.3);
+    color: #ff007f; border-radius: 10px; padding: 0.5rem 1rem;
+    font-family: 'Outfit'; font-weight: 700; font-size: 0.85rem;
+    cursor: pointer; transition: all 0.2s ease;
+    display: flex; align-items: center; gap: 0.5rem;
+}
+.btn-leave-team:hover { background: rgba(255,0,127,0.25); }
+
+@media (max-width: 640px) {
+    .no-team-cards-row { grid-template-columns: 1fr; }
+    .no-team-title { font-size: 1.4rem; }
+}

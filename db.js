@@ -278,6 +278,159 @@ const Teams = {
       .single();
     if (error) return null;
     return data?.team || null;
+  },
+
+  // Kullanıcının takımdaki rolünü getir
+  async getMyRole(userId) {
+    const { data, error } = await sb()
+      .from('team_members')
+      .select('role, team_id')
+      .eq('player_id', userId)
+      .single();
+    if (error) return null;
+    return data;
+  },
+
+  // Takım üyelerini getir
+  async getMembers(teamId) {
+    const { data, error } = await sb()
+      .from('team_members')
+      .select(`
+        *,
+        player:player_id(id, username, avatar_url, position, ana_mevki, ayak,
+                        gen_score, total_matches, total_goals, total_assists,
+                        rating_teknik, rating_sut, rating_pas, rating_hiz, rating_fizik, rating_kondisyon)
+      `)
+      .eq('team_id', teamId)
+      .order('role');
+    if (error) return [];
+    return data || [];
+  },
+
+  // Davet koduyla takıma katıl
+  async joinByCode(userId, inviteCode) {
+    // Davet kodunu slug olarak ara
+    const { data: team, error: tErr } = await sb()
+      .from('teams')
+      .select('id, name, captain_id')
+      .eq('slug', inviteCode.toUpperCase())
+      .eq('is_active', true)
+      .single();
+    if (tErr || !team) throw new Error('Geçersiz davet kodu');
+
+    // Zaten üye mi?
+    const { data: existing } = await sb()
+      .from('team_members')
+      .select('id')
+      .eq('team_id', team.id)
+      .eq('player_id', userId)
+      .single();
+    if (existing) throw new Error('Zaten bu takımın üyesisiniz');
+
+    await sb().from('team_members').insert({ team_id: team.id, player_id: userId, role: 'player' });
+    await sb().from('profiles').update({ current_team_id: team.id }).eq('id', userId);
+    return team;
+  },
+
+  // Takımı güncelle (kaptan)
+  async update(teamId, updates) {
+    const { data, error } = await sb()
+      .from('teams')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', teamId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  // Üyeyi çıkar (kaptan yetkisi)
+  async removeMember(teamId, playerId) {
+    const { error } = await sb()
+      .from('team_members')
+      .delete()
+      .eq('team_id', teamId)
+      .eq('player_id', playerId);
+    if (error) throw error;
+    // Profilinden takımı kaldır
+    await sb().from('profiles').update({ current_team_id: null }).eq('id', playerId);
+  },
+
+  // Takımdan ayrıl
+  async leave(teamId, userId) {
+    await sb().from('team_members').delete()
+      .eq('team_id', teamId).eq('player_id', userId);
+    await sb().from('profiles').update({ current_team_id: null }).eq('id', userId);
+  },
+
+  // Takım ara (keşfet veya davet kodu göster)
+  async search(query = '', limit = 20) {
+    let q = sb()
+      .from('teams')
+      .select('*, captain:captain_id(id, username, avatar_url)')
+      .eq('is_active', true)
+      .order('gen_score', { ascending: false })
+      .limit(limit);
+    if (query) q = q.ilike('name', `%${query}%`);
+    const { data, error } = await q;
+    if (error) { console.error('Teams.search error:', error); return []; }
+    return data || [];
+  },
+
+  // Slug / davet kodu üret (takım adından)
+  generateSlug(name) {
+    return name
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .substring(0, 8) || 'TEAM' + Math.random().toString(36).slice(2,6).toUpperCase();
+  },
+
+  // Takım istatistiklerini güncelle (kaptan)
+  async updateStats(teamId, stats) {
+    // stats: { total_wins, total_losses, total_draws, total_goals_scored, total_goals_conceded }
+    const { data, error } = await sb()
+      .from('teams')
+      .update({ ...stats, updated_at: new Date().toISOString() })
+      .eq('id', teamId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  // Takımı dağıt (kaptan yetkisi — tüm üyelikleri ve takımı sil)
+  async dissolve(teamId, captainId) {
+    // Tüm üyelerin profilinden takımı kaldır
+    const { data: members } = await sb()
+      .from('team_members')
+      .select('player_id')
+      .eq('team_id', teamId);
+    if (members && members.length > 0) {
+      const ids = members.map(m => m.player_id);
+      await sb().from('profiles').update({ current_team_id: null }).in('id', ids);
+    }
+    // Takımı pasif yap (soft delete)
+    const { error } = await sb()
+      .from('teams')
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq('id', teamId)
+      .eq('captain_id', captainId);
+    if (error) throw error;
+  },
+
+  // Realtime: takım değişikliklerini dinle
+  subscribeToTeam(teamId, callback) {
+    return sb()
+      .channel(`team:${teamId}`)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'team_members', filter: `team_id=eq.${teamId}` },
+        payload => callback('members', payload)
+      )
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'teams', filter: `id=eq.${teamId}` },
+        payload => callback('team', payload)
+      )
+      .subscribe();
   }
 };
 

@@ -981,11 +981,27 @@ window.saveProfileDetails = async function() {
         macsatma:      getVal('sel-macsatma')         || null,
         mizac:         getVal('sel-mizac')            || null,
         lojistik:      getVal('sel-lojistik')         || null,
-        // NOT: 'ayak' şemada yok — saveQuickProfile lokal olarak saklar
+        ayak:          getVal('sel-ayak')             || null,  // add-ayak-column.sql sonrası aktif
+        // Kişisel istatistikler
+        total_matches: parseInt(getVal('inp-total-matches')) || null,
+        total_goals:   parseInt(getVal('inp-total-goals'))   || null,
+        total_assists: parseInt(getVal('inp-total-assists'))  || null,
     };
 
-    // undefined alanları temizle (değiştirilmemiş alanları korumak için)
-    Object.keys(updates).forEach(k => updates[k] === undefined && delete updates[k]);
+    // undefined/null temizle
+    Object.keys(updates).forEach(k => (updates[k] === undefined || updates[k] === null) && delete updates[k]);
+
+    // Yerel player.stats güncelle (herkese görünsün diye)
+    const _localPlayer = typeof players !== 'undefined' ? players.find(p => p.id === activePlayerId) : null;
+    if (_localPlayer) {
+        if (!_localPlayer.stats) _localPlayer.stats = {};
+        if (updates.total_matches !== undefined) _localPlayer.stats.totalMatches = updates.total_matches;
+        if (updates.total_goals   !== undefined) _localPlayer.stats.totalGoals   = updates.total_goals;
+        if (updates.total_assists !== undefined) _localPlayer.stats.totalAssists  = updates.total_assists;
+        if (updates.ana_mevki     !== undefined) _localPlayer.details.anaMevki   = updates.ana_mevki;
+        if (updates.ayak          !== undefined) _localPlayer.details.ayak        = updates.ayak;
+        if (typeof savePlayers === 'function') savePlayers();
+    }
 
     try {
         await window.DB.Profiles.update(user.id, updates);
@@ -1049,6 +1065,30 @@ window.submitCommunityRating = async function() {
                 );
 
                 console.log('✅ Community rating Supabase\'e kaydedildi');
+
+                // Yerel player objesine de ekle → chart hemen güncellensin
+                if (targetPlayer) {
+                    if (!targetPlayer.communityRatings) targetPlayer.communityRatings = [];
+                    const fromId = user.id;
+                    const existIdx = targetPlayer.communityRatings.findIndex(r => r.fromAccountId === fromId || r.supabase_from === fromId);
+                    const newEntry = {
+                        fromAccountId: fromId,
+                        supabase_from: fromId,
+                        date: new Date().toISOString(),
+                        ...ratings,
+                        comment
+                    };
+                    if (existIdx >= 0) {
+                        targetPlayer.communityRatings[existIdx] = newEntry;
+                    } else {
+                        targetPlayer.communityRatings.push(newEntry);
+                    }
+                    // Chart'ı hemen güncelle
+                    if (typeof updateChart === 'function') {
+                        setTimeout(() => updateChart(targetPlayer), 200);
+                    }
+                    if (typeof updateUI === 'function') setTimeout(() => updateUI(), 300);
+                }
             } catch(e) {
                 console.warn('Rating Supabase save failed:', e);
             }
@@ -1199,6 +1239,8 @@ window.openUserProfile = async function(supabaseId, username) {
             macsatma:      profile.macsatma      || 'Keyfine Bağlı',
             mizac:         profile.mizac         || 'Makara Yapıcı',
             lojistik:      profile.lojistik      || 'Kendi Gelir',
+            ayak:          profile.ayak          || 'Sağ',
+            city:          profile.city          || 'istanbul',
         },
         ratings: {
             teknik:    profile.rating_teknik    || 70,
@@ -1209,9 +1251,9 @@ window.openUserProfile = async function(supabaseId, username) {
             kondisyon: profile.rating_kondisyon || 70,
         },
         stats: {
-            maclar:   profile.total_matches  || 0,
-            goller:   profile.total_goals    || 0,
-            asistler: profile.total_assists  || 0,
+            totalMatches: profile.total_matches  || 0,
+            totalGoals:   profile.total_goals    || 0,
+            totalAssists: profile.total_assists  || 0,
         },
         communityRatings: [],
         genScore: profile.gen_score || 70,
@@ -1232,10 +1274,15 @@ window.openUserProfile = async function(supabaseId, username) {
     // Modal kapat
     document.getElementById('user-profile-modal')?.remove();
 
-    // Profile sekmesine git
-    if (typeof showSection === 'function') showSection('profile');
+    // Profile sekmesine git — _fromViewPlayer flag'i set et
+    if (typeof showSection === 'function') {
+        showSection._fromViewPlayer = true;
+        showSection('profile');
+    }
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelector('.nav-item[data-target="profile"]')?.classList.add('active');
+    // Önceki sekme = explore
+    if (typeof previousSection !== 'undefined') previousSection = 'explore';
 
     // UI güncelle — activePlayerId değiştikten sonra
     if (typeof updateUI === 'function') updateUI();

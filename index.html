@@ -254,6 +254,25 @@
                                                 </div>
                                                 <div>
                                                     <label style="font-size:0.72rem; color:#888; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; display:block;">
+                                                        <i class="fa-solid fa-futbol" style="color:var(--neon-green);"></i> Ana Mevki
+                                                    </label>
+                                                    <select id="sel-ana-mevki-gb" class="profile-select"
+                                                            style="width:100%; padding:0.5rem 0.7rem; border-radius:8px;">
+                                                        <option value="Kaleci">🧤 Kaleci</option>
+                                                        <option value="Stoper">🛡️ Stoper</option>
+                                                        <option value="Libero">🛡️ Libero</option>
+                                                        <option value="Sol Bek">⬅️ Sol Bek</option>
+                                                        <option value="Sağ Bek">➡️ Sağ Bek</option>
+                                                        <option value="Defansif OS">⚓ Defansif OS</option>
+                                                        <option value="Ofansif OS (10 Numara)">⚡ Ofansif OS (10)</option>
+                                                        <option value="Sol Kanat">🌪️ Sol Kanat</option>
+                                                        <option value="Sağ Kanat">🌪️ Sağ Kanat</option>
+                                                        <option value="Forvet">⚽ Forvet</option>
+                                                        <option value="Santrafor">🎯 Santrafor</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label style="font-size:0.72rem; color:#888; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; display:block;">
                                                         <i class="fa-solid fa-shoe-prints" style="color:var(--neon-pink);"></i> Kullandığı Ayak
                                                     </label>
                                                     <select id="sel-ayak" class="profile-select"
@@ -629,6 +648,37 @@
                                         </select>
                                     </div>
                                 </div>
+                            </div>
+
+                            <!-- SECTION 5: İSTATİSTİKLER -->
+                            <div class="detail-section glass-card">
+                                <div class="detail-section-header">
+                                    <i class="fa-solid fa-chart-bar" style="color:var(--neon-green)"></i>
+                                    <h4>KİŞİSEL İSTATİSTİKLER</h4>
+                                </div>
+                                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.75rem; margin-top:0.5rem;">
+                                    <div class="detail-field">
+                                        <label class="detail-label"><i class="fa-solid fa-calendar-check" style="color:#aaa"></i> Toplam Maç</label>
+                                        <input type="number" id="inp-total-matches" class="profile-input detail-inp"
+                                               min="0" max="9999" placeholder="0"
+                                               style="width:100%; padding:0.5rem 0.7rem; border-radius:8px; font-size:1rem; font-weight:700; text-align:center;">
+                                    </div>
+                                    <div class="detail-field">
+                                        <label class="detail-label"><i class="fa-solid fa-futbol" style="color:var(--neon-green)"></i> Toplam Gol</label>
+                                        <input type="number" id="inp-total-goals" class="profile-input detail-inp"
+                                               min="0" max="9999" placeholder="0"
+                                               style="width:100%; padding:0.5rem 0.7rem; border-radius:8px; font-size:1rem; font-weight:700; text-align:center;">
+                                    </div>
+                                    <div class="detail-field">
+                                        <label class="detail-label"><i class="fa-solid fa-hands-helping" style="color:var(--neon-cyan)"></i> Toplam Asist</label>
+                                        <input type="number" id="inp-total-assists" class="profile-input detail-inp"
+                                               min="0" max="9999" placeholder="0"
+                                               style="width:100%; padding:0.5rem 0.7rem; border-radius:8px; font-size:1rem; font-weight:700; text-align:center;">
+                                    </div>
+                                </div>
+                                <p style="font-size:0.75rem; color:#555; margin-top:0.5rem; text-align:center;">
+                                    <i class="fa-solid fa-info-circle"></i> Bu veriler Genel Bakış'ta ve profilinizde gösterilir
+                                </p>
                             </div>
 
                             <!-- SAVE BUTTON -->
