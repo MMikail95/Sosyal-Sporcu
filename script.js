@@ -694,7 +694,7 @@ window.viewPlayerFromTeam = function(playerId) {
     if (!player) return;
 
     // Önceki sekmeyi kaydet (geri dönüş için)
-    previousSection = 'takimim';
+    window.previousSection = 'takimim';
 
     // Switch the viewed profile
     activePlayerId = playerId;
@@ -767,7 +767,7 @@ function showSection(id) {
             const acc = getActiveAccount();
             if (acc && acc.playerId && activePlayerId !== acc.playerId) {
                 activePlayerId = acc.playerId;
-                previousSection = null;
+                window.previousSection = null;
             }
         }
         delete showSection._fromViewPlayer;
@@ -795,7 +795,7 @@ function showSection(id) {
 /**
  * Geri dönüş için önceki sekme izleyicisi
  */
-let previousSection = null;
+window.previousSection = null;
 
 /**
  * Profil görüntülemede geri dön — hangi sekmeden geldiyse oraya döner
@@ -807,8 +807,8 @@ window.goBackFromProfile = function() {
         activePlayerId = acc.playerId;
         updateUI();
     }
-    const target = previousSection || 'takimim';
-    previousSection = null;
+    const target = window.previousSection || 'takimim';
+    window.previousSection = null;
     showSection(target);
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const nav = document.querySelector(`.nav-item[data-target="${target}"]`);
@@ -938,14 +938,24 @@ function applyProfileViewMode() {
             banner.style.display = 'flex';
             banner.querySelector('.view-banner-text').textContent =
                 `👁️ ${viewedPlayer ? viewedPlayer.name : 'Oyuncu'}'nın profilini görüntülüyorsunuz`;
-            if (backBtn) backBtn.style.display = previousSection ? 'inline-flex' : 'none';
+            if (backBtn) {
+                backBtn.style.display = window.previousSection ? 'inline-flex' : 'none';
+                if (window.previousSection === 'takimim') backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Takıma Dön';
+                else if (window.previousSection === 'explore') backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Keşfete Dön';
+                else backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Geri Dön';
+            }
         } else if (viewingOther && isAdmin) {
             const viewedPlayer = players.find(p => p.id === activePlayerId);
             banner.style.display = 'flex';
             banner.querySelector('.view-banner-text').textContent =
                 `⚡ Admin olarak ${viewedPlayer ? viewedPlayer.name : 'Oyuncu'}'nın profilini düzenliyorsunuz`;
             banner.style.borderColor = 'var(--neon-cyan)';
-            if (backBtn) backBtn.style.display = previousSection ? 'inline-flex' : 'none';
+            if (backBtn) {
+                backBtn.style.display = window.previousSection ? 'inline-flex' : 'none';
+                if (window.previousSection === 'takimim') backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Takıma Dön';
+                else if (window.previousSection === 'explore') backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Keşfete Dön';
+                else backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Geri Dön';
+            }
         } else {
             banner.style.display = 'none';
             if (backBtn) backBtn.style.display = 'none';

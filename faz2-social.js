@@ -590,7 +590,10 @@ window.toggleFeedLike = async function(postId, btn) {
     // Optimistic update
     btn.classList.toggle('liked', !isLiked);
     icon.className = isLiked ? 'fa-regular fa-heart' : 'fa-solid fa-heart';
-    if (countEl) countEl.textContent = parseInt(countEl.textContent || 0) + (isLiked ? -1 : 1);
+    if (countEl) {
+        let newCount = parseInt(countEl.textContent || '0', 10) + (isLiked ? -1 : 1);
+        countEl.textContent = Math.max(0, newCount);
+    }
 
     try {
         await window.DB.Feed.toggleLike(postId, user.id);
@@ -598,7 +601,10 @@ window.toggleFeedLike = async function(postId, btn) {
         // Rollback
         btn.classList.toggle('liked', isLiked);
         icon.className = isLiked ? 'fa-solid fa-heart' : 'fa-regular fa-heart';
-        if (countEl) countEl.textContent = parseInt(countEl.textContent || 0) + (isLiked ? 1 : -1);
+        if (countEl) {
+            let rollCount = parseInt(countEl.textContent || '0', 10) + (isLiked ? 1 : -1);
+            countEl.textContent = Math.max(0, rollCount);
+        }
         showToast('❌ Beğeni kaydedilemedi.');
     }
 };
@@ -825,6 +831,28 @@ window.initRealNotifications = async function() {
     // Bildirimleri Supabase'den çek
     try {
         const notifs = await window.DB.Notifications.getMyNotifications(user.id, 30);
+        
+        // Geçmişten kalan eksik arkadaşlık isteklerini notifs içine yama (polyfill)
+        const pending = await window.DB.Friends.getPendingRequests(user.id);
+        const pendingForMe = pending.filter(f => f.addressee_id === user.id);
+        
+        for (const p of pendingForMe) {
+            const exists = notifs.find(n => n.type === 'friend_request' && n.actor_id === p.requester_id);
+            if (!exists) {
+                notifs.unshift({
+                    id: 'virtual_fr_' + p.id,
+                    type: 'friend_request',
+                    actor_id: p.requester_id,
+                    title: 'Yeni Arkadaşlık İsteği',
+                    body: `${p.requester?.username || 'Bir oyuncu'} sana arkadaşlık isteği gönderdi.`,
+                    is_read: false,
+                    created_at: p.created_at || new Date().toISOString()
+                });
+            }
+        }
+        
+        notifs.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+
         renderRealNotifications(notifs);
     } catch(e) {
         console.warn('Notifications load failed:', e);
@@ -851,6 +879,11 @@ window.initRealNotifications = async function() {
                     countEl.textContent = newCount;
                     countEl.style.display = 'flex';
                 }
+                const profileBadge = document.getElementById('profile-notif-badge');
+                if (profileBadge) {
+                    profileBadge.textContent = parseInt(profileBadge.textContent || '0') + 1;
+                    profileBadge.style.display = 'flex';
+                }
                 // Panel açıksa yenile
                 if (document.getElementById('notif-panel')?.classList.contains('open')) {
                     window.initRealNotifications();
@@ -868,6 +901,12 @@ function renderRealNotifications(notifs) {
     if (countEl) {
         countEl.textContent = unread;
         countEl.style.display = unread > 0 ? 'flex' : 'none';
+    }
+    
+    const profileBadge = document.getElementById('profile-notif-badge');
+    if (profileBadge) {
+        profileBadge.textContent = unread;
+        profileBadge.style.display = unread > 0 ? 'flex' : 'none';
     }
 
     const list = document.getElementById('notif-list');
@@ -888,18 +927,73 @@ function renderRealNotifications(notifs) {
 
     list.innerHTML = notifs.length === 0
         ? '<div class="notif-empty"><i class="fa-regular fa-bell-slash"></i><br>Bildirim yok</div>'
-        : notifs.slice(0, 20).map(n => `
+        : notifs.slice(0, 20).map(n => {
+            let actionsHtml = '';
+            if (!n.is_read) {
+                if (n.type === 'friend_request') {
+                    actionsHtml = `
+                    <div class="notif-actions" style="margin-top:0.5rem; display:flex; gap:0.5rem;">
+                        <button onclick="event.stopPropagation(); handleNotifFriendAction('${n.id}', '${n.actor_id}', true)" style="flex:1; background:var(--neon-green); color:#000; border:none; padding:4px; border-radius:4px; font-weight:bold; cursor:pointer;">Kabul Et</button>
+                        <button onclick="event.stopPropagation(); handleNotifFriendAction('${n.id}', '${n.actor_id}', false)" style="flex:1; background:transparent; border:1px solid #ff4d4d; color:#ff4d4d; padding:4px; border-radius:4px; cursor:pointer;">Reddet</button>
+                    </div>`;
+                } else if (n.type === 'team_invite') {
+                    const match = n.body?.match(/Davet kodu:\s*([A-Z0-9]+)/i);
+                    const slug = match ? match[1] : '';
+                    if (slug) {
+                        actionsHtml = `
+                        <div class="notif-actions" style="margin-top:0.5rem; display:flex; gap:0.5rem;">
+                            <button onclick="event.stopPropagation(); handleNotifTeamAction('${n.id}', '${slug}')" style="flex:1; background:var(--neon-cyan); color:#000; border:none; padding:4px; border-radius:4px; font-weight:bold; cursor:pointer;">Katıl</button>
+                            <button onclick="event.stopPropagation(); window.DB.Notifications.markRead('${n.id}'); window.initRealNotifications();" style="flex:1; background:transparent; border:1px solid #ff4d4d; color:#ff4d4d; padding:4px; border-radius:4px; cursor:pointer;">Reddet</button>
+                        </div>`;
+                    }
+                }
+            }
+            return `
             <div class="notif-item ${n.is_read ? 'read' : 'unread'}"
                  onclick="markRealNotifRead('${n.id}', this)">
                 <div class="notif-icon">${typeIcons[n.type] || '🔔'}</div>
                 <div class="notif-body">
                     <div class="notif-msg">${escapeHtml(n.title)}</div>
                     ${n.body ? `<div class="notif-msg" style="font-size:0.78rem; color:#666; margin-top:2px;">${escapeHtml(n.body)}</div>` : ''}
+                    ${actionsHtml}
                     <div class="notif-time">${timeAgoSocial(n.created_at)}</div>
                 </div>
                 ${!n.is_read ? '<div class="notif-dot"></div>' : ''}
-            </div>`).join('');
+            </div>`;
+        }).join('');
 }
+
+window.handleNotifFriendAction = async function(notifId, actorId, isAccept) {
+    const user = window.__AUTH_USER__;
+    if (!user || !window.DB) return;
+    try {
+        if (isAccept) {
+            const status = await window.DB.Friends.checkStatus(user.id, actorId);
+            if (status && status.status === 'pending' && status.id) {
+                await window.DB.Friends.acceptRequest(status.id);
+                if (typeof showToast === 'function') showToast('✅ Arkadaşlık isteği kabul edildi!');
+            }
+        }
+        await window.DB.Notifications.markRead(notifId);
+        window.initRealNotifications();
+    } catch(e) {
+        if (typeof showToast === 'function') showToast('❌ İşlem başarısız: ' + e.message, 'error');
+    }
+};
+
+window.handleNotifTeamAction = async function(notifId, slug) {
+    const user = window.__AUTH_USER__;
+    if (!user || !window.DB) return;
+    try {
+        await window.DB.Teams.joinByCode(user.id, slug);
+        if (typeof showToast === 'function') showToast('🏆 Takıma başarıyla katıldın!');
+        await window.DB.Notifications.markRead(notifId);
+        window.initRealNotifications();
+        if (typeof window.initTakimim === 'function') window.initTakimim();
+    } catch(e) {
+        if (typeof showToast === 'function') showToast('❌ Takıma katılamadın: ' + e.message, 'error');
+    }
+};
 
 window.markRealNotifRead = async function(notifId, el) {
     if (!window.DB) return;
@@ -946,6 +1040,10 @@ window.toggleNotifPanel = function() {
     if (panel.classList.contains('open')) {
         window.initRealNotifications();
     }
+};
+
+window.renderNotifications = function() {
+    window.initRealNotifications();
 };
 
 
@@ -1282,7 +1380,7 @@ window.openUserProfile = async function(supabaseId, username) {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelector('.nav-item[data-target="profile"]')?.classList.add('active');
     // Önceki sekme = explore
-    if (typeof previousSection !== 'undefined') previousSection = 'explore';
+    window.previousSection = 'explore';
 
     // UI güncelle — activePlayerId değiştikten sonra
     if (typeof updateUI === 'function') updateUI();
@@ -1290,9 +1388,7 @@ window.openUserProfile = async function(supabaseId, username) {
     // Çift banner sorunu: addProfileViewBanner() yerine mevcut view-only-banner kullan
     // applyProfileViewMode() zaten view-only-banner'ı gösteriyor
     // previousSection'ı ayarla ki "Geri Dön" butonu çalışsın
-    if (typeof previousSection !== 'undefined') {
-        previousSection = 'explore';
-    }
+    window.previousSection = 'explore';
     if (typeof applyProfileViewMode === 'function') {
         setTimeout(() => applyProfileViewMode(), 60);
     }
@@ -1544,15 +1640,20 @@ window.switchExploreTab = function(tab, btn) {
     btn.classList.add('active');
 
     const playersSection = document.getElementById('explore-players-section');
+    const teamsSection   = document.getElementById('explore-teams-section');
     const friendsSection = document.getElementById('explore-friends-section');
     const inviteSection  = document.getElementById('explore-invite-section');
 
     if (playersSection) playersSection.style.display = 'none';
+    if (teamsSection)   teamsSection.style.display   = 'none';
     if (friendsSection) friendsSection.style.display = 'none';
     if (inviteSection)  inviteSection.style.display  = 'none';
 
     if (tab === 'players') {
         if (playersSection) playersSection.style.display = '';
+    } else if (tab === 'teams') {
+        if (teamsSection) teamsSection.style.display = '';
+        window.loadExploreTeams();
     } else if (tab === 'friends') {
         if (friendsSection) friendsSection.style.display = '';
         window.loadFriendsList();
@@ -1566,6 +1667,83 @@ window.switchExploreTab = function(tab, btn) {
         }
     }
 };
+
+let exploreTeamsData = [];
+
+window.loadExploreTeams = async function() {
+    const grid = document.getElementById('explore-team-grid');
+    if (!grid) return;
+    
+    grid.innerHTML = '<div style="text-align:center; padding:3rem; color:#555; grid-column:1/-1;"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><p>Takımlar yükleniyor...</p></div>';
+    
+    if (!window.DB) return;
+    
+    try {
+        const { data, error } = await window.sbClient
+            .from('teams')
+            .select(`
+                *,
+                captain:captain_id(username, avatar_url),
+                team_members(id)
+            `)
+            .order('created_at', { ascending: false })
+            .limit(50);
+            
+        if (error) throw error;
+        
+        exploreTeamsData = data || [];
+        window.filterExploreTeams();
+    } catch(e) {
+        console.error('Explore Teams error:', e);
+        grid.innerHTML = `<div style="text-align:center; padding:3rem; color:#ff4d4d; grid-column:1/-1;">Takımlar yüklenirken hata oluştu.</div>`;
+    }
+};
+
+window.filterExploreTeams = function() {
+    const search = (document.getElementById('explore-team-search')?.value || '').toLowerCase();
+    
+    const filtered = exploreTeamsData.filter(t => {
+        return (t.name || '').toLowerCase().includes(search) || (t.city || '').toLowerCase().includes(search);
+    });
+    
+    renderExploreTeams(filtered);
+};
+
+function renderExploreTeams(teams) {
+    const grid = document.getElementById('explore-team-grid');
+    if (!grid) return;
+
+    if (teams.length === 0) {
+        grid.innerHTML = '<div class="epc-empty">Eşleşen takım bulunamadı.</div>';
+        return;
+    }
+
+    grid.innerHTML = teams.map(t => {
+        const logoUrl = t.logo_url || 'https://api.dicebear.com/7.x/shapes/svg?seed=' + encodeURIComponent(t.name);
+        const captainName = t.captain?.username || 'Bilinmiyor';
+        const memberCount = t.team_members ? t.team_members.length : 0;
+        
+        return `
+        <div class="explore-player-card">
+            <div class="epc-avatar-wrap">
+                <img src="${logoUrl}" class="epc-avatar" style="border-radius:10px;">
+                <div class="epc-gen-badge" style="background:#0a0a0f;">${Math.round(t.gen_score || t.team_gen || 70)} GEN</div>
+            </div>
+            <div class="epc-info">
+                <h4 class="epc-name">${t.name}</h4>
+                <div class="epc-meta" style="flex-direction:column; gap:0.25rem;">
+                    <span>👑 ${captainName} &bull; 👥 ${memberCount} Üye</span>
+                    <span><i class="fa-solid fa-location-dot"></i> ${t.city || 'Belirtilmemiş'}</span>
+                </div>
+            </div>
+            <div class="epc-actions">
+                <button class="epc-btn epc-btn-view" style="width:100%" disabled>
+                    <i class="fa-solid fa-shield"></i> Profili Gör (Yakında)
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
 
 
 

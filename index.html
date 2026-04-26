@@ -38,6 +38,20 @@
           // Oturum var → kullanıcıyı global'e kaydet
           window.__AUTH_USER__ = session.user;
           console.log('🔐 Oturum aktif:', session.user.email);
+          if (typeof window.initRealNotifications === 'function') {
+              window.initRealNotifications();
+          } else {
+              window.addEventListener('load', () => {
+                  if (typeof window.initRealNotifications === 'function') window.initRealNotifications();
+              });
+          }
+          
+          window.sbClient.auth.onAuthStateChange((event, _session) => {
+              if (_session && _session.user) {
+                  window.__AUTH_USER__ = _session.user;
+                  if (typeof window.initRealNotifications === 'function') window.initRealNotifications();
+              }
+          });
         } catch (e) {
           console.warn('Session check failed, proceeding offline:', e.message);
         }
@@ -64,9 +78,10 @@
                 <span>MANAGER++</span>
             </div>
             <ul class="nav-menu">
-                <li class="nav-item active" data-target="profile">
+                <li class="nav-item active" data-target="profile" id="nav-profile">
                     <i class="fa-solid fa-id-card"></i>
                     <span>Karakterim</span>
+                    <span class="nav-badge" id="profile-notif-badge" style="display:none; background:var(--neon-red); color:#fff;"></span>
                 </li>
                 <li class="nav-item" data-target="takimim">
                     <i class="fa-solid fa-users-gear"></i>
@@ -1050,6 +1065,9 @@
                     <button class="explore-tab-btn active" onclick="switchExploreTab('players', this)">
                         <i class="fa-solid fa-users"></i> Oyuncular
                     </button>
+                    <button class="explore-tab-btn" onclick="switchExploreTab('teams', this)">
+                        <i class="fa-solid fa-shield"></i> Takımlar
+                    </button>
                     <button class="explore-tab-btn" onclick="switchExploreTab('friends', this)">
                         <i class="fa-solid fa-user-group"></i> Arkadaşlarım
                     </button>
@@ -1087,6 +1105,30 @@
                         <div style="text-align:center; padding:3rem; color:#555; grid-column:1/-1;">
                             <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
                             <p style="margin-top:1rem;">Oyuncular yükleniyor...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── TAKIMLAR SEKMESİ ── -->
+                <div id="explore-teams-section" style="display:none;">
+                    <div class="glass-card" style="padding:1rem 1.5rem; margin-bottom:1.5rem;">
+                        <div class="explore-filter-row">
+                            <div class="explore-search-wrap">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="explore-team-search" class="explore-search-input"
+                                       placeholder="Takım ara..."
+                                       oninput="filterExploreTeams()">
+                            </div>
+                            <button class="btn-primary" onclick="loadExploreTeams()" style="padding:0.6rem 1.2rem; white-space:nowrap;">
+                                <i class="fa-solid fa-rotate"></i> Yenile
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Takım Grid -->
+                    <div class="explore-player-grid" id="explore-team-grid">
+                        <div style="text-align:center; padding:3rem; color:#555; grid-column:1/-1;">
+                            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                            <p style="margin-top:1rem;">Takımlar yükleniyor...</p>
                         </div>
                     </div>
                 </div>
