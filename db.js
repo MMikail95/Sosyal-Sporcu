@@ -240,7 +240,7 @@ const Teams = {
   async create(captainId, teamData) {
     const { data, error } = await sb()
       .from('teams')
-      .insert({ captain_id: captainId, ...teamData })
+      .insert({ captain_id: captainId, is_active: true, ...teamData })
       .select()
       .single();
     if (error) throw error;
@@ -391,10 +391,16 @@ const Teams = {
 
   // Slug / davet kodu üret (takım adından)
   generateSlug(name) {
-    return name
+    // Türkçe karakterleri normalize et
+    const tr = { 'ç':'C','Ç':'C','ğ':'G','Ğ':'G','ı':'I','İ':'I',
+                  'ö':'O','Ö':'O','ş':'S','Ş':'S','ü':'U','Ü':'U' };
+    const normalized = (name || '').replace(/[çÇğĞıİöÖşŞüÜ]/g, m => tr[m] || m);
+    const slug = normalized
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, '')
-      .substring(0, 8) || 'TEAM' + Math.random().toString(36).slice(2,6).toUpperCase();
+      .substring(0, 8);
+    // Boşsa rastgele 6 harf
+    return slug || 'TM' + Math.random().toString(36).slice(2, 8).toUpperCase();
   },
 
   // Takım istatistiklerini güncelle (kaptan)

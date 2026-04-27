@@ -382,18 +382,30 @@ window._tmSubmitCreate = async function() {
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Kuruluyor…'; }
 
   try {
-    const slug = DB.Teams.generateSlug(name);
+    // Slug oluştur — çakışma ihtimaline karşı random suffix hazırla
+    let slug = DB.Teams.generateSlug(name);
+
+    // Slug zaten var mı kontrol et
+    const existing = await DB.Teams.search(slug, 1);
+    const slugTaken = existing.some(t => (t.slug || '').toUpperCase() === slug.toUpperCase());
+    if (slugTaken) {
+      // Çakışma → random 2 harf suffix ekle
+      slug = slug.substring(0, 6) + Math.random().toString(36).slice(2, 4).toUpperCase();
+    }
+
     const team = await DB.Teams.create(_tmState.userId, {
       name,
       slug,
-      city:        city || 'İstanbul',
-      description: desc,
+      city:        city || _tmState.profile?.city || 'İstanbul',
+      description: desc || '',
+      color:       _ntcSelectedColor || '#00ff88',
       gen_score:   _tmPlayerGEN(_tmState.profile),
     });
-    window.showToast?.(`🎉 "${name}" takımı kuruldu! Davet kodun: ${slug}`, 'success');
-    await initTakimim(); // yeniden yükle
+    window.showToast?.(`🎉 "${name}" kuruldu! Davet kodu: ${slug}`, 'success');
+    await initTakimim();
   } catch (e) {
-    window.showToast?.('❌ Takım kurulamadı: ' + DB.error(e), 'error');
+    console.error('_tmSubmitCreate error:', e);
+    window.showToast?.('❌ Takım kurulamadı: ' + (e.message || 'Bilinmeyen hata'), 'error');
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-shield-plus"></i> Takımı Kur'; }
   }
 };
