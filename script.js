@@ -549,12 +549,12 @@ async function initSupabaseUser() {
                         markaj:        profile.markaj         || 'Yakın Takip'
                     },
                     ratings: {
-                        teknik:    profile.rating_teknik    || 70,
-                        sut:       profile.rating_sut       || 70,
-                        pas:       profile.rating_pas       || 70,
-                        hiz:       profile.rating_hiz       || 70,
-                        fizik:     profile.rating_fizik     || 70,
-                        kondisyon: profile.rating_kondisyon || 70
+                        teknik:    profile.rating_teknik    ?? null,
+                        sut:       profile.rating_sut       ?? null,
+                        pas:       profile.rating_pas       ?? null,
+                        hiz:       profile.rating_hiz       ?? null,
+                        fizik:     profile.rating_fizik     ?? null,
+                        kondisyon: profile.rating_kondisyon ?? null
                     },
                     stats: {
                         totalMatches: profile.total_matches || 0,
@@ -585,11 +585,25 @@ async function initSupabaseUser() {
                     activeAccountId = acc.id;
                     activePlayerId  = existingPlayer.id;
                 }
-                // Avatar URL'yi güncelle
+                // Supabase'den gelen TÜM verileri override et (localStorage'da eski değerler kalıyor)
                 if (profile.avatar_url) existingPlayer.avatar_url = profile.avatar_url;
-                // form_status
-                if (profile.form_status && existingPlayer.details)
-                    existingPlayer.details.formStatus = profile.form_status;
+                if (!existingPlayer.details) existingPlayer.details = {};
+                if (profile.form_status) existingPlayer.details.formStatus = profile.form_status;
+                if (profile.city)        { existingPlayer.city = profile.city; existingPlayer.details.city = profile.city; }
+                if (profile.age)         existingPlayer.details.age = profile.age;
+                if (profile.height)      existingPlayer.details.height = profile.height;
+                if (profile.weight)      existingPlayer.details.weight = profile.weight;
+                if (profile.ana_mevki)   existingPlayer.details.anaMevki = profile.ana_mevki;
+                if (profile.ayak)        existingPlayer.details.ayak = profile.ayak;
+                // Rating'leri Supabase'den al — null ise null kalacak (artık 70 default yok)
+                existingPlayer.ratings = {
+                    teknik:    profile.rating_teknik    ?? null,
+                    sut:       profile.rating_sut       ?? null,
+                    pas:       profile.rating_pas       ?? null,
+                    hiz:       profile.rating_hiz       ?? null,
+                    fizik:     profile.rating_fizik     ?? null,
+                    kondisyon: profile.rating_kondisyon ?? null
+                };
             }
 
             // Takım adını çek ve header'a yansıt (#2 - Aktif Takım)
@@ -1191,14 +1205,14 @@ window.updateUI = function () {
     if (teamHeaderSpan) teamHeaderSpan.style.display = teamName ? '' : 'none';
     if (teamHeaderName) teamHeaderName.textContent = teamName || '';
 
-    // --- GEN skoru başlığında göster ---
-    const totalRating = Object.values(player.ratings).reduce((a, b) => a + b, 0);
-    const avg = Math.round(totalRating / 6);
+    // --- GEN skoru: sadece puan girilmişse göster ---
+    const ratingVals = Object.values(player.ratings).filter(v => v !== null && v !== undefined);
+    const hasRatings = ratingVals.length > 0;
+    const avg = hasRatings ? Math.round(ratingVals.reduce((a, b) => a + b, 0) / ratingVals.length) : null;
     const orEl = document.getElementById('overall-rating-disp');
-    if (orEl) orEl.textContent = avg;
-    // Yeni header'daki GEN göstergesi
+    if (orEl) orEl.textContent = hasRatings ? avg : '—';
     const genHeaderEl = document.getElementById('overall-rating-display');
-    if (genHeaderEl) genHeaderEl.textContent = avg;
+    if (genHeaderEl) genHeaderEl.textContent = hasRatings ? avg : '—';
 
     // --- Community avg score ---
     const communityAvg = calcCommunityAvg(player);
@@ -1282,7 +1296,7 @@ window.updateUI = function () {
 
     // --- Skills & Badge Strip ---
     try {
-        checkSkillUnlocks(player, avg);
+        checkSkillUnlocks(player, avg || 0);
         // checkSkillUnlocks içinde renderBadgeStrip de çağrılıyor (SYNC-14)
     } catch (e) { console.error('Skill Unlock Check Failed:', e); }
 
@@ -1330,10 +1344,11 @@ function updateChart(player) {
     if (!ctx) return;
     if (typeof Chart === 'undefined') { console.error('Chart.js not loaded!'); return; }
 
-    const dataValues = [
-        player.ratings.teknik, player.ratings.sut, player.ratings.pas,
-        player.ratings.hiz, player.ratings.fizik, player.ratings.kondisyon
-    ];
+    const r = player.ratings || {};
+    const rawValues = [r.teknik, r.sut, r.pas, r.hiz, r.fizik, r.kondisyon];
+    const hasOwnRatings = rawValues.some(v => v !== null && v !== undefined);
+    // null → 0 for chart rendering (shows empty hex)
+    const dataValues = rawValues.map(v => (v !== null && v !== undefined) ? v : 0);
 
     // Community avg overlay
     const communityR = calcCommunityRatingsAvg(player);
@@ -1342,13 +1357,41 @@ function updateChart(player) {
         communityR.hiz, communityR.fizik, communityR.kondisyon
     ] : null;
 
+    // Boş overlay mesajını göster/gizle
+    const canvasParent = ctx.parentElement;
+    let emptyOverlay = canvasParent?.querySelector('.chart-empty-overlay');
+    const showEmpty = !hasOwnRatings && !communityValues;
+    if (showEmpty) {
+        if (!emptyOverlay) {
+            emptyOverlay = document.createElement('div');
+            emptyOverlay.className = 'chart-empty-overlay';
+            emptyOverlay.style.cssText = `
+                position:absolute; inset:0; display:flex; flex-direction:column;
+                align-items:center; justify-content:center; pointer-events:none;
+                z-index:2;
+            `;
+            emptyOverlay.innerHTML = `
+                <i class="fa-solid fa-chart-simple" style="font-size:2rem; color:#333; margin-bottom:0.5rem;"></i>
+                <span style="font-size:0.82rem; color:#444; text-align:center; line-height:1.4;">
+                    Henüz puan<br>girilmedi
+                </span>
+            `;
+            canvasParent.style.position = 'relative';
+            canvasParent.appendChild(emptyOverlay);
+        }
+        emptyOverlay.style.display = 'flex';
+    } else if (emptyOverlay) {
+        emptyOverlay.style.display = 'none';
+    }
+
     const datasets = [{
         label: 'Kendi Puanı',
         data: dataValues,
-        backgroundColor: 'rgba(173, 255, 47, 0.15)',
-        borderColor: '#adff2f',
-        borderWidth: 2,
-        pointBackgroundColor: '#adff2f'
+        backgroundColor: hasOwnRatings ? 'rgba(173, 255, 47, 0.15)' : 'rgba(255,255,255,0.02)',
+        borderColor: hasOwnRatings ? '#adff2f' : 'rgba(255,255,255,0.1)',
+        borderWidth: hasOwnRatings ? 2 : 1,
+        pointBackgroundColor: hasOwnRatings ? '#adff2f' : 'transparent',
+        pointRadius: hasOwnRatings ? 3 : 0
     }];
 
     if (communityValues) {
@@ -1356,18 +1399,18 @@ function updateChart(player) {
             label: 'Community Puanı',
             data: communityValues,
             backgroundColor: 'rgba(0, 229, 255, 0.1)',
-            borderColor: 'var(--neon-cyan)',
+            borderColor: '#00e5ff',
             borderWidth: 2,
             borderDash: [5, 5],
-            pointBackgroundColor: 'var(--neon-cyan)',
+            pointBackgroundColor: '#00e5ff',
             pointRadius: 4
         });
     }
 
     if (window.profileChartInstance) {
         window.profileChartInstance.data.datasets = datasets;
+        window.profileChartInstance.options.plugins.legend.display = communityValues !== null && hasOwnRatings;
         window.profileChartInstance.update();
-        window.profileChartInstance.resize();
     } else {
         window.profileChartInstance = new Chart(ctx, {
             type: 'radar',
@@ -1380,9 +1423,9 @@ function updateChart(player) {
                 maintainAspectRatio: false,
                 scales: {
                     r: {
-                        angleLines: { color: 'rgba(255, 255, 255, 0.2)' },
-                        grid: { color: 'rgba(255, 255, 255, 0.2)' },
-                        pointLabels: { color: '#fff', font: { size: 12 } },
+                        angleLines: { color: 'rgba(255, 255, 255, 0.15)' },
+                        grid:       { color: 'rgba(255, 255, 255, 0.1)'  },
+                        pointLabels:{ color: '#888', font: { size: 12 } },
                         suggestedMin: 0,
                         suggestedMax: 100,
                         ticks: { display: false, beginAtZero: true }
@@ -1390,7 +1433,7 @@ function updateChart(player) {
                 },
                 plugins: {
                     legend: {
-                        display: communityValues !== null,
+                        display: communityValues !== null && hasOwnRatings,
                         labels: { color: '#aaa', font: { size: 11 } }
                     }
                 }

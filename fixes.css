@@ -1265,46 +1265,54 @@ body {
 
 
 /* ──────────────────────────────────────────────────────────────
-   26. NOTIFICATION BELL KONUM DÜZELTMESİ (Hamburger çakışması)
+   26. NOTIFICATION BELL + PANEL KONUM DÜZELTMESİ
    ────────────────────────────────────────────────────────────── */
-/* Bell butonu hamburgerin altında kalmasın diye logo boşluğuna (aşağıya) kaydırıldı */
+
+/* Bell butonu — hamburger menüsünün altında, sağ üst köşede */
 .notif-bell {
+    position: fixed !important;
     top: 4.2rem !important;
     right: 1.2rem !important;
-    z-index: 1050 !important;
+    z-index: 1400 !important;  /* Her şeyin üstünde */
 }
 
-/* Bildirim paneli sidebar'ın üzerinde fixed olarak konumlandı */
+/* Bildirim paneli — bell butonunun hemen altında, sağ üstte açılır */
 .notif-panel {
     position: fixed !important;
+    top: 6.2rem !important;       /* bell'in altı (4.2 + ~2rem button height) */
+    right: 1.2rem !important;     /* bell ile hizalı */
+    left: auto !important;        /* left bağımsız */
     bottom: auto !important;
-    top: 4rem !important;
-    left: 260px !important;   /* sidebar genişliği kadar sağa it */
-    right: auto !important;
     width: 320px !important;
-    z-index: 1300 !important; /* sidebar(1000) + toggle(1100) + bell(1200) üstünde */
-    transform-origin: top left !important;
+    z-index: 1399 !important;     /* Bell'in hemen altında */
     border-radius: 16px !important;
     max-height: 0 !important;
     overflow: hidden !important;
-    transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1) !important;
-}
-.notif-panel.open {
-    max-height: 450px !important;
+    transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1),
+                opacity 0.25s ease !important;
+    opacity: 0 !important;
+    background: rgba(15, 15, 25, 0.97) !important;
+    backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.6) !important;
+    transform-origin: top right !important;
 }
 
-/* Sidebar kapalıyken (collapsed) paneli sola daya */
-body.sidebar-collapsed .notif-panel {
-    left: 68px !important; /* collapsed sidebar genişliği */
+.notif-panel.open {
+    max-height: 480px !important;
+    opacity: 1 !important;
 }
 
 @media (max-width: 768px) {
+    .notif-bell {
+        top: 0.8rem !important;
+        right: 1rem !important;
+    }
     .notif-panel {
-        left: 0.5rem !important;
+        top: 4rem !important;
         right: 0.5rem !important;
+        left: 0.5rem !important;
         width: auto !important;
-        top: 3.5rem !important;
     }
 }
-
 

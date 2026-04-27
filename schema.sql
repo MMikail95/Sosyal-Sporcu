@@ -37,15 +37,15 @@ CREATE TABLE IF NOT EXISTS profiles (
   pres_gucu TEXT DEFAULT 'Yorgunsa Yavaş',
   pas_tercihi TEXT DEFAULT 'Dengeli',
   markaj TEXT DEFAULT 'Yakın Takip',
-  -- Self-ratings (kendi puanlaması)
-  rating_teknik INTEGER DEFAULT 70 CHECK (rating_teknik BETWEEN 1 AND 99),
-  rating_sut INTEGER DEFAULT 70 CHECK (rating_sut BETWEEN 1 AND 99),
-  rating_pas INTEGER DEFAULT 70 CHECK (rating_pas BETWEEN 1 AND 99),
-  rating_hiz INTEGER DEFAULT 70 CHECK (rating_hiz BETWEEN 1 AND 99),
-  rating_fizik INTEGER DEFAULT 70 CHECK (rating_fizik BETWEEN 1 AND 99),
-  rating_kondisyon INTEGER DEFAULT 70 CHECK (rating_kondisyon BETWEEN 1 AND 99),
+  -- Self-ratings (kendi puanı: NULL = girilmemiş, 1-99 arasında gerçek puan)
+  rating_teknik INTEGER DEFAULT NULL CHECK (rating_teknik IS NULL OR rating_teknik BETWEEN 1 AND 99),
+  rating_sut INTEGER DEFAULT NULL CHECK (rating_sut IS NULL OR rating_sut BETWEEN 1 AND 99),
+  rating_pas INTEGER DEFAULT NULL CHECK (rating_pas IS NULL OR rating_pas BETWEEN 1 AND 99),
+  rating_hiz INTEGER DEFAULT NULL CHECK (rating_hiz IS NULL OR rating_hiz BETWEEN 1 AND 99),
+  rating_fizik INTEGER DEFAULT NULL CHECK (rating_fizik IS NULL OR rating_fizik BETWEEN 1 AND 99),
+  rating_kondisyon INTEGER DEFAULT NULL CHECK (rating_kondisyon IS NULL OR rating_kondisyon BETWEEN 1 AND 99),
   -- İstatistikler
-  gen_score INTEGER DEFAULT 70,
+  gen_score INTEGER DEFAULT NULL,
   total_matches INTEGER DEFAULT 0,
   total_goals INTEGER DEFAULT 0,
   total_assists INTEGER DEFAULT 0,
