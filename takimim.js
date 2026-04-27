@@ -382,16 +382,19 @@ window._tmSubmitCreate = async function() {
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Kuruluyor…'; }
 
   try {
-    // Slug oluştur — çakışma ihtimaline karşı random suffix hazırla
+    // Slug oluştur
     let slug = DB.Teams.generateSlug(name);
 
-    // Slug zaten var mı kontrol et
-    const existing = await DB.Teams.search(slug, 1);
-    const slugTaken = existing.some(t => (t.slug || '').toUpperCase() === slug.toUpperCase());
-    if (slugTaken) {
-      // Çakışma → random 2 harf suffix ekle
-      slug = slug.substring(0, 6) + Math.random().toString(36).slice(2, 4).toUpperCase();
-    }
+    // Slug çakışma kontrolü
+    try {
+      const existing = await DB.Teams.search(slug, 5);
+      const slugTaken = existing.some(t => (t.slug || '').toUpperCase() === slug.toUpperCase());
+      if (slugTaken) {
+        slug = slug.substring(0, 6) + Math.random().toString(36).slice(2, 4).toUpperCase();
+      }
+    } catch(e) { /* slug kontrolü opsiyonel, devam et */ }
+
+    console.log('📤 Takım oluşturuluyor:', { name, slug, userId: _tmState.userId });
 
     const team = await DB.Teams.create(_tmState.userId, {
       name,
@@ -401,11 +404,31 @@ window._tmSubmitCreate = async function() {
       color:       _ntcSelectedColor || '#00ff88',
       gen_score:   _tmPlayerGEN(_tmState.profile),
     });
+
+    console.log('✅ Takım oluşturuldu:', team);
     window.showToast?.(`🎉 "${name}" kuruldu! Davet kodu: ${slug}`, 'success');
-    await initTakimim();
+
+    // initTakimim round-trip'e güvenme — direkt state'i set et ve UI'ı render et
+    _tmState.team    = team;
+    _tmState.myRole  = 'captain';
+    _tmState.members = [{
+      player_id: _tmState.userId,
+      role: 'captain',
+      player: _tmState.profile
+    }];
+    _tmRenderTeamUI();
+    _tmShowSubtabs();
+    _tmSubscribeRealtime();
+
+    // Arka planda tam veri yükle (üyeler vb.)
+    setTimeout(async () => {
+      try { await initTakimim(); } catch(e) { /* sessiz */ }
+    }, 1500);
+
   } catch (e) {
-    console.error('_tmSubmitCreate error:', e);
-    window.showToast?.('❌ Takım kurulamadı: ' + (e.message || 'Bilinmeyen hata'), 'error');
+    console.error('❌ _tmSubmitCreate error:', e);
+    const msg = e.message || 'Bilinmeyen hata';
+    window.showToast?.('❌ Takım kurulamadı: ' + msg, 'error');
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-shield-plus"></i> Takımı Kur'; }
   }
 };
@@ -423,9 +446,22 @@ window._tmSubmitJoin = async function() {
       .eq('id', _tmState.userId);
 
     window.showToast?.(`✅ "${_ntcFoundTeam.name}" takımına katıldın!`, 'success');
-    await initTakimim();
+
+    // Direkt state güncelle ve render et
+    _tmState.team    = _ntcFoundTeam;
+    _tmState.myRole  = 'player';
+    _tmState.members = [];
+    _tmRenderTeamUI();
+    _tmShowSubtabs();
+
+    // Arka planda tam veri yükle
+    setTimeout(async () => {
+      try { await initTakimim(); } catch(e) { /* sessiz */ }
+    }, 1500);
+
   } catch (e) {
-    window.showToast?.('❌ Katılım hatası: ' + e.message, 'error');
+    console.error('❌ _tmSubmitJoin error:', e);
+    window.showToast?.('❌ Katılım hatası: ' + (e.message || 'Hata'), 'error');
     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Takıma Katıl'; }
   }
 };

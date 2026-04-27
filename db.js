@@ -238,22 +238,40 @@ const Teams = {
 
   // Takım oluştur
   async create(captainId, teamData) {
+    // 1. Takımı oluştur
     const { data, error } = await sb()
       .from('teams')
-      .insert({ captain_id: captainId, is_active: true, ...teamData })
+      .insert({
+        captain_id: captainId,
+        is_active:  true,
+        ...teamData
+      })
       .select()
       .single();
-    if (error) throw error;
 
-    // Kaptanı üye olarak ekle
-    await sb().from('team_members').insert({
-      team_id: data.id,
-      player_id: captainId,
-      role: 'captain'
-    });
+    if (error) {
+      console.error('Teams.create insert error:', error);
+      if (error.code === '42501' || error.message?.includes('policy') || error.message?.includes('not authorized')) {
+        throw new Error('Supabase RLS: Takım oluşturma yetkisi yok. Lütfen sprint6-migration.sql dosyasını Supabase\'de çalıştırın.');
+      }
+      if (error.code === '23505') {
+        throw new Error('Bu davet kodu zaten kullanımda. Farklı bir takım adı deneyin.');
+      }
+      throw error;
+    }
 
-    // Profili güncelle
-    await sb().from('profiles').update({ current_team_id: data.id }).eq('id', captainId);
+    // 2. Kaptanı team_members'a ekle
+    const { error: memberError } = await sb()
+      .from('team_members')
+      .insert({ team_id: data.id, player_id: captainId, role: 'captain' });
+    if (memberError) console.warn('team_members insert warning:', memberError);
+
+    // 3. Profili güncelle
+    const { error: profileError } = await sb()
+      .from('profiles')
+      .update({ current_team_id: data.id })
+      .eq('id', captainId);
+    if (profileError) console.warn('profile current_team_id update warning:', profileError);
 
     return data;
   },
