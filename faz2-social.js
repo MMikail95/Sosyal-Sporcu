@@ -39,6 +39,7 @@ async function initExploreTeams() {
     if (!grid) return;
     grid.innerHTML = `<div style="text-align:center; padding:3rem; color:#444;">
         <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+        <p style="margin-top:1rem; font-size:0.85rem;">Takımlar yükleniyor…</p>
     </div>`;
     try {
         if (window.DB) {
@@ -46,11 +47,15 @@ async function initExploreTeams() {
         } else {
             exploreTeams = [];
         }
+        renderExploreTeams(exploreTeams);
     } catch(e) {
-        console.warn('Explore teams failed:', e);
-        exploreTeams = [];
+        console.error('Explore teams failed:', e);
+        grid.innerHTML = `<div style="text-align:center; padding:3rem; color:#ff5555;">
+            <i class="fa-solid fa-triangle-exclamation" style="font-size:2rem; margin-bottom:1rem; display:block;"></i>
+            Takımlar yüklenirken hata oluştu.<br>
+            <small style="color:#666; font-size:0.75rem;">${e.message || 'Bilinmeyen hata'}</small>
+        </div>`;
     }
-    renderExploreTeams(exploreTeams);
 }
 
 function renderExploreTeams(teams) {
@@ -70,24 +75,30 @@ function renderExploreTeams(teams) {
     grid.innerHTML = teams.map(t => {
         const cap     = t.captain || {};
         const capAv   = cap.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cap.username||'cap')}`;
-        const members = t.member_count ?? 0;
         const color   = t.color || '#00ff88';
         const isOwn   = cap.id === myUserId;
+        // Takım adı ve slug HTML-escape (inline onclick güvenliği)
+        const safeName = (t.name || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+        const safeSlug = (t.slug || '').replace(/'/g, '');
 
         return `
-        <div class="explore-team-card glass-card" id="etc-${t.id}">
+        <div class="explore-team-card glass-card" id="etc-${t.id}"
+             data-team-id="${t.id}"
+             data-team-name="${safeName}"
+             data-team-slug="${safeSlug}">
             <div class="etc-header">
                 <div class="etc-crest" style="color:${color};">
                     <i class="fa-solid fa-shield-cat"></i>
                 </div>
                 <div class="etc-info">
-                    <h4 class="etc-name">${t.name}</h4>
+                    <h4 class="etc-name">${t.name || 'Takım'}</h4>
                     <div class="etc-meta">
-                        <span><i class="fa-solid fa-users"></i> ${members} Oyuncu</span>
+                        <span><i class="fa-solid fa-users"></i> Takım</span>
                         ${t.city ? `<span><i class="fa-solid fa-location-dot"></i> ${t.city}</span>` : ''}
                     </div>
                     <div class="etc-captain">
-                        <img src="${capAv}" class="etc-cap-avatar" alt="${cap.username}">
+                        <img src="${capAv}" class="etc-cap-avatar" alt="${cap.username || 'Kaptan'}"
+                             onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=cap'">
                         <span style="font-size:0.75rem; color:#666;">
                             <i class="fa-solid fa-crown" style="color:#ffd700;"></i> ${cap.username || 'Kaptan'}
                         </span>
@@ -103,17 +114,38 @@ function renderExploreTeams(teams) {
                 ${isOwn
                     ? `<span class="etc-badge-own"><i class="fa-solid fa-crown"></i> Kendi Takımın</span>`
                     : `<button class="epc-btn epc-btn-friend" id="join-btn-${t.id}"
-                               onclick="joinExploreTeam('${t.id}', '${t.name}', '${t.slug||''}', this)">
+                               onclick="_joinTeamCard(this)">
                            <i class="fa-solid fa-right-to-bracket"></i> Katıl
                        </button>`
                 }
-                <button class="epc-btn epc-btn-profile" onclick="_tmCopyCode('${t.slug||''}')">
+                <button class="epc-btn epc-btn-profile" onclick="_copyTeamCode(this)" data-slug="${safeSlug}">
                     <i class="fa-solid fa-copy"></i> Kodu Kopyala
                 </button>
             </div>
         </div>`;
     }).join('');
 }
+
+// onclick için güvenli yardımcılar (data attribute'dan alır)
+window._joinTeamCard = function(btn) {
+    const card = btn.closest('[data-team-id]');
+    if (!card) return;
+    const teamId   = card.dataset.teamId;
+    const teamName = card.dataset.teamName;
+    const slug     = card.dataset.teamSlug;
+    joinExploreTeam(teamId, teamName, slug, btn);
+};
+window._copyTeamCode = function(btn) {
+    const slug = btn.dataset.slug || '';
+    if (!slug) { showToast('⚠️ Bu takımın kodu yok.'); return; }
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(slug)
+            .then(() => showToast(`📋 Davet kodu kopyalandı: ${slug}`))
+            .catch(() => showToast('⚠️ Kopyalama başarısız.'));
+    } else {
+        showToast(`📋 Kod: ${slug}`);
+    }
+};
 
 window.filterExploreTeams = function() {
     const q = (document.getElementById('explore-team-search')?.value || '').toLowerCase().trim();

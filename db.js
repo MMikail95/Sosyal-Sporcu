@@ -206,14 +206,15 @@ const Friends = {
 // =====================================================
 
 const Teams = {
-  // Tüm takımları getir
-  async getAll() {
+  // Tüm takımları getir (Keşfet sayfası için)
+  async getAll(limit = 50) {
     const { data, error } = await sb()
       .from('teams')
-      .select(`*, captain:captain_id(id, username, avatar_url)`)
+      .select('*, captain:captain_id(id, username, avatar_url)')
       .eq('is_active', true)
-      .order('gen_score', { ascending: false });
-    if (error) return [];
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) { console.error('Teams.getAll error:', error); return []; }
     return data || [];
   },
 
@@ -393,26 +394,18 @@ const Teams = {
     await sb().from('profiles').update({ current_team_id: null }).eq('id', userId);
   },
 
-  // Takım ara (keşfet veya davet kodu göster)
+  // Takım ara (keşfet / davet kodu)
   async search(query = '', limit = 50) {
     let q = sb()
       .from('teams')
-      .select('*, captain:captain_id(id, username, avatar_url), member_count:team_members(count)')
+      .select('*, captain:captain_id(id, username, avatar_url)')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(limit);
     if (query) q = q.ilike('name', `%${query}%`);
     const { data, error } = await q;
     if (error) { console.error('Teams.search error:', error); return []; }
-    return (data || []).map(t => ({
-      ...t,
-      member_count: t.member_count?.[0]?.count ?? 0
-    }));
-  },
-
-  // Tüm takımları getir (Keşfet için)
-  async getAll(limit = 50) {
-    return this.search('', limit);
+    return data || [];
   },
 
   // Slug / davet kodu üret (takım adından)
