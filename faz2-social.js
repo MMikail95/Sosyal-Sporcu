@@ -13,6 +13,209 @@ let explorePlayers = [];
 let exploreTeams   = [];
 let exploreFilter  = { search: '', position: '', city: '' };
 
+// ── Sekme geçişi ──
+window.switchExploreTab = function(tab) {
+    // Tab içeriklerini gizle/göster
+    ['players','teams','friends'].forEach(t => {
+        const content = document.getElementById(`etab-${t}`);
+        const btn     = document.getElementById(`etab-btn-${t}`);
+        if (content) content.style.display = t === tab ? 'block' : 'none';
+        if (btn)     btn.classList.toggle('active', t === tab);
+    });
+
+    // Her sekme ilk açılışında veri yükle
+    if (tab === 'players' && explorePlayers.length === 0) {
+        window.initExplore();
+    } else if (tab === 'teams') {
+        initExploreTeams();
+    } else if (tab === 'friends') {
+        renderFriendsList();
+    }
+};
+
+// ── Takımlar sekmesi ──
+async function initExploreTeams() {
+    const grid = document.getElementById('explore-team-grid');
+    if (!grid) return;
+    grid.innerHTML = `<div style="text-align:center; padding:3rem; color:#444;">
+        <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+    </div>`;
+    try {
+        if (window.DB) {
+            exploreTeams = await window.DB.Teams.getAll(50);
+        } else {
+            exploreTeams = [];
+        }
+    } catch(e) {
+        console.warn('Explore teams failed:', e);
+        exploreTeams = [];
+    }
+    renderExploreTeams(exploreTeams);
+}
+
+function renderExploreTeams(teams) {
+    const grid = document.getElementById('explore-team-grid');
+    if (!grid) return;
+
+    if (!teams || teams.length === 0) {
+        grid.innerHTML = `<div style="text-align:center; padding:3rem; color:#555;">
+            <i class="fa-solid fa-shield-slash" style="font-size:2.5rem; margin-bottom:1rem; display:block;"></i>
+            Henüz kayıtlı takım yok.
+        </div>`;
+        return;
+    }
+
+    const myUserId = window.__AUTH_USER__?.id;
+
+    grid.innerHTML = teams.map(t => {
+        const cap     = t.captain || {};
+        const capAv   = cap.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cap.username||'cap')}`;
+        const members = t.member_count ?? 0;
+        const color   = t.color || '#00ff88';
+        const isOwn   = cap.id === myUserId;
+
+        return `
+        <div class="explore-team-card glass-card" id="etc-${t.id}">
+            <div class="etc-header">
+                <div class="etc-crest" style="color:${color};">
+                    <i class="fa-solid fa-shield-cat"></i>
+                </div>
+                <div class="etc-info">
+                    <h4 class="etc-name">${t.name}</h4>
+                    <div class="etc-meta">
+                        <span><i class="fa-solid fa-users"></i> ${members} Oyuncu</span>
+                        ${t.city ? `<span><i class="fa-solid fa-location-dot"></i> ${t.city}</span>` : ''}
+                    </div>
+                    <div class="etc-captain">
+                        <img src="${capAv}" class="etc-cap-avatar" alt="${cap.username}">
+                        <span style="font-size:0.75rem; color:#666;">
+                            <i class="fa-solid fa-crown" style="color:#ffd700;"></i> ${cap.username || 'Kaptan'}
+                        </span>
+                    </div>
+                </div>
+                <div class="etc-code-badge">
+                    <span style="font-size:0.65rem; color:#555;">KOD</span>
+                    <span style="font-weight:800; color:var(--neon-cyan); font-size:0.9rem;">${t.slug || '—'}</span>
+                </div>
+            </div>
+            ${t.description ? `<p class="etc-desc">${t.description}</p>` : ''}
+            <div class="etc-actions">
+                ${isOwn
+                    ? `<span class="etc-badge-own"><i class="fa-solid fa-crown"></i> Kendi Takımın</span>`
+                    : `<button class="epc-btn epc-btn-friend" id="join-btn-${t.id}"
+                               onclick="joinExploreTeam('${t.id}', '${t.name}', '${t.slug||''}', this)">
+                           <i class="fa-solid fa-right-to-bracket"></i> Katıl
+                       </button>`
+                }
+                <button class="epc-btn epc-btn-profile" onclick="_tmCopyCode('${t.slug||''}')">
+                    <i class="fa-solid fa-copy"></i> Kodu Kopyala
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+window.filterExploreTeams = function() {
+    const q = (document.getElementById('explore-team-search')?.value || '').toLowerCase().trim();
+    if (!q) {
+        renderExploreTeams(exploreTeams);
+        return;
+    }
+    const filtered = exploreTeams.filter(t =>
+        t.name?.toLowerCase().includes(q) ||
+        t.city?.toLowerCase().includes(q) ||
+        t.slug?.toLowerCase().includes(q)
+    );
+    renderExploreTeams(filtered);
+};
+
+window.joinExploreTeam = async function(teamId, teamName, slug, btn) {
+    const user = window.__AUTH_USER__;
+    if (!user) { showToast('⚠️ Giriş yapmanız gerekiyor.'); return; }
+    if (!window.DB) return;
+
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Katılıyor...'; }
+
+    try {
+        await window.DB.Teams.addMember(teamId, user.id, 'player');
+        await window.sbClient.from('profiles')
+            .update({ current_team_id: teamId })
+            .eq('id', user.id);
+
+        if (btn) { btn.innerHTML = '<i class="fa-solid fa-check"></i> Katıldın!'; btn.className = 'epc-btn epc-btn-friend accepted'; }
+        showToast(`✅ "${teamName}" takımına katıldın!`);
+
+        // Takımım state'ini güncelle
+        if (window._tmState) {
+            window._tmState.team = { id: teamId, name: teamName, slug };
+        }
+    } catch(e) {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Katıl'; }
+        if (e.message?.includes('duplicate') || e.message?.includes('zaten')) {
+            showToast('⚠️ Zaten bu takımın üyesisin.');
+        } else {
+            showToast('❌ Katılım hatası: ' + e.message);
+        }
+    }
+};
+
+// ── Arkadaşlarım sekmesi ──
+async function renderFriendsList() {
+    const container = document.getElementById('friends-list-container');
+    if (!container) return;
+
+    const user = window.__AUTH_USER__;
+    if (!user || !window.DB) {
+        container.innerHTML = `<div style="text-align:center; padding:3rem; color:#555;">
+            Giriş yapmanız gerekiyor.
+        </div>`;
+        return;
+    }
+
+    container.innerHTML = `<div style="text-align:center; padding:3rem; color:#444;">
+        <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+    </div>`;
+
+    try {
+        const friends = await window.DB.Friends.getMyFriends(user.id);
+
+        if (!friends || friends.length === 0) {
+            container.innerHTML = `<div style="text-align:center; padding:3rem; color:#555;">
+                <i class="fa-solid fa-user-group" style="font-size:2.5rem; margin-bottom:1rem; display:block; color:#333;"></i>
+                Henüz arkadaşın yok. Oyuncu keşfet ve arkadaş ekle!
+            </div>`;
+            return;
+        }
+
+        container.innerHTML = friends.map(f => {
+            const other = f.requester_id === user.id ? f.addressee : f.requester;
+            if (!other) return '';
+            const avatar = other.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(other.username||'u')}`;
+            const gen    = other.gen_score || null;
+            return `
+            <div class="friend-list-row glass-card">
+                <img src="${avatar}" class="friend-avatar" alt="${other.username}"
+                     onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'">
+                <div class="friend-info">
+                    <span class="friend-name">${other.username || 'Oyuncu'}</span>
+                    <span class="friend-meta">
+                        ${other.ana_mevki || other.position || 'Oyuncu'}
+                        ${other.city ? ` · ${other.city}` : ''}
+                        ${gen ? ` · <span style="color:var(--neon-green)">${Math.round(gen)} GEN</span>` : ''}
+                    </span>
+                </div>
+                <button class="epc-btn epc-btn-profile" onclick="openUserProfile('${other.id}', '${other.username}')">
+                    <i class="fa-solid fa-user-circle"></i> Profil
+                </button>
+            </div>`;
+        }).join('');
+    } catch(e) {
+        container.innerHTML = `<div style="text-align:center; padding:2rem; color:#ff5555;">
+            Arkadaşlar yüklenemedi: ${e.message}
+        </div>`;
+    }
+}
+
 window.initExplore = async function() {
     renderExploreSkeleton();
     try {

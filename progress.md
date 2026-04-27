@@ -1,6 +1,6 @@
 # 📊 PROGRESS.MD — MANAGER++ İlerleme Takibi
 
-> **Son güncelleme:** 2026-04-27
+> **Son güncelleme:** 2026-04-27 (Sprint 7 başlatıldı)
 > Bu dosya her geliştirme oturumu sonunda güncellenir.
 
 ---
@@ -33,6 +33,29 @@
 - [x] DB.js: Storage.uploadAvatar, Matches.getPlayerHistory, Teams.getMyTeams eklendi
 
 **Sprint 6 TAMAMLANDI ✅ (2026-04-27)**
+
+---
+
+## 🚀 Sprint 7 — Stabilizasyon & Keşfet Modülü
+
+**Başlangıç:** 2026-04-27
+**Hedef:** Keşfet modülü, GEN sıfırlama, bildirim panel düzeltmesi, proje temizliği
+
+### Sprint 7 Görevleri
+- [x] NOTIF-01 — Bildirim paneli sağ üste taşındı (`right:1.2rem, top:6.2rem`) — artık MANAGER++ logosunun önünde
+- [x] GEN-02 — Rating fallback `|| 70` kaldırıldı → `?? null` ile Supabase'den gerçek değer alınıyor
+- [x] GEN-03 — `existingPlayer` branch Supabase rating sync eklendi (localStorage eski 70 override edildi)
+- [x] GEN-04 — `updateChart`: rating yoksa boş hexagon + "Henüz puan girilmedi" overlay gösteriliyor
+- [x] EXPLORE-05 — `id="explore"` section HTML'e eklendi (daha önce hiç yoktu!)
+- [x] EXPLORE-06 — `switchExploreTab`, `initExploreTeams`, `renderExploreTeams`, `filterExploreTeams`, `joinExploreTeam`, `renderFriendsList` fonksiyonları eklendi
+- [x] EXPLORE-07 — `DB.Teams.search` düzeltildi: `gen_score` kolonu yok hatası giderildi, `created_at` sıralamasına geçildi
+- [x] EXPLORE-08 — `DB.Teams.getAll()` metodu eklendi, `member_count` join eklendi
+- [x] EXPLORE-09 — Keşfet CSS: `explore-tab-bar`, `explore-team-card`, `etc-*`, `friend-list-row` stilleri eklendi
+- [x] SQL-10 — `master-migration.sql` tek birleşik migration dosyası oluşturuldu (idempotent)
+- [ ] SQL-11 — `master-migration.sql` Supabase'de çalıştırılacak ⏳
+
+### 🚧 Aktif Bloklar
+- `master-migration.sql` çalıştırılmayı bekliyor → Rating NULL, Realtime, RLS patch
 
 ---
 

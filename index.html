@@ -1174,6 +1174,79 @@
 
 
             <!-- ================================================
+                 Section: Keşfet
+                 ================================================ -->
+            <section id="explore" class="section">
+                <div style="margin-bottom:1.5rem;">
+                    <h1 class="section-title" style="font-size:1.8rem; margin-bottom:0.2rem;">
+                        <i class="fa-solid fa-compass" style="color:var(--neon-cyan);"></i> Keşfet
+                    </h1>
+                    <p style="color:#555; font-size:0.9rem;">Oyuncuları, takımları ve arkadaşlarını keşfet</p>
+                </div>
+
+                <!-- Explore Tab Bar -->
+                <div class="explore-tab-bar">
+                    <button class="explore-tab-btn active" id="etab-btn-players" onclick="switchExploreTab('players')">
+                        <i class="fa-solid fa-users"></i> Oyuncular
+                    </button>
+                    <button class="explore-tab-btn" id="etab-btn-teams" onclick="switchExploreTab('teams')">
+                        <i class="fa-solid fa-shield-halved"></i> Takımlar
+                    </button>
+                    <button class="explore-tab-btn" id="etab-btn-friends" onclick="switchExploreTab('friends')">
+                        <i class="fa-solid fa-user-group"></i> Arkadaşlarım
+                    </button>
+                </div>
+
+                <!-- TAB: Oyuncular -->
+                <div id="etab-players" class="explore-tab-content" style="display:block;">
+                    <div class="explore-filters" style="display:flex; gap:0.75rem; margin-bottom:1.25rem; flex-wrap:wrap;">
+                        <input type="text" id="explore-search" class="profile-input"
+                               placeholder="İsim veya şehir ara..." style="flex:1; min-width:160px;"
+                               oninput="filterExplore()">
+                        <select id="explore-pos-filter" class="profile-select" style="width:160px;" onchange="filterExplore()">
+                            <option value="">Tüm Mevkiler</option>
+                            <option value="KL">🧤 Kaleci</option>
+                            <option value="DEF">🛡️ Defans</option>
+                            <option value="OS">⚡ Orta Saha</option>
+                            <option value="FV">⚽ Forvet</option>
+                        </select>
+                    </div>
+                    <div class="explore-player-grid" id="explore-player-grid">
+                        <div style="text-align:center; padding:3rem; color:#444;">
+                            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: Takımlar -->
+                <div id="etab-teams" class="explore-tab-content" style="display:none;">
+                    <div style="display:flex; gap:0.75rem; margin-bottom:1.25rem;">
+                        <input type="text" id="explore-team-search" class="profile-input"
+                               placeholder="Takım adı ara..." style="flex:1;"
+                               oninput="filterExploreTeams()"
+                               onkeydown="if(event.key==='Enter') filterExploreTeams()">
+                        <button class="btn-outline" onclick="filterExploreTeams()">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </button>
+                    </div>
+                    <div id="explore-team-grid">
+                        <div style="text-align:center; padding:3rem; color:#444;">
+                            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: Arkadaşlarım -->
+                <div id="etab-friends" class="explore-tab-content" style="display:none;">
+                    <div id="friends-list-container">
+                        <div style="text-align:center; padding:3rem; color:#444;">
+                            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================================================
                  Section: Akış (Feed)
                  ================================================ -->
             <section id="feed" class="section">

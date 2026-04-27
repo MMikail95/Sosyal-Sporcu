@@ -837,6 +837,11 @@ function showSection(id) {
     if (id === 'feed') {
         if (typeof window.renderFeed === 'function') window.renderFeed();
     }
+    if (id === 'explore') {
+        if (typeof window.initExplore === 'function' && explorePlayers.length === 0) {
+            window.initExplore();
+        }
+    }
     // Close panels on nav change
     closeAccountPanel();
     document.getElementById('notif-panel')?.classList.remove('open');

@@ -394,17 +394,25 @@ const Teams = {
   },
 
   // Takım ara (keşfet veya davet kodu göster)
-  async search(query = '', limit = 20) {
+  async search(query = '', limit = 50) {
     let q = sb()
       .from('teams')
-      .select('*, captain:captain_id(id, username, avatar_url)')
+      .select('*, captain:captain_id(id, username, avatar_url), member_count:team_members(count)')
       .eq('is_active', true)
-      .order('gen_score', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(limit);
     if (query) q = q.ilike('name', `%${query}%`);
     const { data, error } = await q;
     if (error) { console.error('Teams.search error:', error); return []; }
-    return data || [];
+    return (data || []).map(t => ({
+      ...t,
+      member_count: t.member_count?.[0]?.count ?? 0
+    }));
+  },
+
+  // Tüm takımları getir (Keşfet için)
+  async getAll(limit = 50) {
+    return this.search('', limit);
   },
 
   // Slug / davet kodu üret (takım adından)
