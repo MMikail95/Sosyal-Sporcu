@@ -1,6 +1,7 @@
 /* ================================================================
    FIXES.CSS — Sosyal Sporcu Platform Düzeltmeleri
    Kapsam:
+   0. Sprint 6 — Kritik Bug Fix'ler
    1. Karanlık / Aydınlık Mod Sistemi
    2. Modal CSS (takimim, faz2-7 modalleri)
    3. Profile Tab CSS Çakışması Düzeltmesi
@@ -9,6 +10,77 @@
    6. Responsive ek iyileştirmeler
    7. Theme Toggle Butonu
    ================================================================ */
+
+/* ──────────────────────────────────────────────────────────────
+   0. SPRINT 6 — KRİTİK BUG FIX'LER
+   ────────────────────────────────────────────────────────────── */
+
+/* Fix 1: Bildirim butonu MANAGER++ logosunun önünde olmalı.
+   sidebar z-index=1000, sidebar-toggle z-index=1100,
+   Bu buton her ikisinin üstünde: 1200 */
+.notif-bell,
+#btn-notif,
+[id*="notif"][class*="btn"],
+[class*="notif-bell"] {
+    z-index: 1200 !important;
+    position: relative;
+}
+
+/* Fix 4: Boş avatar — kamera ikonunu göster */
+#profile-avatar[src=""],
+#profile-avatar:not([src]) {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+    display: block;
+}
+
+/* Avatar kamera overlay her zaman görünür olsun (src boşsa) */
+#profile-avatar[src=""] ~ .camera-overlay,
+#profile-avatar:not([src]) ~ .camera-overlay {
+    opacity: 0.4;
+}
+
+/* Fix 9: GEN badge uyumu */
+#overall-rating-disp,
+#overall-rating-display {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Maç geçmişi tablo geliştirilmiş stil (#15) */
+#match-history-table .pos-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+}
+
+/* Form select — detaylı veriler sekmesi */
+.profile-select-mini {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: #fff;
+    padding: 0.4rem 0.6rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.88rem;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.profile-select-mini:focus {
+    border-color: var(--neon-green);
+}
+[data-theme="light"] .profile-select-mini {
+    background: rgba(0,0,0,0.04);
+    border-color: rgba(0,0,0,0.15);
+    color: #1a1a1a;
+}
+[data-theme="light"] .profile-select-mini option {
+    background: #fff;
+    color: #1a1a1a;
+}
 
 /* ──────────────────────────────────────────────────────────────
    1. KARANLIKLK MODDA CSS DEĞİŞKENLERİ (varsayılan = dark)
@@ -1202,15 +1274,37 @@ body {
     z-index: 1050 !important;
 }
 
-/* Bildirim paneli de bell butonunun hemen altından açılacak şekilde güncellendi */
+/* Bildirim paneli sidebar'ın üzerinde fixed olarak konumlandı */
 .notif-panel {
-    top: 7.2rem !important;
+    position: fixed !important;
     bottom: auto !important;
-    z-index: 1060 !important;
-    transform-origin: top !important;
+    top: 4rem !important;
+    left: 260px !important;   /* sidebar genişliği kadar sağa it */
+    right: auto !important;
+    width: 320px !important;
+    z-index: 1300 !important; /* sidebar(1000) + toggle(1100) + bell(1200) üstünde */
+    transform-origin: top left !important;
+    border-radius: 16px !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1) !important;
 }
 .notif-panel.open {
     max-height: 450px !important;
+}
+
+/* Sidebar kapalıyken (collapsed) paneli sola daya */
+body.sidebar-collapsed .notif-panel {
+    left: 68px !important; /* collapsed sidebar genişliği */
+}
+
+@media (max-width: 768px) {
+    .notif-panel {
+        left: 0.5rem !important;
+        right: 0.5rem !important;
+        width: auto !important;
+        top: 3.5rem !important;
+    }
 }
 
 

@@ -7,9 +7,36 @@
 
 ## 🏁 Mevcut Sprint Durumu
 
-**Sprint:** Faz 5 — Yetkilendirme & Gizlilik Sistemi
+**Sprint:** Faz 6 — Karakterim Sekmesi Optimizasyonu
 **Başlangıç:** 2026-04-27
-**Hedef:** RLS politikaları, frontend gizlilik katmanı, takım yetkilendirmesi
+**Hedef:** 15 maddelik bug fix, UI ekleme/kaldırma ve senkronizasyon geliştirmeleri
+
+### Sprint 6 Görevleri
+- [x] B-01 — Bildirim butonu z-index düzeltmesi → fixes.css `z-index:1200`
+- [x] UI-02 — Kimlik Bilgilerinde Boy/Kilo/Takım seçimi → index.html + saveQuickProfile
+- [x] BUG-03 — Avatar upload: DB.Storage.uploadAvatar + handleAvatarUpload
+- [x] BUG-04 — Yeni profil boş avatar başlasın → updateUI Dicebear kaldırıldı
+- [x] BUG-05 — Yeni profilde "Yıldızlar FC" gizle → disp-team-header koşullu
+- [x] BUG-06 — Yeni profilde Şehir/Yaş gizle → disp-age-header / disp-city-header koşullu
+- [x] UI-07 — Genel Bakış rozet şeridi → #badge-strip + renderBadgeStrip()
+- [x] BUG-08 — Altıgen grafik: community yokken legend gizli (mevcut davranış korundu)
+- [x] UI-09 — GEN skoru büyütüldü (2.8rem → 3rem, glow efekti)
+- [x] UI-10 — Alt stat blokları kaldırıldı (gb-bottom-stats)
+- [x] UI-11 — Form alanı `<select>` yapıldı (HTML düzeltildi), syncProfileData'ya form_status eklendi
+- [x] UI-12 — Kariyer İstatistikleri duplicate kaldırıldı, ID'ler düzeltildi
+- [x] UI-13 — Yetenekler'den stat blokları kaldırıldı (ach-stats-row)
+- [x] SYNC-14 — Rozet şeridi Supabase stats + player.stats ile senkronize (renderBadgeStrip)
+- [x] UI-15 — Maç Geçmişi: Tarih+Skor+Takım+Mevki+Gol+Asist+Puan, Supabase JOIN
+- [x] BUG-FIX-3 — Bildirim pop-up position:fixed + z-index:1300 (sidebar üzerinde)
+- [x] BUG-FIX-1 — Aktif Takım: getMyTeams dropdown doluyor, _sbTeamName header'a yansıyor
+- [x] SQL Migration: `sprint6-migration.sql` oluşturuldu (position_played, form_status)
+- [x] DB.js: Storage.uploadAvatar, Matches.getPlayerHistory, Teams.getMyTeams eklendi
+
+**Sprint 6 TAMAMLANDI ✅ (2026-04-27)**
+
+---
+
+**Önceki Sprint:** Faz 5 — Yetkilendirme & Gizlilik Sistemi
 
 
 ---
@@ -211,17 +238,16 @@
 
 > Bir sonraki geliştirme oturumu başladığında bu listeyi gözden geçir
 
-### Öncelikli
-- [ ] **B-01 çözümü:** Localhost HTTP server kurulumunu doğrula
-- [ ] **B-02 çözümü:** Maç Geçmişi tab'ını `match_players` tablosuna bağla
-- [ ] **B-06 çözümü:** Duplicate ID'leri düzelt (index.html satır ~483 ve ~707)
+### Sprint 6 — Aktif (Karakterim Optimizasyonu)
+- [ ] **BUG-03** Avatar kaydolma + upload Storage entegrasyonu
+- [ ] **UI-15** Maç Geçmişi → `match_players` + `matches` JOIN (schema kontrol gerekli)
+- [ ] **SYNC-14** Rozet kriterleri `profiles_with_ratings` view'ına bağla
+- [ ] **UI-11** Form alanı select + Detaylı↔Genel Bakış senkron
+- [ ] Duplicate ID düzelt: `inp-total-matches`, `inp-total-goals` (index.html ~483 ve ~707)
 
-### İkincil
-- [ ] Avatar upload: `supabase.storage.from('avatars').upload(...)` fonksiyonu ekle
-- [ ] Maç Merkezi: `DB.Matches.create()` form submit'e bağla
-- [ ] `faz1.js` legacy bildirim kodunu kaldır, `DB.Notifications.*`'a devret
-
-### Gelecek Sprint Planı
+### Gelecek Sprint Planı (Faz 7)
 - [ ] Takip sistemi (Follow/Unfollow) — yeni `followers` tablosu gerekiyor
 - [ ] Saha Keşfet section → `venues` tablosu UI
 - [ ] Hash routing (#profil, #takim vb.)
+- [ ] Maç Merkezi: `DB.Matches.create()` form submit'e bağla
+- [ ] `faz1.js` legacy bildirim kodunu kaldır, `DB.Notifications.*`'a devret

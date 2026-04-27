@@ -269,15 +269,26 @@ const Teams = {
     return data;
   },
 
-  // Kullanıcının takımını getir
+  // Kullanıcının aktif takımını getir (ilk takım)
   async getMyTeam(userId) {
     const { data, error } = await sb()
       .from('team_members')
       .select(`team:team_id(*)`)
       .eq('player_id', userId)
+      .limit(1)
       .single();
     if (error) return null;
     return data?.team || null;
+  },
+
+  // Kullanıcının TÜM takımlarını getir (birden fazla takım desteği)
+  async getMyTeams(userId) {
+    const { data, error } = await sb()
+      .from('team_members')
+      .select(`role, team:team_id(id, name, slug, city)`)
+      .eq('player_id', userId);
+    if (error) return [];
+    return (data || []).map(d => ({ role: d.role, ...d.team }));
   },
 
   // Kullanıcının takımdaki rolünü getir
@@ -286,6 +297,7 @@ const Teams = {
       .from('team_members')
       .select('role, team_id')
       .eq('player_id', userId)
+      .limit(1)
       .single();
     if (error) return null;
     return data;
@@ -466,6 +478,26 @@ const Matches = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  // Oyuncunun maç geçmişini getir (match_players + matches JOIN)
+  async getPlayerHistory(userId, limit = 30) {
+    const { data, error } = await sb()
+      .from('match_players')
+      .select(`
+        id, goals, assists, own_goals, performance_rating, team_side, position_played, confirmed,
+        match:match_id(
+          id, scheduled_at, status, home_score, away_score, match_type, notes,
+          home_team:home_team_id(id, name),
+          away_team:away_team_id(id, name),
+          venue:venue_id(id, name, district)
+        )
+      `)
+      .eq('player_id', userId)
+      .order('match_id', { ascending: false })
+      .limit(limit);
+    if (error) { console.error('Match history error:', error); return []; }
+    return (data || []).filter(d => d.match !== null);
   },
 
   // Maç sonucu gir
@@ -733,6 +765,59 @@ const Venues = {
 };
 
 // =====================================================
+// 📷 AVATAR STORAGE İŞLEMLERİ
+// =====================================================
+
+const Storage = {
+  /**
+   * Avatar yükle — Supabase avatars bucket'a
+   * @param {string} userId - Kullanıcı UUID
+   * @param {File} file - Seçilen dosya
+   * @returns {string|null} - Public URL
+   */
+  async uploadAvatar(userId, file) {
+    if (!sb()) throw new Error('Supabase client hazır değil');
+    if (!file || !file.type.startsWith('image/')) throw new Error('Geçersiz dosya türü');
+    if (file.size > 2 * 1024 * 1024) throw new Error('Dosya 2MB\'den büyük olamaz');
+
+    const ext = file.name.split('.').pop().toLowerCase() || 'jpg';
+    const path = `${userId}/avatar.${ext}`;
+
+    // Önce mevcut dosyayı sil (overwrite için)
+    await sb().storage.from('avatars').remove([path]).catch(() => {});
+
+    const { data, error } = await sb().storage
+      .from('avatars')
+      .upload(path, file, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: file.type
+      });
+    if (error) throw error;
+
+    // Public URL al
+    const { data: urlData } = sb().storage.from('avatars').getPublicUrl(path);
+    const publicUrl = urlData?.publicUrl;
+    if (!publicUrl) throw new Error('Public URL alınamadı');
+
+    // Cache bust için timestamp ekle
+    return `${publicUrl}?t=${Date.now()}`;
+  },
+
+  /**
+   * Avatar URL'ini profile'a kaydet
+   */
+  async saveAvatarUrl(userId, url) {
+    const { error } = await sb()
+      .from('profiles')
+      .update({ avatar_url: url, updated_at: new Date().toISOString() })
+      .eq('id', userId);
+    if (error) throw error;
+    return url;
+  }
+};
+
+// =====================================================
 // 🛠️ YARDIMCI FONKSİYONLAR
 // =====================================================
 
@@ -783,6 +868,7 @@ window.DB = {
   Notifications,
   Ratings,
   Venues,
+  Storage,
   error: dbError,
   test: testSupabaseConnection
 };

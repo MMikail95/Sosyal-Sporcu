@@ -169,25 +169,28 @@
                 <div class="glass-card"
                     style="display: flex; gap: 2rem; align-items: center; padding: 1.5rem; margin-bottom: 1.5rem;">
                     <div class="avatar-container" style="width: 100px; height: 100px; margin-bottom: 0;">
-                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Manager1" class="avatar-img"
-                            id="profile-avatar">
+                        <img src="" class="avatar-img" id="profile-avatar"
+                             style="background:#1a1a1a;">
                         <div class="camera-overlay" onclick="document.getElementById('avatar-upload').click()">
                             <i class="fa-solid fa-camera"></i>
                         </div>
-                        <input type="file" id="avatar-upload" class="avatar-upload-input" accept="image/*">
+                        <input type="file" id="avatar-upload" class="avatar-upload-input" accept="image/*"
+                               onchange="handleAvatarUpload(this)">
                     </div>
                     <div>
-                        <h1 class="player-name" id="player-name" style="font-size: 2.2rem; margin-bottom: 0.2rem;">Mikimon</h1>
-                        <div style="display: flex; gap: 1rem; color: var(--text-muted);">
-                            <span><i class="fa-solid fa-shirt"></i> Yıldızlar FC</span>
-                            <span><i class="fa-solid fa-building"></i> İstanbul</span>
-                            <span id="disp-age-header"><i class="fa-solid fa-cake-candles"></i> 24 Yaş</span>
+                        <h1 class="player-name" id="player-name" style="font-size: 2.2rem; margin-bottom: 0.2rem;">—</h1>
+                        <div style="display: flex; gap: 1rem; color: var(--text-muted); flex-wrap:wrap;">
+                            <span id="disp-team-header" style="display:none;"><i class="fa-solid fa-shirt"></i> <span id="disp-team-header-name"></span></span>
+                            <span id="disp-city-header" style="display:none;"><i class="fa-solid fa-building"></i> <span id="disp-city-header-val"></span></span>
+                            <span id="disp-age-header" style="display:none;"><i class="fa-solid fa-cake-candles"></i> <span id="disp-age-header-val"></span> Yaş</span>
                         </div>
                     </div>
                     <div style="margin-left: auto; text-align: right;">
-                        <div style="font-size: 0.9rem; color: var(--text-muted);">Toplam</div>
-                        <div id="overall-rating-display" style="font-size: 1.8rem; font-weight: 800; color: var(--neon-green);" title="GEN Skoru">—</div>
-                        <div style="font-size: 0.8rem; color: #888;">GEN Skoru</div>
+                        <div id="overall-rating-display"
+                             style="font-size: 3rem; font-weight: 900; color: var(--neon-green);
+                                    text-shadow: 0 0 20px rgba(173,255,47,0.6);
+                                    line-height:1;" title="GEN Skoru">—</div>
+                        <div style="font-size: 0.75rem; font-weight:700; color: #888; letter-spacing:2px;">GEN</div>
                     </div>
                 </div>
 
@@ -250,6 +253,14 @@
                                             <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
                                                 <span class="info-label">Şehir</span>
                                                 <span class="info-val" id="disp-city-gb">—</span>
+                                            </div>
+                                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                                                <span class="info-label">Boy / Kilo</span>
+                                                <span class="info-val" id="disp-height-weight-gb">—</span>
+                                            </div>
+                                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                                                <span class="info-label">Takım</span>
+                                                <span class="info-val" id="disp-team-gb" style="color:var(--neon-cyan)">—</span>
                                             </div>
                                             <!-- Gizli — script.js uyumluluğu için -->
                                             <span id="disp-height-gb" style="display:none;"></span>
@@ -342,10 +353,16 @@
                                         style="position:relative; min-height:400px; display:flex; flex-direction:column;">
                                         <h3 style="color: #888; font-size: 1rem; margin-bottom: 0;">OYUNCU PROFİLİ</h3>
                                         <!-- GEN Badge -->
-                                        <div style="position:absolute; top:1.5rem; right:1.5rem; border: 1px solid var(--neon-green); background: rgba(0,0,0,0.4); padding: 5px 12px; border-radius: 8px;">
+                                        <div style="position:absolute; top:1.5rem; right:1.5rem;
+                                             border: 2px solid var(--neon-green);
+                                             background: rgba(0,0,0,0.6);
+                                             padding: 8px 18px; border-radius: 12px;
+                                             box-shadow: 0 0 20px rgba(173,255,47,0.3);">
                                             <span id="overall-rating-disp"
-                                                style="color: var(--neon-green); font-size: 1.5rem; font-weight:800;">88</span>
-                                            <span style="font-size:0.8rem; font-weight:600; color:#fff;"> GEN</span>
+                                                style="color: var(--neon-green); font-size: 2.8rem; font-weight:900;
+                                                       text-shadow: 0 0 15px rgba(173,255,47,0.5);
+                                                       line-height:1;">88</span>
+                                            <span style="font-size:0.8rem; font-weight:700; color:#fff; display:block; text-align:center; letter-spacing:2px;">GEN</span>
                                         </div>
                                         <div style="position: relative; height: 350px; width: 100%; display: block !important;">
                                             <canvas id="profileChart" width="400" height="400"></canvas>
@@ -354,23 +371,17 @@
                                 </div>
                             </div>
 
-                            <!-- BOTTOM: STATS -->
-                            <div class="gb-bottom-stats"
-                                style="margin-top:1.5rem; display:grid; grid-template-columns:repeat(4, 1fr); gap:1.5rem;">
-                                <div class="glass-card stat-box-bottom">
-                                    <span class="sb-val" id="disp-total-matches">45</span><span class="sb-label">MAÇ</span>
+                            <!-- BOTTOM: STATS — KALDIRILDI (#10) -->
+
+                            <!-- UI-07: ROZET ŞERİDİ — kazanılan başarımlar -->
+                            <div id="badge-strip-container" class="glass-card"
+                                 style="margin-top:1.5rem; padding:1rem 1.25rem; min-height:60px;">
+                                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem;">
+                                    <i class="fa-solid fa-medal" style="color:gold; font-size:0.9rem;"></i>
+                                    <span style="font-size:0.75rem; font-weight:700; color:#888; letter-spacing:1px; text-transform:uppercase;">Kazanılan Rozetler</span>
                                 </div>
-                                <div class="glass-card stat-box-bottom">
-                                    <span class="sb-val" id="disp-total-goals" style="color:var(--neon-green)">32</span>
-                                    <span class="sb-label">GOL</span>
-                                </div>
-                                <div class="glass-card stat-box-bottom">
-                                    <span class="sb-val" id="disp-total-assists" style="color:var(--neon-cyan)">18</span>
-                                    <span class="sb-label">ASİST</span>
-                                </div>
-                                <div class="glass-card stat-box-bottom">
-                                    <span class="sb-val" id="stat-avg-score" style="color:var(--neon-pink)">—</span>
-                                    <span class="sb-label">ORT. PUAN</span>
+                                <div id="badge-strip" style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center;">
+                                    <span style="color:#444; font-size:0.82rem;">— henüz rozet yok —</span>
                                 </div>
                             </div>
                         </div>
@@ -415,7 +426,12 @@
                                     </div>
                                     <div class="detail-field form-badge-field">
                                         <label class="detail-label"><i class="fa-solid fa-arrow-trend-up"></i> Form</label>
-                                        <span class="form-badge good">🔥 Yüksek</span>
+                                        <select id="sel-form" class="profile-select detail-inp" onchange="syncProfileData()">
+                                            <option value="Yüksek">🔥 Yüksek</option>
+                                            <option value="Orta" selected>⚡ Orta</option>
+                                            <option value="Düşük">📉 Düşük</option>
+                                            <option value="Formda Değil">❄️ Formda Değil</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -473,27 +489,7 @@
                                 </div>
                             </div>
 
-                            <!-- SECTION 2.5: KARİYER İSTATİSTİKLERİ -->
-                            <div class="detail-section glass-card">
-                                <div class="detail-section-header">
-                                    <i class="fa-solid fa-chart-line"></i>
-                                    <h4>KARİYER İSTATİSTİKLERİ</h4>
-                                </div>
-                                <div class="detail-identity-grid">
-                                    <div class="detail-field">
-                                        <label class="detail-label">Maç</label>
-                                        <input type="number" id="inp-total-matches" class="profile-input detail-inp" placeholder="0" onchange="syncProfileData()">
-                                    </div>
-                                    <div class="detail-field">
-                                        <label class="detail-label" style="color:var(--neon-green)">Gol</label>
-                                        <input type="number" id="inp-total-goals" class="profile-input detail-inp" placeholder="0" onchange="syncProfileData()">
-                                    </div>
-                                    <div class="detail-field">
-                                        <label class="detail-label" style="color:var(--neon-cyan)">Asist</label>
-                                        <input type="number" id="inp-total-assists" class="profile-input detail-inp" placeholder="0" onchange="syncProfileData()">
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- KARİYER İSTATİSTİKLERİ — Kişisel İstatistiklerle birleştirildi (#12) -->
 
                             <!-- SECTION 3: SAHA İÇİ KARAKTER (Segmented Controls) -->
                             <div class="detail-section glass-card">
@@ -695,7 +691,7 @@
                                 </div>
                             </div>
 
-                            <!-- SECTION 5: İSTATİSTİKLER -->
+                            <!-- SECTION 5: KİŞİSEL İSTATİSTİKLER -->
                             <div class="detail-section glass-card">
                                 <div class="detail-section-header">
                                     <i class="fa-solid fa-chart-bar" style="color:var(--neon-green)"></i>
@@ -704,25 +700,28 @@
                                 <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.75rem; margin-top:0.5rem;">
                                     <div class="detail-field">
                                         <label class="detail-label"><i class="fa-solid fa-calendar-check" style="color:#aaa"></i> Toplam Maç</label>
-                                        <input type="number" id="inp-total-matches" class="profile-input detail-inp"
+                                        <input type="number" id="inp-total-matches-detail" class="profile-input detail-inp"
                                                min="0" max="9999" placeholder="0"
-                                               style="width:100%; padding:0.5rem 0.7rem; border-radius:8px; font-size:1rem; font-weight:700; text-align:center;">
+                                               style="width:100%; padding:0.5rem 0.7rem; border-radius:8px; font-size:1rem; font-weight:700; text-align:center;"
+                                               onchange="syncProfileData()">
                                     </div>
                                     <div class="detail-field">
                                         <label class="detail-label"><i class="fa-solid fa-futbol" style="color:var(--neon-green)"></i> Toplam Gol</label>
-                                        <input type="number" id="inp-total-goals" class="profile-input detail-inp"
+                                        <input type="number" id="inp-total-goals-detail" class="profile-input detail-inp"
                                                min="0" max="9999" placeholder="0"
-                                               style="width:100%; padding:0.5rem 0.7rem; border-radius:8px; font-size:1rem; font-weight:700; text-align:center;">
+                                               style="width:100%; padding:0.5rem 0.7rem; border-radius:8px; font-size:1rem; font-weight:700; text-align:center;"
+                                               onchange="syncProfileData()">
                                     </div>
                                     <div class="detail-field">
                                         <label class="detail-label"><i class="fa-solid fa-hands-helping" style="color:var(--neon-cyan)"></i> Toplam Asist</label>
-                                        <input type="number" id="inp-total-assists" class="profile-input detail-inp"
+                                        <input type="number" id="inp-total-assists-detail" class="profile-input detail-inp"
                                                min="0" max="9999" placeholder="0"
-                                               style="width:100%; padding:0.5rem 0.7rem; border-radius:8px; font-size:1rem; font-weight:700; text-align:center;">
+                                               style="width:100%; padding:0.5rem 0.7rem; border-radius:8px; font-size:1rem; font-weight:700; text-align:center;"
+                                               onchange="syncProfileData()">
                                     </div>
                                 </div>
                                 <p style="font-size:0.75rem; color:#555; margin-top:0.5rem; text-align:center;">
-                                    <i class="fa-solid fa-info-circle"></i> Bu veriler Genel Bakış'ta ve profilinizde gösterilir
+                                    <i class="fa-solid fa-info-circle"></i> Bu veriler Genel Bakış ve Yetenekler sekmesiyle senkronize çalışır
                                 </p>
                             </div>
 
@@ -754,35 +753,24 @@
                         <div id="tab-maclar" class="profile-subtab" style="display:none;">
                             <div class="glass-card">
                                 <h4 class="attr-header">SON MAÇLAR</h4>
-                                <table class="history-table">
+                                <div id="match-history-loading" style="text-align:center; padding:2rem; display:none;">
+                                    <i class="fa-solid fa-spinner fa-spin" style="font-size:1.5rem; color:#444;"></i>
+                                </div>
+                                <table class="history-table" id="match-history-table">
                                     <thead>
                                         <tr>
+                                            <th>Tarih</th>
                                             <th>Maç</th>
                                             <th>Takım</th>
+                                            <th>Mevki</th>
                                             <th>Gol</th>
                                             <th>Asist</th>
                                             <th>Puan</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>Hafta 42</td>
-                                            <td>Yıldızlar FC</td>
-                                            <td style="color:var(--neon-green)">2</td>
-                                            <td>1</td>
-                                            <td><span class="rating-badge">8.4</span>
-                                                <button class="btn-verify" onclick="toggleMatchVerification(this)">Ben de Vardım</button>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>Hafta 41</td>
-                                            <td>Yıldızlar FC</td>
-                                            <td style="color:var(--neon-green)">0</td>
-                                            <td>3</td>
-                                            <td><span class="rating-badge">9.1</span>
-                                                <button class="btn-verify" onclick="toggleMatchVerification(this)">Ben de Vardım</button>
-                                            </td>
-                                        </tr>
+                                    <tbody id="match-history-body">
+                                        <!-- Rendered by loadMatchHistory() -->
+                                        <tr><td colspan="7" style="text-align:center; color:#555; padding:2rem;">Maç geçmişi yükleniyor...</td></tr>
                                     </tbody>
                                 </table>
                             </div>
