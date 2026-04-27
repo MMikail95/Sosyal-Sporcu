@@ -827,8 +827,9 @@ function renderTeamMemberGrid() {
   const container = document.getElementById('team-member-grid');
   if (!container) return;
 
+  const isCA = _tmIsCapOrAdmin(); // FAZ 5D: Kaptan kontrolü
   const posColors = { KL:'#ffd700', DEF:'#00e5ff', OS:'#00ff88', FV:'#ff007f' };
-  const byPos = { KL:[], DEF:[], OS:[], FV:[], Diğer:[] };
+  const byPos = { KL:[], DEF:[], OS:[], FV:[], 'Diğer':[] };
 
   _tmState.members.forEach(m => {
     const pos = (m.player?.position || 'OS').toUpperCase();
@@ -837,12 +838,23 @@ function renderTeamMemberGrid() {
   });
 
   const posOrder  = ['KL','DEF','OS','FV','Diğer'];
-  const posLabels = { KL:'🧤 KALE', DEF:'🛡️ DEFANS', OS:'⚡ ORTA SAHA', FV:'⚽ FORVET', Diğer:'👟 DİĞER' };
+  const posLabels = { KL:'🧤 KALE', DEF:'🛡️ DEFANS', OS:'⚡ ORTA SAHA', FV:'⚽ FORVET', 'Diğer':'👟 DİĞER' };
+
+  const roleBadge = (role) => {
+    if (role === 'captain')    return `<span style="font-size:0.6rem;background:rgba(255,215,0,0.15);border:1px solid rgba(255,215,0,0.4);color:#ffd700;border-radius:4px;padding:1px 4px;margin-left:3px;">KAPTAN</span>`;
+    if (role === 'substitute') return `<span style="font-size:0.6rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#666;border-radius:4px;padding:1px 4px;margin-left:3px;">YEDEK</span>`;
+    return '';
+  };
 
   container.innerHTML = `
     <div class="section-label-pill" style="margin-bottom:1.5rem;">
       <i class="fa-solid fa-users"></i> TÜM KADRO (${_tmState.members.length} Oyuncu)
     </div>
+    ${!isCA ? `<div style="display:flex;align-items:center;gap:0.5rem;background:rgba(255,255,255,0.03);
+        border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:0.6rem 1rem;
+        margin-bottom:1rem;font-size:0.8rem;color:#666;">
+        <i class="fa-solid fa-eye"></i> Görüntüleme modundasın. Düzenleme yetkisi kaptana aittir.
+    </div>` : ''}
     ${posOrder.map(pos => {
       if (!byPos[pos]?.length) return '';
       const col = posColors[pos] || '#aaa';
@@ -853,9 +865,9 @@ function renderTeamMemberGrid() {
         </div>
         <div class="member-row">
           ${byPos[pos].map(m => {
-            const p   = m.player || {};
-            const gen = _tmPlayerGEN(p);
-            const isCap = m.role === 'captain';
+            const p      = m.player || {};
+            const gen    = _tmPlayerGEN(p);
+            const isCap  = m.role === 'captain';
             return `
             <div class="member-chip" onclick="viewPlayerFromTeam('${p.id}')" title="${p.username||'—'} — GEN ${gen}">
               <img src="${_tmAvatar(p.username)}" class="member-chip-avatar">
@@ -863,9 +875,14 @@ function renderTeamMemberGrid() {
                 <span class="member-chip-name">
                   ${p.username || '—'}
                   ${isCap ? '<i class="fa-solid fa-crown" style="color:#ffd700;font-size:0.7rem;"></i>' : ''}
+                  ${roleBadge(m.role)}
                 </span>
                 <span class="member-chip-gen" style="color:${gen>=80?'var(--neon-green)':'orange'};">${gen} GEN</span>
               </div>
+              ${isCA && !isCap ? `<button class="member-chip-remove" title="Takımdan Çıkar"
+                  onclick="event.stopPropagation();_tmRemoveMemberPrompt('${p.id}','${p.username||'Oyuncu'}')">
+                <i class="fa-solid fa-user-minus"></i>
+              </button>` : ''}
             </div>`;
           }).join('')}
         </div>
@@ -874,9 +891,29 @@ function renderTeamMemberGrid() {
   `;
 }
 
+
 // ──────────────────────────────────────────────────────
+
+// FAZ 5D — Kaptan: Üye Çıkarma Onay Dialogu
+window._tmRemoveMemberPrompt = async function(playerId, playerName) {
+  if (!_tmIsCapOrAdmin()) return;
+  const confirmed = confirm(`"${playerName}" adlı oyuncuyu takımdan çıkarmak istediğinizden emin misiniz?`);
+  if (!confirmed) return;
+
+  try {
+    await window.DB.Teams.removeMember(_tmState.team.id, playerId);
+    window.showToast?.(`✅ ${playerName} takımdan çıkarıldı.`, 'success');
+    // State'i güncelle
+    _tmState.members = _tmState.members.filter(m => m.player_id !== playerId && m.player?.id !== playerId);
+    renderTeamMemberGrid();
+  } catch(e) {
+    window.showToast?.('❌ Çıkarma işlemi başarısız: ' + e.message, 'error');
+  }
+};
+
 // 10. SUB-TAB NAVİGASYON
 // ──────────────────────────────────────────────────────
+
 
 window.switchTeamTab = function(tabId) {
   document.querySelectorAll('.team-subtab').forEach(el => {

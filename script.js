@@ -689,28 +689,50 @@ document.addEventListener('DOMContentLoaded', async () => {
 /**
  * Takımım sayfasından bir oyuncunun profiline geç
  */
-window.viewPlayerFromTeam = function(playerId) {
-    const player = players.find(p => p.id === playerId);
-    if (!player) return;
+window.viewPlayerFromTeam = async function(playerId) {
+    const currentUserId = window.__AUTH_USER__?.id;
 
-    // Önceki sekmeyi kaydet (geri dönüş için)
-    window.previousSection = 'takimim';
+    // Kendi profiliyse → tam profil aç
+    if (currentUserId && playerId === currentUserId) {
+        window.previousSection = 'takimim';
+        activePlayerId = playerId;
+        showSection._fromViewPlayer = true;
+        showSection('profile');
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelector('.nav-item[data-target="profile"]')?.classList.add('active');
+        setTimeout(() => applyProfileViewMode(), 150);
+        return;
+    }
 
-    // Switch the viewed profile
-    activePlayerId = playerId;
+    // FAZ 5D — Arkadaşlık kontrolü
+    let isFriend = false;
+    if (currentUserId && window.DB) {
+        try {
+            const fs = await window.DB.Friends.checkStatus(currentUserId, playerId);
+            isFriend = fs?.status === 'accepted';
+        } catch(e) {}
+    }
 
-    // Flag: showSection'a bu çağrının nav click'ten değil programdan geldiğini bildir
-    showSection._fromViewPlayer = true;
-
-    // Navigate to profile section
-    showSection('profile');
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const profileNav = document.querySelector('.nav-item[data-target="profile"]');
-    if (profileNav) profileNav.classList.add('active');
-
-    // View-only banner göster
-    setTimeout(() => applyProfileViewMode(), 150);
+    if (isFriend) {
+        // Arkadaş → tam profil görünümü (view-only)
+        window.previousSection = 'takimim';
+        activePlayerId = playerId;
+        showSection._fromViewPlayer = true;
+        showSection('profile');
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelector('.nav-item[data-target="profile"]')?.classList.add('active');
+        setTimeout(() => applyProfileViewMode(), 150);
+    } else {
+        // Arkadaş değil → Sınırlı profil modalı
+        const members = window._tmState?.members || [];
+        const member  = members.find(m => m.player_id === playerId || m.player?.id === playerId);
+        const pName   = member?.player?.username || 'Oyuncu';
+        if (typeof showProfileModal === 'function') {
+            showProfileModal(playerId, pName, 'team');
+        }
+    }
 };
+
 
 function setupNavigation() {
     const navItems = document.querySelectorAll('.nav-item');

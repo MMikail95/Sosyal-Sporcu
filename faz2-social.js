@@ -214,13 +214,13 @@ window.viewExploreProfile = async function(playerId, username) {
         return;
     }
 
-    // Başka kullanıcı → Supabase'den çek + modal göster
-    showProfileModal(playerId, username);
+    // Arkadaşlık durumunu önce kontrol et, sonra modalı aç
+    showProfileModal(playerId, username, 'explore');
 };
 
-// ── Kullanıcı profil modalı ──
-async function showProfileModal(playerId, username) {
-    // Modal varsa kaldır
+// ── Kullanıcı profil modalı — FAZ 5 Gizlilik Katmanı ──
+async function showProfileModal(playerId, username, context = 'explore') {
+    // Varsa temizle
     document.getElementById('user-profile-modal')?.remove();
 
     const modal = document.createElement('div');
@@ -244,14 +244,44 @@ async function showProfileModal(playerId, username) {
     document.body.appendChild(modal);
 
     try {
-        // Supabase'den profil çek
+        const myId = window.__AUTH_USER__?.id;
+
+        // Arkadaşlık durumunu kontrol et
+        let friendStatus = null;
+        let friendshipId = null;
+        if (myId && window.DB) {
+            try {
+                friendStatus = await window.DB.Friends.checkStatus(myId, playerId);
+                friendshipId = friendStatus?.id;
+            } catch(e) {}
+        }
+
+        const isAccepted   = friendStatus?.status === 'accepted';
+        const isPending    = friendStatus?.status === 'pending';
+        const iRequested   = isPending && friendStatus?.requester_id === myId;
+        const theyRequested = isPending && friendStatus?.addressee_id === myId;
+        const isFriendOrSelf = myId === playerId || isAccepted;
+
+        // Profil verisini çek
+        // Arkadaş değilse → sadece public_profiles view'ından çek (RLS koruması)
+        // Arkadaşsa → tam profil
         let profile = null;
         if (window.DB) {
-            profile = await window.DB.Profiles.get(playerId);
+            if (isFriendOrSelf) {
+                profile = await window.DB.Profiles.get(playerId);
+            } else {
+                // Yabancı → public_profiles view'ından çek
+                const { data } = await window.sbClient
+                    .from('public_profiles')
+                    .select('*')
+                    .eq('id', playerId)
+                    .single();
+                profile = data;
+            }
         }
+        // Fallback: explorePlayers cache
         if (!profile) {
-            // explorePlayers'dan fallback
-            profile = explorePlayers.find(p => p.id === playerId);
+            profile = (typeof explorePlayers !== 'undefined' ? explorePlayers : []).find(p => p.id === playerId);
         }
 
         if (!profile) {
@@ -260,37 +290,101 @@ async function showProfileModal(playerId, username) {
             return;
         }
 
-        // Arkadaşlık durumu
-        let friendStatus = null;
-        let friendshipId = null;
-        const myId = window.__AUTH_USER__?.id;
-        if (myId && window.DB) {
-            try {
-                friendStatus = await window.DB.Friends.checkStatus(myId, playerId);
-                friendshipId = friendStatus?.id;
-            } catch(e) {}
-        }
-
         const avatarSeed = profile.username || profile.id;
         const avatarUrl  = profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(avatarSeed)}`;
         const gen        = Math.round(profile.gen_score || profile.community_gen || 70);
         const genColor   = gen >= 85 ? 'var(--neon-green)' : gen >= 75 ? 'var(--neon-cyan)' : 'orange';
-        const posIcon    = { KL:'🧤', DEF:'🛡️', OS:'⚡', FV:'⚽' }[profile.position] || '⚽';
+        const posIcon    = { KL:'\uD83E\uDDE4', DEF:'\uD83D\uDEE1\uFE0F', OS:'\u26A1', FV:'\u26BD' }[profile.position] || '\u26BD';
 
-        const isAccepted  = friendStatus?.status === 'accepted';
-        const isPending   = friendStatus?.status === 'pending';
-        const iRequested  = isPending && friendStatus?.requester_id === myId;
-        const theyRequested = isPending && friendStatus?.addressee_id === myId;
+        // ─── GİZLİLİK KONT ROLÜ ───
+        if (!isFriendOrSelf) {
+            // SİNİRLI PROFIL — Yabancı görünümü
+            document.getElementById('upm-body').dataset.profileId   = playerId;
+            document.getElementById('upm-body').dataset.profileName = profile.username || username;
+            document.getElementById('upm-body').innerHTML = `
+            <!-- Kilitli Profil Bannerı -->
+            <div style="background:rgba(255,200,0,0.07); border:1px solid rgba(255,200,0,0.2);
+                        border-radius:12px; padding:0.6rem 1rem; margin-bottom:1.2rem;
+                        display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; color:#ffc800;">
+                <i class="fa-solid fa-lock"></i>
+                Bu profil sadece arkadaşlara tam görünür. Arkadaş ol!
+            </div>
 
+            <!-- Avatar & İsim -->
+            <div style="display:flex; flex-direction:column; align-items:center; gap:0.75rem; margin-bottom:1.5rem;">
+                <div style="position:relative; display:inline-block;">
+                    <img src="${avatarUrl}" style="width:80px; height:80px; border-radius:50%;
+                                                  border:3px solid ${genColor}; filter:brightness(0.9);"
+                         onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fb'">
+                    <div style="position:absolute; bottom:-4px; right:-4px; background:#0a0a0f;
+                                border:1px solid ${genColor}; border-radius:8px; font-size:0.7rem;
+                                font-weight:800; color:${genColor}; padding:2px 6px;">
+                        ${gen} GEN
+                    </div>
+                </div>
+                <div>
+                    <h3 style="margin:0; font-size:1.2rem; font-weight:800;">${profile.username || profile.full_name || 'Oyuncu'}</h3>
+                    <span style="font-size:0.8rem; color:var(--neon-cyan);">${posIcon} ${profile.ana_mevki || profile.position || 'Oyuncu'}</span>
+                    ${profile.city ? `<span style="display:block; font-size:0.75rem; color:#555; margin-top:2px;"><i class="fa-solid fa-location-dot"></i> ${profile.city}</span>` : ''}
+                </div>
+            </div>
+
+            <!-- Kilitli İstatistikler -->
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:0.5rem; margin-bottom:1.25rem;">
+                ${['Maç','Gol','Asist'].map((l,i) => {
+                    const vals = [profile.total_matches, profile.total_goals, profile.total_assists];
+                    return `<div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+                                        border-radius:10px; padding:0.5rem; text-align:center;">
+                        <div style="font-size:1rem; font-weight:800; color:#f0f0f0;">${vals[i] ?? '?'}</div>
+                        <div style="font-size:0.65rem; color:#555; text-transform:uppercase;">${l}</div>
+                    </div>`;
+                }).join('')}
+            </div>
+
+            <!-- Kilitli Stat Kartları -->
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:0.5rem; margin-bottom:1.5rem;">
+                ${['Teknik','\u015eut','Pas','Hız','Fizik','Kondisyon'].map(l => `
+                <div style="background:rgba(255,255,255,0.03); border:1px dashed rgba(255,255,255,0.07);
+                            border-radius:10px; padding:0.5rem; text-align:center; filter:blur(3px);">
+                    <div style="font-size:1rem; font-weight:800; color:#555;">??</div>
+                    <div style="font-size:0.65rem; color:#444; text-transform:uppercase;">${l}</div>
+                </div>`).join('')}
+            </div>
+
+            <!-- Aksiyon -->
+            <div style="display:flex; gap:0.75rem; justify-content:center;">
+                ${iRequested
+                    ? `<button class="btn-outline" disabled style="opacity:0.5;">
+                            <i class="fa-solid fa-clock"></i> İstek Gönderildi
+                        </button>`
+                    : theyRequested
+                    ? `<button class="btn-primary" onclick="acceptFriendFromModal('${friendshipId}', this)"
+                            style="background:linear-gradient(135deg,var(--neon-green),#6fff00); color:#0a0a0f;">
+                            <i class="fa-solid fa-check"></i> İsteği Kabul Et
+                        </button>`
+                    : myId
+                    ? `<button class="btn-primary" id="upm-friend-btn"
+                            onclick="sendFriendFromModal('${playerId}', '${profile.username || username}', this)"
+                            style="background:linear-gradient(135deg,var(--neon-green),#6fff00); color:#0a0a0f;">
+                            <i class="fa-solid fa-user-plus"></i> Arkadaş Ekle
+                        </button>`
+                    : ''}
+            </div>`;
+            return;
+        }
+
+        // ─── TAM PROFIL — Arkadaş veya Kendisi ───
         const ratingStats = [
             { label:'Teknik',    val: profile.rating_teknik    || profile.community_teknik    || 70 },
-            { label:'Şut',       val: profile.rating_sut       || profile.community_sut       || 70 },
+            { label:'\u015eut',       val: profile.rating_sut       || profile.community_sut       || 70 },
             { label:'Pas',       val: profile.rating_pas       || profile.community_pas       || 70 },
             { label:'Hız',       val: profile.rating_hiz       || profile.community_hiz       || 70 },
             { label:'Fizik',     val: profile.rating_fizik     || profile.community_fizik     || 70 },
             { label:'Kondisyon', val: profile.rating_kondisyon || profile.community_kondisyon || 70 },
         ];
 
+        document.getElementById('upm-body').dataset.profileId   = playerId;
+        document.getElementById('upm-body').dataset.profileName = profile.username || username;
         document.getElementById('upm-body').innerHTML = `
         <!-- Avatar & İsim -->
         <div style="display:flex; flex-direction:column; align-items:center; gap:0.75rem; margin-bottom:1.5rem;">
@@ -298,6 +392,76 @@ async function showProfileModal(playerId, username) {
                 <img src="${avatarUrl}" style="width:80px; height:80px; border-radius:50%; border:3px solid ${genColor};"
                      onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fb'">
                 <div style="position:absolute; bottom:-4px; right:-4px; background:#0a0a0f; border:1px solid ${genColor};
+                            border-radius:8px; font-size:0.7rem; font-weight:800; color:${genColor}; padding:2px 6px;">
+                    ${gen} GEN
+                </div>
+            </div>
+            <div>
+                <h3 style="margin:0; font-size:1.2rem; font-weight:800;">${profile.username || profile.full_name || 'Oyuncu'}</h3>
+                <span style="font-size:0.8rem; color:var(--neon-cyan);">${posIcon} ${profile.ana_mevki || profile.position || 'Oyuncu'}</span>
+                ${profile.city ? `<span style="display:block; font-size:0.75rem; color:#555; margin-top:2px;"><i class="fa-solid fa-location-dot"></i> ${profile.city}</span>` : ''}
+            </div>
+        </div>
+
+        <!-- İstatistikler -->
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:0.5rem; margin-bottom:1.25rem;">
+            ${ratingStats.map(r => `
+            <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:0.5rem; text-align:center;">
+                <div style="font-size:1rem; font-weight:800; color:#f0f0f0;">${Math.round(r.val)}</div>
+                <div style="font-size:0.65rem; color:#555; text-transform:uppercase; letter-spacing:0.5px;">${r.label}</div>
+            </div>`).join('')}
+        </div>
+
+        <!-- Maç / Gol / Asist -->
+        <div style="display:flex; gap:0.75rem; justify-content:center; margin-bottom:1.5rem;">
+            <div style="text-align:center;">
+                <div style="font-size:1.2rem; font-weight:800;">${profile.total_matches || 0}</div>
+                <div style="font-size:0.7rem; color:#555;">Maç</div>
+            </div>
+            <div style="width:1px; background:rgba(255,255,255,0.08);"></div>
+            <div style="text-align:center;">
+                <div style="font-size:1.2rem; font-weight:800; color:var(--neon-green);">${profile.total_goals || 0}</div>
+                <div style="font-size:0.7rem; color:#555;">Gol</div>
+            </div>
+            <div style="width:1px; background:rgba(255,255,255,0.08);"></div>
+            <div style="text-align:center;">
+                <div style="font-size:1.2rem; font-weight:800; color:var(--neon-cyan);">${profile.total_assists || 0}</div>
+                <div style="font-size:0.7rem; color:#555;">Asist</div>
+            </div>
+        </div>
+
+        <!-- Aksiyonlar -->
+        <div style="display:flex; gap:0.75rem; justify-content:center;">
+            ${isAccepted
+                ? `<button class="btn-outline" disabled style="opacity:0.5;">
+                       <i class="fa-solid fa-user-check"></i> Arkadaş
+                   </button>`
+                : iRequested
+                ? `<button class="btn-outline" disabled style="opacity:0.5;">
+                       <i class="fa-solid fa-clock"></i> İstek Gönderildi
+                   </button>`
+                : theyRequested
+                ? `<button class="btn-primary" onclick="acceptFriendFromModal('${friendshipId}', this)"
+                       style="background:linear-gradient(135deg,var(--neon-green),#6fff00); color:#0a0a0f;">
+                       <i class="fa-solid fa-check"></i> İsteği Kabul Et
+                   </button>`
+                : myId
+                ? `<button class="btn-primary" id="upm-friend-btn"
+                       onclick="sendFriendFromModal('${playerId}', '${profile.username || username}', this)"
+                       style="background:linear-gradient(135deg,var(--neon-green),#6fff00); color:#0a0a0f;">
+                       <i class="fa-solid fa-user-plus"></i> Arkadaş Ekle
+                   </button>`
+                : ''}
+            <button class="btn-outline" onclick="openMatchInviteModal()">
+                <i class="fa-solid fa-paper-plane"></i> Davet Et
+            </button>
+        </div>`;
+    } catch(e) {
+        console.error('Profile modal error:', e);
+        document.getElementById('upm-body').innerHTML =
+            `<p style="color:#ff4d4d;">Profil yüklenirken hata oluştu.</p>`;
+    }
+}
                             border-radius:8px; font-size:0.7rem; font-weight:800; color:${genColor}; padding:2px 6px;">
                     ${gen} GEN
                 </div>
@@ -849,6 +1013,28 @@ window.initRealNotifications = async function() {
                     created_at: p.created_at || new Date().toISOString()
                 });
             }
+        }
+        
+        // Takım davetlerini polyfill yap
+        try {
+            const invites = await window.DB.Teams.getMyInvites(user.id);
+            for (const inv of invites) {
+                const exists = notifs.find(n => n.type === 'team_invite' && n.related_id === inv.team_id);
+                if (!exists) {
+                    notifs.unshift({
+                        id: 'virtual_ti_' + inv.id,
+                        type: 'team_invite',
+                        actor_id: inv.team?.captain_id,
+                        related_id: inv.team_id,
+                        title: 'Takım Daveti',
+                        body: `<b>${inv.team?.name || 'Bir takım'}</b> seni kadrosuna davet etti!`,
+                        is_read: false,
+                        created_at: inv.created_at || new Date().toISOString()
+                    });
+                }
+            }
+        } catch(err) {
+            console.warn("Team invite polyfill failed", err);
         }
         
         notifs.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));

@@ -1192,3 +1192,25 @@ body {
 [data-theme="light"] .explore-tab-btn.active { color: #0a0a0f; }
 
 
+/* ──────────────────────────────────────────────────────────────
+   26. NOTIFICATION BELL KONUM DÜZELTMESİ (Hamburger çakışması)
+   ────────────────────────────────────────────────────────────── */
+/* Bell butonu hamburgerin altında kalmasın diye logo boşluğuna (aşağıya) kaydırıldı */
+.notif-bell {
+    top: 4.2rem !important;
+    right: 1.2rem !important;
+    z-index: 1050 !important;
+}
+
+/* Bildirim paneli de bell butonunun hemen altından açılacak şekilde güncellendi */
+.notif-panel {
+    top: 7.2rem !important;
+    bottom: auto !important;
+    z-index: 1060 !important;
+    transform-origin: top !important;
+}
+.notif-panel.open {
+    max-height: 450px !important;
+}
+
+
