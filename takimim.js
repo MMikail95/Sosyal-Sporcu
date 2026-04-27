@@ -103,6 +103,12 @@ async function initTakimim() {
     // Takım üyeliği sorgula
     const teamRow = await DB.Teams.getMyTeam(authUser.id);
     if (!teamRow) {
+      // Eğer state'de zaten bir takım varsa (yeni kuruldu, RLS okuyamıyor)
+      // ekranı sıfırlama — mevcut UI'ı koru
+      if (_tmState.team) {
+        console.log('ℹ️ getMyTeam null döndü ama _tmState.team mevcut, UI korunuyor.');
+        return;
+      }
       _tmState.team    = null;
       _tmState.members = [];
       _tmState.myRole  = null;
@@ -420,11 +426,6 @@ window._tmSubmitCreate = async function() {
     _tmShowSubtabs();
     _tmSubscribeRealtime();
 
-    // Arka planda tam veri yükle (üyeler vb.)
-    setTimeout(async () => {
-      try { await initTakimim(); } catch(e) { /* sessiz */ }
-    }, 1500);
-
   } catch (e) {
     console.error('❌ _tmSubmitCreate error:', e);
     const msg = e.message || 'Bilinmeyen hata';
@@ -453,11 +454,6 @@ window._tmSubmitJoin = async function() {
     _tmState.members = [];
     _tmRenderTeamUI();
     _tmShowSubtabs();
-
-    // Arka planda tam veri yükle
-    setTimeout(async () => {
-      try { await initTakimim(); } catch(e) { /* sessiz */ }
-    }, 1500);
 
   } catch (e) {
     console.error('❌ _tmSubmitJoin error:', e);
