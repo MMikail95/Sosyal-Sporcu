@@ -20,3 +20,6 @@ node_modules/
 # Build çıktıları
 dist/
 build/
+
+# Claude Code dahili klasörü (worktree'ler burada tutulur)
+.claude/
