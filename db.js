@@ -880,6 +880,84 @@ async function testSupabaseConnection() {
 }
 
 // =====================================================
+// ⚽ TAKIM KATILIM İSTEKLERİ
+// =====================================================
+
+const TeamRequests = {
+  // İstek gönder
+  async send(teamId, playerId, message = '') {
+    const { data, error } = await sb()
+      .from('team_join_requests')
+      .insert({ team_id: teamId, player_id: playerId, message, status: 'pending' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  // Kullanıcının belirli takıma olan isteğini getir
+  async getMyRequest(teamId, playerId) {
+    const { data } = await sb()
+      .from('team_join_requests')
+      .select('*')
+      .eq('team_id', teamId)
+      .eq('player_id', playerId)
+      .maybeSingle();
+    return data || null;
+  },
+
+  // Takıma gelen bekleyen istekleri getir (kaptan görür)
+  async getPendingForTeam(teamId) {
+    const { data, error } = await sb()
+      .from('team_join_requests')
+      .select('*, player:player_id(id, username, avatar_url, gen_score, position, ana_mevki, city)')
+      .eq('team_id', teamId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true });
+    if (error) return [];
+    return data || [];
+  },
+
+  // İsteği onayla → takıma üye ekle
+  async approve(requestId) {
+    const { data, error } = await sb()
+      .from('team_join_requests')
+      .update({ status: 'accepted', updated_at: new Date().toISOString() })
+      .eq('id', requestId)
+      .select('team_id, player_id')
+      .single();
+    if (error) throw error;
+    // team_members ve profil güncelle
+    await sb().from('team_members')
+      .insert({ team_id: data.team_id, player_id: data.player_id, role: 'player' });
+    await sb().from('profiles')
+      .update({ current_team_id: data.team_id })
+      .eq('id', data.player_id);
+    return data;
+  },
+
+  // İsteği reddet
+  async reject(requestId) {
+    const { error } = await sb()
+      .from('team_join_requests')
+      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .eq('id', requestId);
+    if (error) throw error;
+  },
+
+  // Bekleyen isteği iptal et
+  async cancel(teamId, playerId) {
+    const { error } = await sb()
+      .from('team_join_requests')
+      .delete()
+      .eq('team_id', teamId)
+      .eq('player_id', playerId)
+      .eq('status', 'pending');
+    if (error) throw error;
+  }
+};
+
+// =====================================================
 // GLOBAL EXPORT
 // =====================================================
 
@@ -888,6 +966,7 @@ window.DB = {
   Profiles,
   Friends,
   Teams,
+  TeamRequests,
   Matches,
   Feed,
   Notifications,

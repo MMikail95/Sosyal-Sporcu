@@ -180,6 +180,25 @@ window.renderKadroTab = function () {
                 </div>`}
             </div>
 
+            <!-- SECTION: Gelen Katılım İstekleri (sadece kaptan görür) -->
+            ${isCapOrAdmin ? `
+            <div class="kadro-section glass-card" id="join-requests-card">
+                <div class="kadro-section-header">
+                    <div class="section-label-pill">
+                        <i class="fa-solid fa-inbox" style="color:var(--neon-green);"></i>
+                        GELEN KATILIM İSTEKLERİ
+                    </div>
+                    <button class="btn-sm btn-accent" onclick="_refreshJoinRequests()" title="Yenile">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                </div>
+                <div id="join-requests-list">
+                    <div style="text-align:center; padding:1.5rem; color:#444;">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor...
+                    </div>
+                </div>
+            </div>` : ''}
+
             <!-- SECTION: Bekleyen Davetler -->
             <div class="kadro-section glass-card" id="pending-invites-card">
                 <div class="kadro-section-header">
@@ -225,9 +244,101 @@ window.renderKadroTab = function () {
             </div>
         </div>
     `;
+    // Kaptan ise join requests'i async yükle
+    if (isCapOrAdmin && t?.id) {
+        _refreshJoinRequests();
+    }
+
     } catch(e) {
         c.innerHTML = `<div style="padding:2rem;color:#ff5555;background:#222;border-radius:10px;"><b>Kadro Sekmesi Hatası:</b> ${e.message}<br>${e.stack}</div>`;
         console.error("renderKadroTab Error:", e);
+    }
+};
+
+// Gelen katılım isteklerini yükle ve renderla
+window._refreshJoinRequests = async function() {
+    const container = document.getElementById('join-requests-list');
+    if (!container) return;
+    const teamId = window._tmState?.team?.id;
+    if (!teamId || !window.DB?.TeamRequests) return;
+
+    container.innerHTML = `<div style="text-align:center; padding:1.5rem; color:#444;">
+        <i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor...
+    </div>`;
+
+    try {
+        const requests = await window.DB.TeamRequests.getPendingForTeam(teamId);
+
+        if (!requests || requests.length === 0) {
+            container.innerHTML = `<div style="text-align:center; padding:1.5rem; color:#555; font-size:0.85rem;">
+                <i class="fa-solid fa-inbox" style="font-size:1.5rem; display:block; margin-bottom:0.5rem; color:#333;"></i>
+                Bekleyen katılım isteği yok.
+            </div>`;
+            return;
+        }
+
+        container.innerHTML = requests.map(req => {
+            const p  = req.player || {};
+            const av = p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.username||'u')}`;
+            const gen = p.gen_score ? Math.round(p.gen_score) : null;
+            const date = req.created_at ? new Date(req.created_at).toLocaleDateString('tr-TR') : '';
+            return `
+            <div class="kadro-table-row" id="jr-row-${req.id}" style="display:flex; align-items:center; gap:0.6rem; padding:0.7rem 0.5rem;">
+                <img src="${av}" style="width:36px; height:36px; border-radius:50%; border:1px solid #333; flex-shrink:0;"
+                     onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=u'">
+                <div style="flex:1; min-width:0;">
+                    <div style="font-size:0.85rem; font-weight:600; color:#ddd;">${p.username || 'Oyuncu'}</div>
+                    <div style="font-size:0.7rem; color:#555;">
+                        ${p.ana_mevki || p.position || 'Oyuncu'}
+                        ${p.city ? ` · ${p.city}` : ''}
+                        ${gen ? ` · <span style="color:var(--neon-green);">${gen} GEN</span>` : ''}
+                        ${date ? ` · ${date}` : ''}
+                    </div>
+                </div>
+                <div style="display:flex; gap:0.4rem; flex-shrink:0;">
+                    <button class="btn-sm btn-success-sm" onclick="_approveJoinRequest('${req.id}', '${req.player_id}')">
+                        <i class="fa-solid fa-check"></i> Kabul
+                    </button>
+                    <button class="btn-sm btn-danger-sm" onclick="_rejectJoinRequest('${req.id}')">
+                        <i class="fa-solid fa-xmark"></i> Reddet
+                    </button>
+                </div>
+            </div>`;
+        }).join('');
+    } catch(e) {
+        container.innerHTML = `<div style="text-align:center; padding:1rem; color:#f55; font-size:0.8rem;">
+            Hata: ${e.message}
+        </div>`;
+    }
+};
+
+window._approveJoinRequest = async function(requestId, playerId) {
+    const row = document.getElementById(`jr-row-${requestId}`);
+    if (row) row.style.opacity = '0.5';
+    try {
+        await window.DB.TeamRequests.approve(requestId);
+        if (row) row.remove();
+        if (typeof showToast === 'function') showToast('✅ Oyuncu takıma eklendi!');
+        // Kadroyu güncelle
+        if (typeof renderKadroTab === 'function') {
+            setTimeout(() => { if (window._tmState?.team) renderKadroTab(); }, 500);
+        }
+    } catch(e) {
+        if (row) row.style.opacity = '1';
+        if (typeof showToast === 'function') showToast('❌ Hata: ' + e.message);
+    }
+};
+
+window._rejectJoinRequest = async function(requestId) {
+    const row = document.getElementById(`jr-row-${requestId}`);
+    if (row) row.style.opacity = '0.5';
+    try {
+        await window.DB.TeamRequests.reject(requestId);
+        if (row) row.remove();
+        if (typeof showToast === 'function') showToast('İstek reddedildi.');
+    } catch(e) {
+        if (row) row.style.opacity = '1';
+        if (typeof showToast === 'function') showToast('❌ Hata: ' + e.message);
     }
 };
 
