@@ -3771,4 +3771,54 @@ input[type="range"]::-webkit-slider-runnable-track {
     .strength-bar-label { width: 90px; font-size: 0.76rem; }
     .icon-picker-grid { grid-template-columns: repeat(5, 1fr); }
 }
+
+/* ── Takım Logo / Crest ── */
+.team-crest-wrap {
+    position: relative;
+    flex-shrink: 0;
+    width: 80px;
+    height: 80px;
+}
+.team-crest-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.05);
+    display: block;
+}
+.team-logo-upload-btn {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(0,255,136,0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.65rem;
+    color: #000;
+    border: 2px solid #121212;
+    transition: background 0.18s;
+    z-index: 2;
+}
+.team-logo-upload-btn:hover {
+    background: #00ff88;
+    transform: scale(1.1);
+}
+/* Mevcut .team-crest içinde wrap varsa boyutu uyarla */
+.team-crest-wrap .team-crest {
+    width: 80px;
+    height: 80px;
+    font-size: 2rem;
+}
+@media (max-width: 768px) {
+    .team-crest-wrap { width: 64px; height: 64px; }
+    .team-crest-img  { width: 64px; height: 64px; }
+    .team-crest-wrap .team-crest { width: 64px; height: 64px; font-size: 1.7rem; }
+}
 

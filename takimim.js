@@ -655,11 +655,25 @@ function _tmRenderHeader() {
   const cap  = t.captain || {};
   const isCA = _tmIsCapOrAdmin();
 
+  const logoUrl   = t.logo_url || '';
+  const crestColor = t.color || _ntcSelectedColor || '#00ff88';
+
   hdr.innerHTML = `
     <div class="team-identity-block">
-      <div class="team-crest" id="team-crest-display" style="color:${_ntcSelectedColor || '#00ff88'};"
-           ${isCA ? 'onclick="openTeamEditModal()" title="Takımı düzenle"' : ''}>
-        <i class="fa-solid fa-shield-cat"></i>
+      <div class="team-crest-wrap" id="team-crest-wrap">
+        ${logoUrl
+          ? `<img src="${logoUrl}" class="team-crest-img" id="team-crest-display" alt="Logo">`
+          : `<div class="team-crest" id="team-crest-display" style="color:${crestColor};">
+               <i class="fa-solid fa-shield-cat"></i>
+             </div>`
+        }
+        ${isCA ? `
+        <label class="team-logo-upload-btn" title="Logo Değiştir" for="team-logo-input">
+          <i class="fa-solid fa-camera"></i>
+        </label>
+        <input type="file" id="team-logo-input" accept="image/*"
+               style="display:none;" onchange="_tmUploadLogo(this)">
+        ` : ''}
       </div>
       <div class="team-name-block">
         <h1 class="team-main-name" id="team-name-display">${t.name}</h1>
@@ -715,6 +729,46 @@ window._tmCopyCode = function(slug) {
   navigator.clipboard?.writeText(slug).then(() => {
     window.showToast?.(`📋 Davet kodu kopyalandı: ${slug}`, 'success');
   });
+};
+
+window._tmUploadLogo = async function(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+
+  const label = document.querySelector('.team-logo-upload-btn');
+  const origHtml = label?.innerHTML;
+  if (label) label.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+  try {
+    const logoUrl = await DB.Teams.uploadTeamLogo(_tmState.team.id, file);
+
+    // State'i güncelle
+    _tmState.team.logo_url = logoUrl;
+    if (_tmState.myTeams) {
+      const row = _tmState.myTeams.find(t => t.id === _tmState.team.id);
+      if (row) row.logo_url = logoUrl;
+    }
+
+    // Cresti yenile — tam render yerine sadece görseli değiştir
+    const crestWrap = document.getElementById('team-crest-wrap');
+    if (crestWrap) {
+      const img = crestWrap.querySelector('.team-crest-img') || document.createElement('img');
+      img.src = logoUrl;
+      img.className = 'team-crest-img';
+      img.id = 'team-crest-display';
+      img.alt = 'Logo';
+      const oldCrest = crestWrap.querySelector('.team-crest');
+      if (oldCrest) oldCrest.replaceWith(img);
+    }
+
+    window.showToast?.('✅ Takım logosu güncellendi!', 'success');
+  } catch (e) {
+    console.error('Logo upload error:', e);
+    window.showToast?.('❌ Logo yüklenemedi: ' + e.message, 'error');
+  } finally {
+    if (label && origHtml) label.innerHTML = origHtml;
+    input.value = '';
+  }
 };
 
 // ──────────────────────────────────────────────────────
@@ -908,9 +962,14 @@ window._tmLeaveOrDissolve = async function() {
     if (!confirm(`"${t.name}" takımını tamamen silmek istediğinden emin misin?\n\nBu işlem geri alınamaz. Tüm üyeler takımdan çıkarılır.`)) return;
     try {
       await DB.Teams.dissolve(t.id, _tmState.userId);
-      window.showToast?.('Takım dağıtıldı.', 'success');
+      window.showToast?.(`"${t.name}" silindi.`, 'success');
+      _tmState.realtimeSub?.unsubscribe?.();
+      _tmState.realtimeSub = null;
       _tmRemoveFromMyTeams(t.id);
-    } catch (e) { window.showToast?.('❌ ' + e.message, 'error'); }
+    } catch (e) {
+      console.error('dissolve error:', e);
+      window.showToast?.('❌ Takım silinemedi: ' + e.message, 'error');
+    }
   } else {
     if (!confirm(`"${t.name}" takımından ayrılmak istediğinden emin misin?`)) return;
     try {

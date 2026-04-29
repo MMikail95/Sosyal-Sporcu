@@ -377,6 +377,34 @@ const Teams = {
     return data;
   },
 
+  // Takım logosu yükle → avatars bucket (teams/{teamId}/logo.ext)
+  async uploadTeamLogo(teamId, file) {
+    if (!sb()) throw new Error('Supabase client hazır değil');
+    if (!file || !file.type.startsWith('image/')) throw new Error('Geçersiz dosya türü');
+    if (file.size > 2 * 1024 * 1024) throw new Error('Dosya 2MB\'den büyük olamaz');
+
+    const ext  = file.name.split('.').pop().toLowerCase() || 'jpg';
+    const path = `teams/${teamId}/logo.${ext}`;
+
+    await sb().storage.from('avatars').remove([path]).catch(() => {});
+
+    const { error: upErr } = await sb().storage
+      .from('avatars')
+      .upload(path, file, { cacheControl: '3600', upsert: true, contentType: file.type });
+    if (upErr) throw upErr;
+
+    const { data: urlData } = sb().storage.from('avatars').getPublicUrl(path);
+    const publicUrl = urlData?.publicUrl;
+    if (!publicUrl) throw new Error('Public URL alınamadı');
+
+    const logoUrl = `${publicUrl}?t=${Date.now()}`;
+
+    // teams tablosuna logo_url yaz
+    await Teams.update(teamId, { logo_url: logoUrl });
+
+    return logoUrl;
+  },
+
   // Üyeyi çıkar (kaptan yetkisi)
   async removeMember(teamId, playerId) {
     const { error } = await sb()
@@ -439,7 +467,7 @@ const Teams = {
 
   // Takımı dağıt (kaptan yetkisi — tüm üyelikleri ve takımı sil)
   async dissolve(teamId, captainId) {
-    // Tüm üyelerin profilinden takımı kaldır
+    // 1. Tüm üyelerin profilinden takımı kaldır
     const { data: members } = await sb()
       .from('team_members')
       .select('player_id')
@@ -448,13 +476,23 @@ const Teams = {
       const ids = members.map(m => m.player_id);
       await sb().from('profiles').update({ current_team_id: null }).in('id', ids);
     }
-    // Takımı pasif yap (soft delete)
-    const { error } = await sb()
+
+    // 2. Üyelikleri sil
+    await sb().from('team_members').delete().eq('team_id', teamId);
+
+    // 3. Takımı pasif yap (captain_id koşulu olmadan — RLS politikası halleder)
+    const { error, data: updated } = await sb()
       .from('teams')
-      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .update({ is_active: false })
       .eq('id', teamId)
-      .eq('captain_id', captainId);
+      .select('id');
+
     if (error) throw error;
+
+    // Hiç satır güncellenmezse RLS engellemiş demektir
+    if (!updated || updated.length === 0) {
+      throw new Error('Takım silinemiyor: yetki reddedildi ya da takım bulunamadı.');
+    }
   },
 
   // Realtime: takım değişikliklerini dinle
