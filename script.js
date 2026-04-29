@@ -863,11 +863,11 @@ window.previousSection = null;
  */
 window.goBackFromProfile = function() {
     const acc = getActiveAccount();
-    // Aktif kullanıcının kendi playerID'sine geri dön
     if (acc) {
         activePlayerId = acc.playerId;
         updateUI();
     }
+    window.viewingAsFriend = null;
     const target = window.previousSection || 'takimim';
     window.previousSection = null;
     showSection(target);
@@ -1099,6 +1099,42 @@ function applyProfileViewMode() {
 
     // Puanla tab - hide/disable if viewing own profile
     updatePuanlaTab();
+
+    // Arkadaş değilse kısıtlı tab görünümü uygula
+    applyFriendshipTabRestriction(viewingOther);
+}
+
+function applyFriendshipTabRestriction(viewingOther) {
+    const restrictedTabs = ['tab-detay', 'tab-yetenekler', 'tab-puanla', 'tab-maclar'];
+    const allTabBtns = document.querySelectorAll('.tab-btn[data-tab]');
+
+    // window.viewingAsFriend === false → kesinlikle arkadaş değil
+    const isNonFriend = viewingOther && window.viewingAsFriend === false;
+
+    if (isNonFriend) {
+        // Sadece Genel Bakış görünsün
+        allTabBtns.forEach(btn => {
+            const tabId = btn.getAttribute('data-tab');
+            btn.style.display = (tabId === 'tab-genel') ? '' : 'none';
+        });
+        // Diğer sekme içeriklerine kilitli mesaj koy
+        restrictedTabs.forEach(tabId => {
+            const el = document.getElementById(tabId);
+            if (el) {
+                el.style.display = 'none';
+                el.innerHTML = `<div class="glass-card tab-locked-msg">
+                    <i class="fa-solid fa-lock"></i>
+                    <h3>Bu sekme sadece arkadaşlara açık</h3>
+                    <p>Arkadaş ekle ve tüm profil bilgilerine eriş.</p>
+                </div>`;
+            }
+        });
+        // Genel Bakış aktif yap
+        switchProfileTab('tab-genel');
+    } else {
+        // Tüm tab butonlarını göster
+        allTabBtns.forEach(btn => { btn.style.display = ''; });
+    }
 }
 
 function updatePuanlaTab() {
@@ -1210,14 +1246,37 @@ window.updateUI = function () {
     if (teamHeaderSpan) teamHeaderSpan.style.display = teamName ? '' : 'none';
     if (teamHeaderName) teamHeaderName.textContent = teamName || '';
 
-    // --- GEN skoru: sadece puan girilmişse göster ---
-    const ratingVals = Object.values(player.ratings).filter(v => v !== null && v !== undefined);
+    // --- GEN skoru: kendi puanı yoksa community ortalamasına düş ---
+    const ratingVals = Object.values(player.ratings || {}).filter(v => v !== null && v !== undefined);
     const hasRatings = ratingVals.length > 0;
     const avg = hasRatings ? Math.round(ratingVals.reduce((a, b) => a + b, 0) / ratingVals.length) : null;
+
+    // Community fallback GEN (1-99 scale)
+    const communityRaw = calcCommunityRatingsAvg(player);
+    const communityGen = communityRaw
+        ? Math.round(Object.values(communityRaw).reduce((a, b) => a + b, 0) / 6)
+        : null;
+    // Supabase'den gelen community_gen de kullanılabilir
+    const sbCommunityGen = player.genScore || player.community_gen || null;
+    const displayGen = avg ?? communityGen ?? sbCommunityGen;
+    const isCommunityGen = !hasRatings && (communityGen !== null || sbCommunityGen !== null);
+
     const orEl = document.getElementById('overall-rating-disp');
-    if (orEl) orEl.textContent = hasRatings ? avg : '—';
+    if (orEl) {
+        orEl.textContent = displayGen ?? '—';
+        orEl.style.color = isCommunityGen ? 'var(--neon-cyan)' : 'var(--neon-green)';
+        orEl.title = isCommunityGen
+            ? `Topluluk puanı (${player.communityRatings?.length || 0} kişi)`
+            : 'GEN Skoru';
+    }
     const genHeaderEl = document.getElementById('overall-rating-display');
-    if (genHeaderEl) genHeaderEl.textContent = hasRatings ? avg : '—';
+    if (genHeaderEl) {
+        genHeaderEl.textContent = displayGen ?? '—';
+        genHeaderEl.style.color = isCommunityGen ? 'var(--neon-cyan)' : 'var(--neon-green)';
+        genHeaderEl.style.textShadow = isCommunityGen
+            ? '0 0 20px rgba(0,229,255,0.6)'
+            : '0 0 20px rgba(173,255,47,0.6)';
+    }
 
     // --- Community avg score ---
     const communityAvg = calcCommunityAvg(player);
@@ -1389,32 +1448,38 @@ function updateChart(player) {
         emptyOverlay.style.display = 'none';
     }
 
-    const datasets = [{
-        label: 'Kendi Puanı',
-        data: dataValues,
-        backgroundColor: hasOwnRatings ? 'rgba(173, 255, 47, 0.15)' : 'rgba(255,255,255,0.02)',
-        borderColor: hasOwnRatings ? '#adff2f' : 'rgba(255,255,255,0.1)',
-        borderWidth: hasOwnRatings ? 2 : 1,
-        pointBackgroundColor: hasOwnRatings ? '#adff2f' : 'transparent',
-        pointRadius: hasOwnRatings ? 3 : 0
-    }];
+    const datasets = [];
+
+    if (hasOwnRatings) {
+        datasets.push({
+            label: 'Kendi Puanı',
+            data: dataValues,
+            backgroundColor: 'rgba(173, 255, 47, 0.15)',
+            borderColor: '#adff2f',
+            borderWidth: 2,
+            pointBackgroundColor: '#adff2f',
+            pointRadius: 3
+        });
+    }
 
     if (communityValues) {
         datasets.push({
-            label: 'Community Puanı',
+            label: 'Topluluk Puanı',
             data: communityValues,
-            backgroundColor: 'rgba(0, 229, 255, 0.1)',
+            backgroundColor: hasOwnRatings ? 'rgba(0, 229, 255, 0.1)' : 'rgba(0, 229, 255, 0.18)',
             borderColor: '#00e5ff',
             borderWidth: 2,
-            borderDash: [5, 5],
+            borderDash: hasOwnRatings ? [5, 5] : [],
             pointBackgroundColor: '#00e5ff',
             pointRadius: 4
         });
     }
 
+    const showLegend = datasets.length > 1;
+
     if (window.profileChartInstance) {
         window.profileChartInstance.data.datasets = datasets;
-        window.profileChartInstance.options.plugins.legend.display = communityValues !== null && hasOwnRatings;
+        window.profileChartInstance.options.plugins.legend.display = showLegend;
         window.profileChartInstance.update();
     } else {
         window.profileChartInstance = new Chart(ctx, {
@@ -1438,7 +1503,7 @@ function updateChart(player) {
                 },
                 plugins: {
                     legend: {
-                        display: communityValues !== null && hasOwnRatings,
+                        display: showLegend,
                         labels: { color: '#aaa', font: { size: 11 } }
                     }
                 }

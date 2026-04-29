@@ -11,9 +11,10 @@
 let _tmState = {
   userId:      null,   // Supabase auth user id
   profile:     null,   // profiles row
-  team:        null,   // teams row (null = takımsız)
+  team:        null,   // aktif takım row (null = takımsız)
   members:     [],     // team_members + player join
   myRole:      null,   // 'captain' | 'player' | 'substitute'
+  myTeams:     [],     // kullanıcının tüm aktif takımları
   realtimeSub: null,
   loading:     false,
 };
@@ -92,41 +93,31 @@ async function initTakimim() {
   _tmSetLoading(true);
 
   try {
-    // Kullanıcı al
     const authUser = window.__AUTH_USER__ || await DB.Auth.getCurrentUser();
     if (!authUser) { _tmRenderNoAuth(); return; }
-    _tmState.userId = authUser.id;
-
-    // Profil al
+    _tmState.userId  = authUser.id;
     _tmState.profile = await DB.Profiles.get(authUser.id);
 
-    // Takım üyeliği sorgula
-    const teamRow = await DB.Teams.getMyTeam(authUser.id);
-    if (!teamRow) {
-      // Eğer state'de zaten bir takım varsa (yeni kuruldu, RLS okuyamıyor)
-      // ekranı sıfırlama — mevcut UI'ı koru
+    const allTeams = await DB.Teams.getMyTeams(authUser.id);
+    _tmState.myTeams = allTeams || [];
+
+    if (!_tmState.myTeams.length) {
       if (_tmState.team) {
-        console.log('ℹ️ getMyTeam null döndü ama _tmState.team mevcut, UI korunuyor.');
+        console.log('ℹ️ getMyTeams boş döndü ama _tmState.team mevcut, UI korunuyor.');
         return;
       }
-      _tmState.team    = null;
-      _tmState.members = [];
-      _tmState.myRole  = null;
+      _tmState.team = null; _tmState.members = []; _tmState.myRole = null;
       _tmRenderNoTeamScreen();
       return;
     }
 
-    // Tam takım + üyeler
-    const roleRow = await DB.Teams.getMyRole(authUser.id);
-    _tmState.myRole = roleRow?.role || 'player';
-    _tmState.team   = await DB.Teams.get(teamRow.id);
-    _tmState.members = _tmState.team?.team_members || [];
+    const prevId   = _tmState.team?.id;
+    const keepPrev = prevId && _tmState.myTeams.find(t => t.id === prevId);
+    const teamId   = keepPrev?.id
+      || _tmState.myTeams.find(t => t.role === 'captain')?.id
+      || _tmState.myTeams[0].id;
 
-    // Geriye uyumluluk (eski referanslar için)
-    teamData = _tmState.team;
-
-    _tmRenderTeamUI();
-    _tmSubscribeRealtime();
+    await _tmLoadTeam(teamId);
   } catch (e) {
     console.error('initTakimim error:', e);
     window.showToast?.('❌ Takım verileri yüklenemedi: ' + e.message, 'error');
@@ -134,6 +125,28 @@ async function initTakimim() {
     _tmSetLoading(false);
   }
 }
+
+async function _tmLoadTeam(teamId) {
+  const myTeamRow  = _tmState.myTeams.find(t => t.id === teamId);
+  _tmState.myRole  = myTeamRow?.role || 'player';
+  _tmState.team    = await DB.Teams.get(teamId);
+  _tmState.members = _tmState.team?.team_members || [];
+  teamData         = _tmState.team;
+  _tmRenderTeamUI();
+  _tmSubscribeRealtime();
+}
+
+window._tmSwitchTeam = async function(teamId) {
+  if (teamId === _tmState.team?.id) return;
+  _tmSetLoading(true);
+  try {
+    await _tmLoadTeam(teamId);
+  } catch (e) {
+    window.showToast?.('❌ Takım değiştirilemedi: ' + e.message, 'error');
+  } finally {
+    _tmSetLoading(false);
+  }
+};
 
 // ──────────────────────────────────────────────────────
 // 4. NO-AUTH EKRANI
@@ -414,7 +427,20 @@ window._tmSubmitCreate = async function() {
     console.log('✅ Takım oluşturuldu:', team);
     window.showToast?.(`🎉 "${name}" kuruldu! Davet kodu: ${slug}`, 'success');
 
-    // initTakimim round-trip'e güvenme — direkt state'i set et ve UI'ı render et
+    // myTeams listesine ekle
+    _tmState.myTeams.push({
+      id:   team.id,
+      name: team.name,
+      slug: team.slug,
+      city: team.city,
+      color: team.color || _ntcSelectedColor,
+      role: 'captain',
+    });
+
+    // Modal kapat (hem onboarding paneli hem de yeni takım modali)
+    document.getElementById('tm-new-team-modal')?.remove();
+
+    // Direkt state'i set et ve UI'ı render et
     _tmState.team    = team;
     _tmState.myRole  = 'captain';
     _tmState.members = [{
@@ -448,6 +474,21 @@ window._tmSubmitJoin = async function() {
 
     window.showToast?.(`✅ "${_ntcFoundTeam.name}" takımına katıldın!`, 'success');
 
+    // myTeams listesine ekle (zaten yoksa)
+    if (!_tmState.myTeams.find(t => t.id === _ntcFoundTeam.id)) {
+      _tmState.myTeams.push({
+        id:   _ntcFoundTeam.id,
+        name: _ntcFoundTeam.name,
+        slug: _ntcFoundTeam.slug,
+        city: _ntcFoundTeam.city,
+        color: _ntcFoundTeam.color,
+        role: 'player',
+      });
+    }
+
+    // Modal kapat
+    document.getElementById('tm-new-team-modal')?.remove();
+
     // Direkt state güncelle ve render et
     _tmState.team    = _ntcFoundTeam;
     _tmState.myRole  = 'player';
@@ -466,11 +507,137 @@ window._tmSubmitJoin = async function() {
 // 7. TAKIM UI — Ana Render
 // ──────────────────────────────────────────────────────
 
+function _tmRenderTeamSelector() {
+  let strip = document.getElementById('team-selector-strip');
+  if (!strip) {
+    const hdr = document.getElementById('team-main-header');
+    if (!hdr) return;
+    strip = document.createElement('div');
+    strip.id = 'team-selector-strip';
+    hdr.parentNode.insertBefore(strip, hdr);
+  }
+
+  if (_tmState.myTeams.length <= 1) {
+    strip.style.display = 'none';
+    return;
+  }
+
+  strip.className = 'team-selector-strip';
+  strip.style.display = '';
+  strip.innerHTML = _tmState.myTeams.map(t => `
+    <button class="ts-chip ${t.id === _tmState.team?.id ? 'ts-chip-active' : ''}"
+            onclick="_tmSwitchTeam('${t.id}')" title="${t.name}">
+      <i class="fa-solid fa-shield-cat" style="color:${t.color || '#00ff88'};"></i>
+      <span>${t.name}</span>
+      ${t.role === 'captain' ? '<i class="fa-solid fa-crown" style="color:#ffd700;font-size:0.65rem;"></i>' : ''}
+    </button>
+  `).join('') + `
+    <button class="ts-chip ts-chip-add" onclick="_tmNewTeamModal()" title="Yeni Takım Ekle">
+      <i class="fa-solid fa-plus"></i>
+    </button>
+  `;
+}
+
 function _tmRenderTeamUI() {
   _tmShowSubtabs();
+  _tmRenderTeamSelector();
   _tmRenderHeader();
   renderTeamOverview();
 }
+
+window._tmNewTeamModal = function() {
+  document.getElementById('tm-new-team-modal')?.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'tm-new-team-modal';
+  modal.className = 'tm-modal-overlay';
+  modal.innerHTML = `
+    <div class="tm-modal-box" style="max-width:480px;">
+      <div class="tm-modal-header">
+        <i class="fa-solid fa-shield-plus" style="color:var(--neon-green)"></i>
+        <span>Takım Ekle</span>
+        <button class="tm-modal-close" onclick="document.getElementById('tm-new-team-modal').remove()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="tm-invite-tabs">
+        <button class="tm-invite-tab active" id="ntm-btn-create" onclick="_tmNewTeamTab('create')">
+          <i class="fa-solid fa-plus-circle"></i> Takım Kur
+        </button>
+        <button class="tm-invite-tab" id="ntm-btn-join" onclick="_tmNewTeamTab('join')">
+          <i class="fa-solid fa-right-to-bracket"></i> Katıl
+        </button>
+      </div>
+      <div id="ntm-create-panel" style="padding:1rem 1.25rem;">
+        <div class="ntc-field">
+          <label>Takım Adı <span style="color:#ff007f">*</span></label>
+          <input type="text" id="ntc-name" class="profile-input" maxlength="30"
+                 placeholder="Örn: Yıldızlar FC" oninput="_tmPreviewSlug()">
+        </div>
+        <div class="ntc-field">
+          <label>Davet Kodu <span style="color:#888;font-weight:400;">(otomatik)</span></label>
+          <div class="ntc-slug-preview" id="ntc-slug-preview">—</div>
+        </div>
+        <div class="ntc-field">
+          <label>Şehir</label>
+          <input type="text" id="ntc-city" class="profile-input" maxlength="30"
+                 placeholder="İstanbul" value="${_tmState.profile?.city || 'İstanbul'}">
+        </div>
+        <div class="ntc-field">
+          <label>Açıklama</label>
+          <input type="text" id="ntc-desc" class="profile-input" maxlength="80"
+                 placeholder="Kısa bir slogan…">
+        </div>
+        <div class="ntc-field">
+          <label>Arma Rengi</label>
+          <div class="ntc-color-row" id="ntc-color-row">
+            ${['#00ff88','#00e5ff','#ff007f','#ffd700','#ff6b35','#a855f7','#ef4444','#3b82f6','#ffffff']
+              .map((c,i) => `<div class="ntc-color-dot ${i===0?'selected':''}" style="background:${c};"
+                onclick="_tmSelectColor(this,'${c}')" data-color="${c}"></div>`).join('')}
+          </div>
+        </div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1.2rem;">
+          <button class="btn-outline" onclick="document.getElementById('tm-new-team-modal').remove()">İptal</button>
+          <button class="ntc-submit-btn ntc-submit-create" id="ntc-create-btn" onclick="_tmSubmitCreate()">
+            <i class="fa-solid fa-shield-plus"></i> Takımı Kur
+          </button>
+        </div>
+      </div>
+      <div id="ntm-join-panel" style="display:none;padding:1rem 1.25rem;">
+        <div class="ntc-field">
+          <label>Davet Kodu <span style="color:#ff007f">*</span></label>
+          <input type="text" id="ntc-code" class="profile-input ntc-code-input"
+                 maxlength="12" placeholder="YILDIZFC"
+                 oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <div id="ntc-join-preview" style="display:none;" class="ntc-join-preview-box"></div>
+        <div class="ntc-field">
+          <button class="ntc-lookup-btn" onclick="_tmLookupCode()">
+            <i class="fa-solid fa-magnifying-glass"></i> Takımı Sorgula
+          </button>
+        </div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1.2rem;">
+          <button class="btn-outline" onclick="document.getElementById('tm-new-team-modal').remove()">İptal</button>
+          <button class="ntc-submit-btn ntc-submit-join" id="ntc-join-btn"
+                  onclick="_tmSubmitJoin()" disabled>
+            <i class="fa-solid fa-right-to-bracket"></i> Takıma Katıl
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+  requestAnimationFrame(() => modal.classList.add('visible'));
+};
+
+window._tmNewTeamTab = function(tab) {
+  document.getElementById('ntm-create-panel').style.display = tab === 'create' ? '' : 'none';
+  document.getElementById('ntm-join-panel').style.display   = tab === 'join'   ? '' : 'none';
+  document.querySelectorAll('#tm-new-team-modal .tm-invite-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById(`ntm-btn-${tab}`)?.classList.add('active');
+};
 
 // ──────────────────────────────────────────────────────
 // 8. TAKIM HEADER
@@ -709,6 +876,21 @@ window._tmSendInvite = async function(targetUserId, targetUsername, btn) {
   }
 };
 
+function _tmRemoveFromMyTeams(teamId) {
+  _tmState.myTeams = _tmState.myTeams.filter(t => t.id !== teamId);
+  // Başka takım varsa ona geç, yoksa onboarding ekranına dön
+  if (_tmState.myTeams.length > 0) {
+    const next = _tmState.myTeams[0];
+    _tmState.team = null; // zorla yenile
+    _tmLoadTeam(next.id);
+  } else {
+    _tmState.team = null; _tmState.members = []; _tmState.myRole = null;
+    const strip = document.getElementById('team-selector-strip');
+    if (strip) strip.style.display = 'none';
+    _tmRenderNoTeamScreen();
+  }
+}
+
 window._tmLeaveOrDissolve = async function() {
   const t = _tmState.team;
   if (!t) return;
@@ -718,14 +900,14 @@ window._tmLeaveOrDissolve = async function() {
     try {
       await DB.Teams.dissolve(t.id, _tmState.userId);
       window.showToast?.('Takım dağıtıldı.', 'success');
-      await initTakimim();
+      _tmRemoveFromMyTeams(t.id);
     } catch (e) { window.showToast?.('❌ ' + e.message, 'error'); }
   } else {
     if (!confirm(`"${t.name}" takımından ayrılmak istediğinden emin misin?`)) return;
     try {
       await DB.Teams.leave(t.id, _tmState.userId);
       window.showToast?.('Takımdan ayrıldın.', 'success');
-      await initTakimim();
+      _tmRemoveFromMyTeams(t.id);
     } catch (e) { window.showToast?.('❌ ' + e.message, 'error'); }
   }
 };

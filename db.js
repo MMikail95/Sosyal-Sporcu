@@ -300,14 +300,16 @@ const Teams = {
     return data?.team || null;
   },
 
-  // Kullanıcının TÜM takımlarını getir (birden fazla takım desteği)
+  // Kullanıcının TÜM aktif takımlarını getir
   async getMyTeams(userId) {
     const { data, error } = await sb()
       .from('team_members')
-      .select(`role, team:team_id(id, name, slug, city)`)
+      .select(`role, team:team_id(id, name, slug, city, captain_id, color, is_active)`)
       .eq('player_id', userId);
     if (error) return [];
-    return (data || []).map(d => ({ role: d.role, ...d.team }));
+    return (data || [])
+      .filter(d => d.team && d.team.is_active !== false)
+      .map(d => ({ role: d.role, ...d.team }));
   },
 
   // Kullanıcının takımdaki rolünü getir

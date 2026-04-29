@@ -127,14 +127,43 @@ window.filterFeed = function(filter, btn) {
     renderFeed();
 };
 
-window.viewPlayerProfile = function(playerId) {
+window.viewPlayerProfile = async function(playerId) {
+    const currentUserId = window.__AUTH_USER__?.id;
+    const isMockId = /^p\d+$/.test(String(playerId));
+
+    if (!currentUserId || isMockId || playerId === currentUserId) {
+        // Mock veri veya kendi profili → kısıtlama yok
+        window.viewingAsFriend = null;
+    } else {
+        // Gerçek Supabase kullanıcısı → arkadaşlık kontrolü
+        let isFriend = false;
+        if (window.DB) {
+            try {
+                const fs = await window.DB.Friends.checkStatus(currentUserId, playerId);
+                isFriend = fs?.status === 'accepted';
+            } catch(e) {}
+        }
+        window.viewingAsFriend = isFriend ? true : false;
+
+        // Arkadaş değilse modal göster, profil sayfasına gitme
+        if (!isFriend) {
+            if (typeof showProfileModal === 'function') {
+                showProfileModal(playerId, playerId, 'feed');
+            }
+            return;
+        }
+    }
+
     if (typeof activePlayerId !== 'undefined') window.activePlayerId = playerId;
     localStorage.setItem('activePlayerId', playerId);
+    showSection._fromViewPlayer = true;
     if (typeof updateUI === 'function') updateUI();
     if (typeof renderPlayerList === 'function') renderPlayerList();
     showSection('profile');
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelector('.nav-item[data-target="profile"]')?.classList.add('active');
+    window.previousSection = 'feed';
+    if (typeof applyProfileViewMode === 'function') setTimeout(() => applyProfileViewMode(), 80);
 };
 
 window.respondInvite = function(inviteId, status, btn) {

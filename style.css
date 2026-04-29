@@ -1605,6 +1605,113 @@ input[type="range"]::-webkit-slider-runnable-track {
     }
 }
 
+/* ── Profil tab çubuğu: masaüstünde wrap, mobilde yatay scroll ── */
+.profile-tabs {
+    flex-wrap: wrap;
+}
+@media (max-width: 768px) {
+    .profile-tabs {
+        flex-wrap: nowrap !important;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-bottom: 4px;
+    }
+    .profile-tabs::-webkit-scrollbar { display: none; }
+
+    /* Profil header kartı: küçük ekranda dikey yığıl */
+    .profile-header-card {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 1rem !important;
+    }
+    .profile-header-card .gen-badge {
+        margin-left: 0 !important;
+    }
+}
+
+/* ── Arkadaş olmayan profil — kilitli tab mesajı ── */
+.tab-locked-msg {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: #555;
+}
+.tab-locked-msg i {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    display: block;
+    color: #ffc800;
+}
+.tab-locked-msg h3 {
+    color: #888;
+    margin-bottom: 0.5rem;
+}
+
+/* ── Çoklu Takım Seçici Şeridi ── */
+.team-selector-strip {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.team-selector-strip::-webkit-scrollbar { display: none; }
+
+.ts-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    color: #aaa;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.18s ease;
+    flex-shrink: 0;
+}
+.ts-chip:hover {
+    border-color: rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.09);
+    color: #fff;
+}
+.ts-chip-active {
+    background: rgba(0,255,136,0.12);
+    border-color: var(--neon-green);
+    color: var(--neon-green);
+    box-shadow: 0 0 10px rgba(0,255,136,0.15);
+}
+.ts-chip-add {
+    border-style: dashed;
+    border-color: rgba(255,255,255,0.2);
+    color: #555;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.85rem;
+}
+.ts-chip-add:hover {
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+    background: rgba(0,229,255,0.07);
+}
+
+@media (max-width: 768px) {
+    .team-selector-strip {
+        padding: 0.6rem 0.75rem;
+        gap: 0.4rem;
+        border-radius: 8px;
+    }
+    .ts-chip { padding: 0.38rem 0.7rem; font-size: 0.78rem; }
+}
+
 .pitch-container {
     background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
     border: 2px solid rgba(255, 255, 255, 0.1);

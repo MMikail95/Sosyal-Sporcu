@@ -1636,10 +1636,39 @@ window.clearPayments = function() {
 // YARDIMCI FONKSİYONLAR
 // ──────────────────────────────────────────────────────
 
-// Takım sayfasından oyuncu profiline git
-window.viewPlayerFromTeam = function(playerId) {
-    if (typeof viewPlayerProfile === 'function') {
-        viewPlayerProfile(playerId);
+// Takım sayfasından oyuncu profiline git — arkadaşlık kontrolü
+window.viewPlayerFromTeam = async function(playerId) {
+    const currentUserId = window.__AUTH_USER__?.id;
+    const isMockId = /^p\d+$/.test(String(playerId));
+
+    if (!currentUserId || isMockId || playerId === currentUserId) {
+        // Mock veri veya kendi profili
+        window.viewingAsFriend = null;
+        if (typeof viewPlayerProfile === 'function') viewPlayerProfile(playerId);
+        return;
+    }
+
+    // Gerçek kullanıcı — arkadaşlık kontrolü
+    let isFriend = false;
+    if (window.DB) {
+        try {
+            const fs = await window.DB.Friends.checkStatus(currentUserId, playerId);
+            isFriend = fs?.status === 'accepted';
+        } catch(e) {}
+    }
+
+    if (isFriend) {
+        window.viewingAsFriend = true;
+        if (typeof openUserProfile === 'function') {
+            openUserProfile(playerId, playerId);
+        } else if (typeof viewPlayerProfile === 'function') {
+            viewPlayerProfile(playerId);
+        }
+    } else {
+        window.viewingAsFriend = false;
+        if (typeof showProfileModal === 'function') {
+            showProfileModal(playerId, playerId, 'team');
+        }
     }
 };
 

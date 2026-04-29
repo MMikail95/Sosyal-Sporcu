@@ -1898,12 +1898,12 @@ window.openUserProfile = async function(supabaseId, username) {
             city:          profile.city          || 'istanbul',
         },
         ratings: {
-            teknik:    profile.rating_teknik    || 70,
-            sut:       profile.rating_sut       || 70,
-            pas:       profile.rating_pas       || 70,
-            hiz:       profile.rating_hiz       || 70,
-            fizik:     profile.rating_fizik     || 70,
-            kondisyon: profile.rating_kondisyon || 70,
+            teknik:    profile.rating_teknik    ?? null,
+            sut:       profile.rating_sut       ?? null,
+            pas:       profile.rating_pas       ?? null,
+            hiz:       profile.rating_hiz       ?? null,
+            fizik:     profile.rating_fizik     ?? null,
+            kondisyon: profile.rating_kondisyon ?? null,
         },
         stats: {
             totalMatches: profile.total_matches  || 0,
@@ -1911,40 +1911,56 @@ window.openUserProfile = async function(supabaseId, username) {
             totalAssists: profile.total_assists  || 0,
         },
         communityRatings: [],
-        genScore: profile.gen_score || 70,
+        genScore:      profile.gen_score       || null,
+        community_gen: profile.community_gen   || null,
     };
 
-    // window.players'a ekle / güncelle (global erişim için window. prefix zorunlu)
+    // Community ratings yükle (Supabase)
+    if (window.DB) {
+        try {
+            const sbRatings = await window.DB.Ratings.getPlayerRatings(supabaseId);
+            tempPlayer.communityRatings = (sbRatings || []).map(r => ({
+                fromAccountId: r.rater_id,
+                raterName:     r.rater?.username || 'Biri',
+                teknik:        r.rating_teknik    || 0,
+                sut:           r.rating_sut       || 0,
+                pas:           r.rating_pas       || 0,
+                hiz:           r.rating_hiz       || 0,
+                fizik:         r.rating_fizik     || 0,
+                kondisyon:     r.rating_kondisyon || 0,
+                comment:       r.comment          || '',
+                date:          r.created_at       || '',
+            }));
+        } catch(e) {}
+    }
+
+    // Arkadaş olduğu için tam profil açılıyor
+    window.viewingAsFriend = true;
+
+    // window.players'a ekle / güncelle
     if (window.players) {
         const idx = window.players.findIndex(p => p.id === tempId);
         if (idx >= 0) window.players.splice(idx, 1);
         window.players.push(tempPlayer);
-        console.log(`✅ Temp player eklendi: ${tempId}, toplam: ${window.players.length}`);
     }
 
     // window.activePlayerId değiştir
     window.activePlayerId = tempId;
-    console.log(`✅ activePlayerId → ${tempId}`);
 
     // Modal kapat
     document.getElementById('user-profile-modal')?.remove();
 
-    // Profile sekmesine git — _fromViewPlayer flag'i set et
+    // Profile sekmesine git
     if (typeof showSection === 'function') {
         showSection._fromViewPlayer = true;
         showSection('profile');
     }
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelector('.nav-item[data-target="profile"]')?.classList.add('active');
-    // Önceki sekme = explore
     window.previousSection = 'explore';
 
-    // UI güncelle — activePlayerId değiştikten sonra
     if (typeof updateUI === 'function') updateUI();
 
-    // Çift banner sorunu: addProfileViewBanner() yerine mevcut view-only-banner kullan
-    // applyProfileViewMode() zaten view-only-banner'ı gösteriyor
-    // previousSection'ı ayarla ki "Geri Dön" butonu çalışsın
     window.previousSection = 'explore';
     if (typeof applyProfileViewMode === 'function') {
         setTimeout(() => applyProfileViewMode(), 60);
