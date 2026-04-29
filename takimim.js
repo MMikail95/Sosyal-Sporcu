@@ -524,14 +524,17 @@ function _tmRenderTeamSelector() {
 
   strip.className = 'team-selector-strip';
   strip.style.display = '';
-  strip.innerHTML = _tmState.myTeams.map(t => `
-    <button class="ts-chip ${t.id === _tmState.team?.id ? 'ts-chip-active' : ''}"
-            onclick="_tmSwitchTeam('${t.id}')" title="${t.name}">
+  strip.innerHTML = _tmState.myTeams.map(t => {
+    const isActive  = t.id === _tmState.team?.id;
+    const isCaptain = t.role === 'captain';
+    const chipClass = `ts-chip ${isActive ? 'ts-chip-active' : ''} ${isCaptain ? 'ts-chip-captain' : ''}`;
+    return `
+    <button class="${chipClass}" onclick="_tmSwitchTeam('${t.id}')" title="${t.name}${isCaptain ? ' (Kaptan)' : ''}">
       <i class="fa-solid fa-shield-cat" style="color:${t.color || '#00ff88'};"></i>
       <span>${t.name}</span>
-      ${t.role === 'captain' ? '<i class="fa-solid fa-crown" style="color:#ffd700;font-size:0.65rem;"></i>' : ''}
-    </button>
-  `).join('') + `
+      ${isCaptain ? '<i class="fa-solid fa-crown ts-captain-crown"></i>' : ''}
+    </button>`;
+  }).join('') + `
     <button class="ts-chip ts-chip-add" onclick="_tmNewTeamModal()" title="Yeni Takım Ekle">
       <i class="fa-solid fa-plus"></i>
     </button>
@@ -687,15 +690,21 @@ function _tmRenderHeader() {
         <div class="ts-counter loss"><span class="ts-val">${t.total_losses||0}</span><span class="ts-lbl">Mağlubiyet</span></div>
       </div>
       <div class="team-header-btns">
+        ${isCA ? `
         <button class="btn-invite-team" onclick="_tmOpenInviteModal()">
           <i class="fa-solid fa-user-plus"></i> Oyuncu Davet Et
         </button>
-        ${isCA ? `<button class="btn-edit-team" onclick="openTeamEditModal()">
+        <button class="btn-edit-team" onclick="openTeamEditModal()">
           <i class="fa-solid fa-pen-to-square"></i> Düzenle
-        </button>` : ''}
-        <button class="btn-leave-team" onclick="_tmLeaveOrDissolve()">
-          ${_tmIsCapOrAdmin() ? '<i class="fa-solid fa-bomb"></i> Dağıt' : '<i class="fa-solid fa-right-from-bracket"></i> Ayrıl'}
         </button>
+        <button class="btn-dissolve-team" onclick="_tmLeaveOrDissolve()">
+          <i class="fa-solid fa-trash-can"></i> Takımı Sil
+        </button>
+        ` : `
+        <button class="btn-leave-team" onclick="_tmLeaveOrDissolve()">
+          <i class="fa-solid fa-right-from-bracket"></i> Takımdan Ayrıl
+        </button>
+        `}
       </div>
     </div>
   `;
@@ -896,7 +905,7 @@ window._tmLeaveOrDissolve = async function() {
   if (!t) return;
 
   if (_tmIsCapOrAdmin()) {
-    if (!confirm(`"${t.name}" takımını dağıtmak istediğinden emin misin? Tüm üyeler takımdan çıkarılır.`)) return;
+    if (!confirm(`"${t.name}" takımını tamamen silmek istediğinden emin misin?\n\nBu işlem geri alınamaz. Tüm üyeler takımdan çıkarılır.`)) return;
     try {
       await DB.Teams.dissolve(t.id, _tmState.userId);
       window.showToast?.('Takım dağıtıldı.', 'success');

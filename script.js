@@ -586,6 +586,8 @@ async function initSupabaseUser() {
                     activePlayerId  = existingPlayer.id;
                 }
                 // Supabase'den gelen TÜM verileri override et (localStorage'da eski değerler kalıyor)
+                // İsim ve avatar her zaman Supabase'den gelsin
+                if (profile.username)   existingPlayer.name       = profile.username;
                 if (profile.avatar_url) existingPlayer.avatar_url = profile.avatar_url;
                 if (!existingPlayer.details) existingPlayer.details = {};
                 if (profile.form_status) existingPlayer.details.formStatus = profile.form_status;
@@ -1224,6 +1226,18 @@ window.updateUI = function () {
         avatarEl.src = avatarUrl;
         // Hata durumunda boş bırak
         avatarEl.onerror = () => { avatarEl.src = ''; };
+    }
+
+    // ── Sidebar senkronizasyonu: kendi profiline bakarken sidebar ile eşitle ──
+    const isSelf = player.supabase_id === window.__AUTH_USER__?.id
+                || player.id === (window.activePlayerId || activePlayerId);
+    const isViewingOther = !!(window.viewingAsFriend !== null && window.viewingAsFriend !== undefined
+                               && document.getElementById('section-profile')?.classList.contains('active'));
+    if (isSelf && !isViewingOther) {
+        const sidebarName = document.getElementById('current-account-name');
+        if (sidebarName && player.name) sidebarName.textContent = player.name;
+        const sidebarAvatar = document.getElementById('current-account-avatar');
+        if (sidebarAvatar && player.avatar_url) sidebarAvatar.src = player.avatar_url;
     }
 
     // Header: Yaş, Şehir, Takım — sadece dolu ise göster (#6)

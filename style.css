@@ -1690,6 +1690,27 @@ input[type="range"]::-webkit-slider-runnable-track {
     color: var(--neon-green);
     box-shadow: 0 0 10px rgba(0,255,136,0.15);
 }
+.ts-chip-captain {
+    border-color: rgba(255,215,0,0.4);
+    background: rgba(255,215,0,0.07);
+    color: #e0c040;
+}
+.ts-chip-captain:hover {
+    border-color: #ffd700;
+    background: rgba(255,215,0,0.13);
+    color: #ffd700;
+}
+.ts-chip-captain.ts-chip-active {
+    background: rgba(255,215,0,0.18);
+    border-color: #ffd700;
+    color: #ffd700;
+    box-shadow: 0 0 10px rgba(255,215,0,0.2);
+}
+.ts-captain-crown {
+    color: #ffd700;
+    font-size: 0.65rem;
+    margin-left: 2px;
+}
 .ts-chip-add {
     border-style: dashed;
     border-color: rgba(255,255,255,0.2);
