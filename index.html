@@ -108,23 +108,6 @@
                 <span id="theme-label">Karanlık Mod</span>
             </button>
 
-            <!-- Notification Bell -->
-            <button class="notif-bell" id="notif-bell-btn" onclick="toggleNotifPanel()">
-                <i class="fa-solid fa-bell"></i>
-                <span class="notif-count" id="notif-count" style="display:none;">0</span>
-            </button>
-
-            <!-- Notification Panel -->
-            <div class="notif-panel" id="notif-panel">
-                <div class="notif-panel-header">
-                    <i class="fa-solid fa-bell"></i> Bildirimler
-                    <button onclick="markAllRead()" class="notif-clear-btn">Tümünü Oku</button>
-                </div>
-                <div class="notif-list" id="notif-list">
-                    <div class="notif-empty"><i class="fa-regular fa-bell-slash"></i><br>Yeni bildirim yok</div>
-                </div>
-            </div>
-
             <!-- Account Switcher -->
             <div class="account-switcher">
                 <div class="account-current" onclick="toggleAccountPanel()" id="account-current-btn">
@@ -149,6 +132,23 @@
                 </div>
             </div>
         </nav>
+
+        <!-- Bildirim Butonu (Fixed, sağ alt köşe) -->
+        <div class="notif-wrapper" id="notif-wrapper">
+            <button class="notif-bell" id="notif-bell-btn" onclick="toggleNotifPanel()">
+                <i class="fa-solid fa-bell"></i>
+                <span class="notif-count" id="notif-count" style="display:none;">0</span>
+            </button>
+            <div class="notif-panel" id="notif-panel">
+                <div class="notif-panel-header">
+                    <i class="fa-solid fa-bell"></i> Bildirimler
+                    <button onclick="markAllRead()" class="notif-clear-btn">Tümünü Oku</button>
+                </div>
+                <div class="notif-list" id="notif-list">
+                    <div class="notif-empty"><i class="fa-regular fa-bell-slash"></i><br>Yeni bildirim yok</div>
+                </div>
+            </div>
+        </div>
 
         <!-- Main Content -->
         <main class="main-content">
@@ -276,6 +276,14 @@
                                                     </label>
                                                     <input type="text" id="inp-username" class="profile-input"
                                                            placeholder="Kullanıcı adı..." maxlength="30"
+                                                           style="width:100%; padding:0.5rem 0.7rem; border-radius:8px;">
+                                                </div>
+                                                <div>
+                                                    <label style="font-size:0.72rem; color:#888; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; display:block;">
+                                                        <i class="fa-solid fa-id-badge" style="color:var(--neon-green);"></i> Ad Soyad
+                                                    </label>
+                                                    <input type="text" id="inp-full-name" class="profile-input"
+                                                           placeholder="Adınız Soyadınız..." maxlength="60"
                                                            style="width:100%; padding:0.5rem 0.7rem; border-radius:8px;">
                                                 </div>
                                                 <div>

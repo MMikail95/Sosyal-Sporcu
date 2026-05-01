@@ -1529,11 +1529,19 @@ window.handleNotifFriendAction = async function(notifId, actorId, isAccept) {
             if (status && status.status === 'pending' && status.id) {
                 await window.DB.Friends.acceptRequest(status.id);
                 if (typeof showToast === 'function') showToast('✅ Arkadaşlık isteği kabul edildi!');
+            } else {
+                if (typeof showToast === 'function') showToast('⚠️ İstek bulunamadı veya zaten kabul edildi.');
             }
+        } else {
+            if (typeof showToast === 'function') showToast('❌ Arkadaşlık isteği reddedildi.');
         }
-        await window.DB.Notifications.markRead(notifId);
+        // Virtual ID'ler (virtual_fr_xxx) gerçek UUID değil — markRead atla
+        if (!String(notifId).startsWith('virtual_')) {
+            await window.DB.Notifications.markRead(notifId);
+        }
         window.initRealNotifications();
     } catch(e) {
+        console.error('handleNotifFriendAction error:', e);
         if (typeof showToast === 'function') showToast('❌ İşlem başarısız: ' + e.message, 'error');
     }
 };
@@ -1544,7 +1552,10 @@ window.handleNotifTeamAction = async function(notifId, slug) {
     try {
         await window.DB.Teams.joinByCode(user.id, slug);
         if (typeof showToast === 'function') showToast('🏆 Takıma başarıyla katıldın!');
-        await window.DB.Notifications.markRead(notifId);
+        // Virtual ID'ler için markRead atla
+        if (!String(notifId).startsWith('virtual_')) {
+            await window.DB.Notifications.markRead(notifId);
+        }
         window.initRealNotifications();
         if (typeof window.initTakimim === 'function') window.initTakimim();
     } catch(e) {

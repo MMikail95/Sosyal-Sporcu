@@ -532,9 +532,12 @@ function _tmRenderTeamSelector() {
     const isActive  = t.id === _tmState.team?.id;
     const isCaptain = t.role === 'captain';
     const chipClass = `ts-chip ${isActive ? 'ts-chip-active' : ''} ${isCaptain ? 'ts-chip-captain' : ''}`;
+    const avatarHtml = t.logo_url
+      ? `<img src="${t.logo_url}" class="ts-chip-logo" alt="${t.name}">`
+      : `<i class="fa-solid fa-shield-cat" style="color:${t.color || '#00ff88'};"></i>`;
     return `
     <button class="${chipClass}" onclick="_tmSwitchTeam('${t.id}')" title="${t.name}${isCaptain ? ' (Kaptan)' : ''}">
-      <i class="fa-solid fa-shield-cat" style="color:${t.color || '#00ff88'};"></i>
+      ${avatarHtml}
       <span>${t.name}</span>
       ${isCaptain ? '<i class="fa-solid fa-crown ts-captain-crown"></i>' : ''}
     </button>`;
@@ -763,7 +766,11 @@ window._tmUploadLogo = async function(input) {
       img.alt = 'Logo';
       const oldCrest = crestWrap.querySelector('.team-crest');
       if (oldCrest) oldCrest.replaceWith(img);
+      else if (!crestWrap.querySelector('.team-crest-img')) crestWrap.prepend(img);
     }
+
+    // Selector strip'teki küçük avatar'ı da güncelle
+    _tmRenderTeamSelector();
 
     window.showToast?.('✅ Takım logosu güncellendi!', 'success');
   } catch (e) {

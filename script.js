@@ -906,20 +906,31 @@ window.toggleProfileEditPanel = function() {
         // Aç — mevcut değerleri doldur
         const player = players.find(p => p.id === activePlayerId);
         if (player) {
-            const unEl    = document.getElementById('inp-username');
+            const unEl     = document.getElementById('inp-username');
+            const fnEl     = document.getElementById('inp-full-name');
             const cityEl   = document.getElementById('inp-city');
             const ayakEl   = document.getElementById('sel-ayak');
             const mevkiEl  = document.getElementById('sel-ana-mevki-gb');
             const ageGbEl  = document.getElementById('inp-age-gb');
             const heightEl = document.getElementById('inp-height-gb');
             const weightEl = document.getElementById('inp-weight-gb');
-            if (unEl)    unEl.value    = player.name || '';
+            if (unEl)    unEl.value    = player.supabase_username || player.name || '';
+            if (fnEl)    fnEl.value    = player.full_name || player.details?.full_name || '';
             if (cityEl)  cityEl.value  = player.details?.city || player.city || '';
             if (ayakEl)  ayakEl.value  = player.details?.ayak || 'Sağ';
             if (mevkiEl) mevkiEl.value = player.details?.anaMevki || '';
             if (ageGbEl) ageGbEl.value = player.details?.age  || '';
             if (heightEl) heightEl.value = player.details?.height || '';
             if (weightEl) weightEl.value = player.details?.weight || '';
+
+            // Supabase'den güncel profil verisini çek (username, full_name)
+            if (window.__AUTH_USER__ && window.DB) {
+                window.DB.Profiles.get(window.__AUTH_USER__.id).then(prof => {
+                    if (!prof) return;
+                    if (unEl && prof.username)  unEl.value = prof.username;
+                    if (fnEl && prof.full_name) fnEl.value = prof.full_name;
+                }).catch(() => {});
+            }
 
             // Takım dropdown'u doldur
             const teamSel = document.getElementById('sel-team-gb');
@@ -951,6 +962,7 @@ window.saveQuickProfile = async function() {
 
     const getV = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
     const username = getV('inp-username');
+    const fullName = getV('inp-full-name');
     const city     = getV('inp-city');
     const ayak     = getV('sel-ayak');
     const anaMevki = getV('sel-ana-mevki-gb');
@@ -966,7 +978,8 @@ window.saveQuickProfile = async function() {
         : null;
 
     // Yerel player objesini güncelle
-    if (username) player.name = username;
+    if (username) { player.name = username; player.supabase_username = username; }
+    if (fullName) { player.full_name = fullName; if (!player.details) player.details = {}; player.details.full_name = fullName; }
     if (!player.details) player.details = {};
     if (city)      { player.city = city;  player.details.city = city; }
     if (ayak)      { player.details.ayak = ayak; }
@@ -990,13 +1003,14 @@ window.saveQuickProfile = async function() {
     const user = window.__AUTH_USER__;
     if (user && window.DB) {
         const updates = {};
-        if (username)  updates.username       = username;
-        if (city)      updates.city           = city;
-        if (age)       updates.age            = age;
-        if (height)    updates.height         = height;
-        if (weight)    updates.weight         = weight;
-        if (ayak)      updates.ayak           = ayak;
-        if (anaMevki)  updates.ana_mevki      = anaMevki;
+        if (username)  updates.username        = username;
+        if (fullName)  updates.full_name       = fullName;
+        if (city)      updates.city            = city;
+        if (age)       updates.age             = age;
+        if (height)    updates.height          = height;
+        if (weight)    updates.weight          = weight;
+        if (ayak)      updates.ayak            = ayak;
+        if (anaMevki)  updates.ana_mevki       = anaMevki;
         if (teamId)    updates.current_team_id = teamId;
 
         try {
