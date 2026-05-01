@@ -5,14 +5,23 @@
 // =====================================================
 (function () {
 
-    // Sayfa → URL haritası (data-target → href)
-    var NAV_MAP = {
-        profile:  '/character/',
-        takimim:  '/team/',
-        matches:  '/matches/',
-        feed:     '/feed/',
-        explore:  '/explore/'
-    };
+    // ── URL Haritası: relative, tüm ortamlarda çalışır ──────────
+    // file://, localhost, GitHub Pages (/Sosyal-Sporcu/) fark etmeksizin
+    // çalışır çünkü mutlak yol yerine görece yol kullanır.
+    function _computeNavMap() {
+        var path = location.pathname;
+        // Alt dizinde mi? (/character/, /team/, /feed/, /explore/, /matches/)
+        var inSub = /\/(character|team|feed|explore|matches)(\/|$)/i.test(path);
+        var prefix = inSub ? '../' : '';
+        return {
+            profile:  prefix + 'character/',
+            takimim:  prefix + 'team/',
+            matches:  prefix + 'matches/',
+            feed:     prefix + 'feed/',
+            explore:  prefix + 'explore/'
+        };
+    }
+    var NAV_MAP = _computeNavMap();
 
     // ── Sidebar HTML ──────────────────────────────────
     function buildSidebarHTML() {
@@ -70,12 +79,21 @@
     }
 
     // ── Aktif nav item'i vurgula ──────────────────────
+    // Regex tabanlı: relative/absolute URL fark etmez,
+    // GitHub Pages base path (/Sosyal-Sporcu/) ile de çalışır.
     function highlightActive() {
         var path = location.pathname;
+        var pagePatterns = {
+            profile:  /\/character(\/|$)/,
+            takimim:  /\/team(\/|$)/,
+            matches:  /\/matches(\/|$)/,
+            feed:     /\/feed(\/|$)/,
+            explore:  /\/explore(\/|$)/
+        };
         document.querySelectorAll('.nav-item[data-target]').forEach(function (item) {
             var target = item.getAttribute('data-target');
-            var href   = (NAV_MAP[target] || '').replace(/\/$/, '');
-            var isActive = !!href && (path === href || path === href + '/' || path.startsWith(href + '/'));
+            var pattern = pagePatterns[target];
+            var isActive = pattern ? pattern.test(path) : false;
             item.classList.toggle('active', isActive);
         });
     }
@@ -135,11 +153,11 @@
                 }
                 // Section yok → ilgili MPA sayfasına git
                 var sectionToPage = {
-                    profile: '/character/',
-                    takimim: '/team/',
-                    matches: '/matches/',
-                    feed:    '/feed/',
-                    explore: '/explore/'
+                    profile: NAV_MAP.profile,
+                    takimim: NAV_MAP.takimim,
+                    matches: NAV_MAP.matches,
+                    feed:    NAV_MAP.feed,
+                    explore: NAV_MAP.explore
                 };
                 var url = sectionToPage[id];
                 if (url) window.location.href = url;
@@ -156,9 +174,9 @@
                         ? _origOpenProfile(supabaseId, username)
                         : null;
                 }
-                // Yoksa: ID'yi sessionStorage'a yaz ve /character/'a git
+                // Yoksa: ID'yi sessionStorage'a yaz ve character sayfasına git
                 sessionStorage.setItem('ss_view_player_id', supabaseId);
-                window.location.href = '/character/';
+                window.location.href = NAV_MAP.profile;
             };
         }, 150);
 
@@ -174,7 +192,7 @@
                 if (document.referrer) {
                     window.history.back();
                 } else {
-                    window.location.href = '/explore/';
+                    window.location.href = NAV_MAP.explore;
                 }
             };
         }, 150);
