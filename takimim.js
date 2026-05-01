@@ -471,7 +471,9 @@ window._tmSubmitJoin = async function() {
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Katılıyor…'; }
 
   try {
-    await DB.Teams.addMember(_ntcFoundTeam.id, _tmState.userId, 'player');
+    // Kaptan kendi takımına geri katılıyorsa 'captain' rolü ver
+    const joinRole = _ntcFoundTeam.captain_id === _tmState.userId ? 'captain' : 'player';
+    await DB.Teams.addMember(_ntcFoundTeam.id, _tmState.userId, joinRole);
     await window.sbClient.from('profiles')
       .update({ current_team_id: _ntcFoundTeam.id })
       .eq('id', _tmState.userId);
@@ -486,7 +488,7 @@ window._tmSubmitJoin = async function() {
         slug: _ntcFoundTeam.slug,
         city: _ntcFoundTeam.city,
         color: _ntcFoundTeam.color,
-        role: 'player',
+        role: joinRole,
       });
     }
 
@@ -494,7 +496,7 @@ window._tmSubmitJoin = async function() {
     document.getElementById('tm-new-team-modal')?.remove();
 
     // Takım verilerini ve üye listesini Supabase'den çek, sonra render et
-    _tmState.myRole = 'player';
+    _tmState.myRole = joinRole;
     await _tmLoadTeam(_ntcFoundTeam.id);
     _tmShowSubtabs();
 

@@ -360,7 +360,9 @@ const Teams = {
       .single();
     if (existing) throw new Error('Zaten bu takımın üyesisiniz');
 
-    await sb().from('team_members').insert({ team_id: team.id, player_id: userId, role: 'player' });
+    // Kaptan kendi takımına geri katılıyorsa 'captain' rolü ver
+    const role = team.captain_id === userId ? 'captain' : 'player';
+    await sb().from('team_members').insert({ team_id: team.id, player_id: userId, role });
     await sb().from('profiles').update({ current_team_id: team.id }).eq('id', userId);
     return team;
   },
@@ -482,12 +484,17 @@ const Teams = {
 
     // 3. Takımı pasif yap + slug'ı serbest bırak (aynı isimde yeni takım kurulabilsin)
     const deletedSlug = `DEL_${Date.now()}_${currentSlug || teamId.slice(0, 8)}`;
-    const { error } = await sb()
+    const { data: updated, error } = await sb()
       .from('teams')
       .update({ is_active: false, slug: deletedSlug })
-      .eq('id', teamId);
+      .eq('id', teamId)
+      .select('id');
 
     if (error) throw error;
+    // RLS sessizce 0 satır döndürebilir — bunu da hata say
+    if (!updated || updated.length === 0) {
+      throw new Error('Takım silinemedi: yetki hatası (RLS). Lütfen Supabase RLS politikasını kontrol edin.');
+    }
   },
 
   // Realtime: takım değişikliklerini dinle
