@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MANAGER++ | Takımım</title>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="../team-fix.css">
+    <link rel="stylesheet" href="../faz2-7.css">
+    <link rel="stylesheet" href="../fixes.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../supabase.js"></script>
+
+    <!-- Oturum Koruma -->
+    <script>
+    (async function guardSession() {
+        if (!window.sbClient) return;
+        try {
+            const { data: { session } } = await window.sbClient.auth.getSession();
+            if (!session) { window.location.replace('../auth.html'); return; }
+            window.__AUTH_USER__ = session.user;
+            window.sbClient.auth.onAuthStateChange((ev, _s) => {
+                if (_s && _s.user) window.__AUTH_USER__ = _s.user;
+            });
+        } catch(e) { console.warn('Session check failed:', e.message); }
+    })();
+    </script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="app-container">
+    <!-- Mobile Overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <!-- Hamburger -->
+    <button class="sidebar-toggle" id="sidebar-toggle-btn" onclick="toggleSidebar()" aria-label="Menüyü Aç/Kapat">
+        <i class="fa-solid fa-bars" id="sidebar-toggle-icon"></i>
+    </button>
+
+    <!-- Sidebar: components.js inject eder -->
+    <div id="sidebar-placeholder"></div>
+
+    <!-- Bildirim Butonu (Fixed) -->
+    <div class="notif-wrapper" id="notif-wrapper">
+        <button class="notif-bell" id="notif-bell-btn" onclick="toggleNotifPanel()">
+            <i class="fa-solid fa-bell"></i>
+            <span class="notif-count" id="notif-count" style="display:none;">0</span>
+        </button>
+        <div class="notif-panel" id="notif-panel">
+            <div class="notif-panel-header">
+                <i class="fa-solid fa-bell"></i> Bildirimler
+                <button onclick="markAllRead()" class="notif-clear-btn">Tümünü Oku</button>
+            </div>
+            <div class="notif-list" id="notif-list">
+                <div class="notif-empty"><i class="fa-regular fa-bell-slash"></i><br>Yeni bildirim yok</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <section id="takimim" class="section active">
+
+            <!-- Team Main Header (rendered by JS) -->
+            <div id="team-main-header" class="team-main-header-block">
+                <div class="team-header-skeleton">
+                    <i class="fa-solid fa-shield-cat fa-2x" style="color:var(--neon-green);"></i>
+                    <span style="color:#555; margin-left:1rem;">Yükleniyor...</span>
+                </div>
+            </div>
+
+            <!-- Sub-Tab Navigation -->
+            <div class="team-sub-tabs" id="team-sub-tabs">
+                <button class="team-tab-btn active" data-tab="ttab-genel" onclick="switchTeamTab('ttab-genel')">
+                    <i class="fa-solid fa-chart-pie"></i><span>Genel Bakış</span>
+                </button>
+                <button class="team-tab-btn" data-tab="ttab-kadro" onclick="switchTeamTab('ttab-kadro')">
+                    <i class="fa-solid fa-users"></i><span>Kadro & Davet</span>
+                </button>
+                <button class="team-tab-btn" data-tab="ttab-saha" onclick="switchTeamTab('ttab-saha')">
+                    <i class="fa-solid fa-futbol"></i><span>Saha Düzeni</span>
+                </button>
+                <button class="team-tab-btn" data-tab="ttab-olustur" onclick="switchTeamTab('ttab-olustur')">
+                    <i class="fa-solid fa-shuffle"></i><span>Takım Oluştur</span>
+                </button>
+                <button class="team-tab-btn" data-tab="ttab-basarimlar" onclick="switchTeamTab('ttab-basarimlar')">
+                    <i class="fa-solid fa-trophy"></i><span>Başarımlar</span>
+                </button>
+                <button class="team-tab-btn" data-tab="ttab-rakipler" onclick="switchTeamTab('ttab-rakipler')">
+                    <i class="fa-solid fa-swords"></i><span>Rakipler</span>
+                </button>
+                <button class="team-tab-btn" data-tab="ttab-odemeler" onclick="switchTeamTab('ttab-odemeler')">
+                    <i class="fa-solid fa-money-bill-wave"></i><span>Ödemeler</span>
+                </button>
+                <button class="team-tab-btn" data-tab="ttab-sinerji" onclick="switchTeamTab('ttab-sinerji')">
+                    <i class="fa-solid fa-link"></i><span>Sinerji</span>
+                </button>
+            </div>
+
+            <!-- Sekme 1: Genel Bakış -->
+            <div id="ttab-genel" class="team-subtab" style="display:block;">
+                <div class="team-overview-grid">
+                    <div class="glass-card team-radar-card">
+                        <div class="team-radar-header">
+                            <div>
+                                <h3 class="card-heading">TAKIM PROFİLİ</h3>
+                                <p style="color:#555; font-size:0.85rem;">İlk 7 oyuncunun ort. değerleri</p>
+                            </div>
+                            <div class="team-gen-chip" id="team-gen-chip-radar">
+                                <span id="team-gen-radar-val">—</span>
+                                <span class="gen-label">GEN</span>
+                            </div>
+                        </div>
+                        <div style="position:relative; height:340px; width:100%;">
+                            <canvas id="team-radar-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="glass-card team-strength-card">
+                        <div id="team-strength-badges"></div>
+                    </div>
+                </div>
+                <div class="glass-card" style="margin-bottom:1.5rem;">
+                    <div id="team-core-squad"></div>
+                </div>
+                <div class="glass-card">
+                    <div id="team-member-grid"></div>
+                </div>
+            </div>
+
+            <!-- Sekme 2: Kadro & Davet -->
+            <div id="ttab-kadro" class="team-subtab" style="display:none;">
+                <div id="ttab-kadro-content"></div>
+            </div>
+
+            <!-- Sekme 3: Saha Düzeni -->
+            <div id="ttab-saha" class="team-subtab" style="display:none;">
+                <div id="ttab-saha-content"></div>
+            </div>
+
+            <!-- Sekme 4: Takım Oluştur -->
+            <div id="ttab-olustur" class="team-subtab" style="display:none;">
+                <div id="ttab-olustur-content"></div>
+            </div>
+
+            <!-- Sekme 5: Başarımlar -->
+            <div id="ttab-basarimlar" class="team-subtab" style="display:none;">
+                <div id="team-achievements-content"></div>
+            </div>
+
+            <!-- Sekme 6: Rakipler -->
+            <div id="ttab-rakipler" class="team-subtab" style="display:none;">
+                <div id="ttab-rakipler-content"></div>
+            </div>
+
+            <!-- Sekme 7: Ödemeler -->
+            <div id="ttab-odemeler" class="team-subtab" style="display:none;">
+                <div id="ttab-odemeler-content"></div>
+            </div>
+
+            <!-- Sekme 8: Sinerji -->
+            <div id="ttab-sinerji" class="team-subtab" style="display:none;">
+                <div id="ttab-sinerji-content"></div>
+            </div>
+
+        </section>
+    </main>
+</div>
+
+<!-- JS -->
+<script src="../db.js"></script>
+<script src="../assets/js/components.js"></script>
+<script src="../script.js"></script>
+<script src="../faz1.js"></script>
+<script src="../takimim.js"></script>
+<script src="../faz2-7.js"></script>
+<script src="../faz2-social.js"></script>
+
+<script>
+// Takım sayfasına özgü init
+document.addEventListener('DOMContentLoaded', function () {
+    // Hash tabanlı alt-sekme yönlendirmesi (örn: /team/#ttab-kadro)
+    function initHashSubtab() {
+        var hash = location.hash;
+        if (hash && hash.startsWith('#ttab-')) {
+            var tabId = hash.slice(1);
+            if (typeof switchTeamTab === 'function') {
+                switchTeamTab(tabId);
+            }
+        }
+    }
+
+    // initTakimim doğrudan çağır (showSection hook yerine)
+    setTimeout(function () {
+        if (typeof initTakimim === 'function') {
+            initTakimim().then(function () {
+                initHashSubtab();
+            }).catch(function () {
+                initHashSubtab();
+            });
+        } else {
+            initHashSubtab();
+        }
+        if (typeof initRealNotifications === 'function') initRealNotifications();
+    }, 300);
+
+    // Takım alt-sekme değişince URL hash'i güncelle
+    window._mpaTeamTabChange = function(tabId) {
+        history.replaceState(null, '', '#' + tabId);
+    };
+});
+</script>
+</body>
+</html>

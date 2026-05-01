@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MANAGER++ | Maç Merkezi</title>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="../team-fix.css">
+    <link rel="stylesheet" href="../faz2-7.css">
+    <link rel="stylesheet" href="../fixes.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../supabase.js"></script>
+
+    <!-- Oturum Koruma -->
+    <script>
+    (async function guardSession() {
+        if (!window.sbClient) return;
+        try {
+            const { data: { session } } = await window.sbClient.auth.getSession();
+            if (!session) { window.location.replace('../auth.html'); return; }
+            window.__AUTH_USER__ = session.user;
+            window.sbClient.auth.onAuthStateChange((ev, _s) => {
+                if (_s && _s.user) window.__AUTH_USER__ = _s.user;
+            });
+        } catch(e) { console.warn('Session check failed:', e.message); }
+    })();
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="app-container">
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <button class="sidebar-toggle" id="sidebar-toggle-btn" onclick="toggleSidebar()" aria-label="Menüyü Aç/Kapat">
+        <i class="fa-solid fa-bars" id="sidebar-toggle-icon"></i>
+    </button>
+
+    <!-- Sidebar: components.js inject eder -->
+    <div id="sidebar-placeholder"></div>
+
+    <!-- Bildirim (Fixed) -->
+    <div class="notif-wrapper" id="notif-wrapper">
+        <button class="notif-bell" id="notif-bell-btn" onclick="toggleNotifPanel()">
+            <i class="fa-solid fa-bell"></i>
+            <span class="notif-count" id="notif-count" style="display:none;">0</span>
+        </button>
+        <div class="notif-panel" id="notif-panel">
+            <div class="notif-panel-header">
+                <i class="fa-solid fa-bell"></i> Bildirimler
+                <button onclick="markAllRead()" class="notif-clear-btn">Tümünü Oku</button>
+            </div>
+            <div class="notif-list" id="notif-list">
+                <div class="notif-empty"><i class="fa-regular fa-bell-slash"></i><br>Yeni bildirim yok</div>
+            </div>
+        </div>
+    </div>
+
+    <main class="main-content">
+        <section id="matches" class="section active">
+            <div class="section-header">
+                <h1 class="section-title">Maç Merkezi</h1>
+                <p class="section-subtitle">Maç Raporları ve Performans Değerlendirme</p>
+            </div>
+            <div class="match-center-grid">
+                <div class="glass-card match-form">
+                    <h3 class="section-title" style="font-size:1.2rem; color:var(--neon-green);">MAÇ RAPORU GİRİŞİ</h3>
+                    <div class="form-group">
+                        <label class="form-label">Halı Saha Seçimi</label>
+                        <select class="form-select">
+                            <option>Mecidiyeköy Arena</option>
+                            <option>Kadıköy Spor Tesisleri</option>
+                            <option>Ataşehir Halısaha</option>
+                            <option>Sarıyer Park</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tarih / Saat</label>
+                        <input type="datetime-local" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Skor Girişi</label>
+                        <div class="score-inputs">
+                            <input type="number" class="form-input score-input" value="0">
+                            <span class="vs-badge">VS</span>
+                            <input type="number" class="form-input score-input" value="0">
+                        </div>
+                    </div>
+                    <button class="btn-primary">Raporu Gönder</button>
+                </div>
+                <div class="glass-card">
+                    <h3 class="section-title" style="font-size:1.2rem; margin-bottom:1rem; color:var(--neon-green);">OYUNCU PERFORMANSI</h3>
+                    <div class="teammate-ratings">
+                        <div class="rating-item">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" class="rating-avatar">
+                            <span class="rating-name">Alex</span>
+                            <input type="range" min="1" max="10" step="0.1" value="7" class="stat-range" style="width:100px;">
+                            <span style="font-weight:bold; color:var(--neon-green);">7.0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- JS -->
+<script src="../db.js"></script>
+<script src="../assets/js/components.js"></script>
+<script src="../script.js"></script>
+<script src="../faz1.js"></script>
+<script src="../faz2-social.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () {
+        if (typeof initRealNotifications === 'function') initRealNotifications();
+    }, 300);
+});
+</script>
+</body>
+</html>

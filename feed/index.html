@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MANAGER++ | Sosyal Akış</title>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="../team-fix.css">
+    <link rel="stylesheet" href="../faz2-7.css">
+    <link rel="stylesheet" href="../fixes.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../supabase.js"></script>
+
+    <!-- Oturum Koruma -->
+    <script>
+    (async function guardSession() {
+        if (!window.sbClient) return;
+        try {
+            const { data: { session } } = await window.sbClient.auth.getSession();
+            if (!session) { window.location.replace('../auth.html'); return; }
+            window.__AUTH_USER__ = session.user;
+            window.sbClient.auth.onAuthStateChange((ev, _s) => {
+                if (_s && _s.user) window.__AUTH_USER__ = _s.user;
+            });
+        } catch(e) { console.warn('Session check failed:', e.message); }
+    })();
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="app-container">
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <button class="sidebar-toggle" id="sidebar-toggle-btn" onclick="toggleSidebar()" aria-label="Menüyü Aç/Kapat">
+        <i class="fa-solid fa-bars" id="sidebar-toggle-icon"></i>
+    </button>
+
+    <!-- Sidebar: components.js inject eder -->
+    <div id="sidebar-placeholder"></div>
+
+    <!-- Bildirim (Fixed) -->
+    <div class="notif-wrapper" id="notif-wrapper">
+        <button class="notif-bell" id="notif-bell-btn" onclick="toggleNotifPanel()">
+            <i class="fa-solid fa-bell"></i>
+            <span class="notif-count" id="notif-count" style="display:none;">0</span>
+        </button>
+        <div class="notif-panel" id="notif-panel">
+            <div class="notif-panel-header">
+                <i class="fa-solid fa-bell"></i> Bildirimler
+                <button onclick="markAllRead()" class="notif-clear-btn">Tümünü Oku</button>
+            </div>
+            <div class="notif-list" id="notif-list">
+                <div class="notif-empty"><i class="fa-regular fa-bell-slash"></i><br>Yeni bildirim yok</div>
+            </div>
+        </div>
+    </div>
+
+    <main class="main-content">
+        <section id="feed" class="section active">
+            <div class="feed-header">
+                <div>
+                    <h1 class="section-title" style="font-size:1.8rem; margin-bottom:0.2rem;">
+                        <i class="fa-solid fa-rss" style="color:var(--neon-green);"></i> Sosyal Akış
+                    </h1>
+                    <p style="color:#555; font-size:0.9rem;">Takımından ve topluluğundan son gelişmeler</p>
+                </div>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <button class="btn-primary feed-post-btn" onclick="openPostModal()"
+                        style="background:linear-gradient(135deg,var(--neon-green),#6fff00); color:#0a0a0f;">
+                        <i class="fa-solid fa-pen-to-square"></i> Paylaş
+                    </button>
+                    <button class="btn-outline feed-post-btn" onclick="openMatchInviteModal()">
+                        <i class="fa-solid fa-paper-plane"></i> Davet Et
+                    </button>
+                </div>
+            </div>
+
+            <!-- Feed Filtreler -->
+            <div class="feed-filters">
+                <button class="feed-filter active" data-filter="all" onclick="filterFeed('all', this)">
+                    <i class="fa-solid fa-layer-group"></i> Tümü
+                </button>
+                <button class="feed-filter" data-filter="match" onclick="filterFeed('match', this)">
+                    <i class="fa-solid fa-futbol"></i> Maçlar
+                </button>
+                <button class="feed-filter" data-filter="rating" onclick="filterFeed('rating', this)">
+                    <i class="fa-solid fa-star"></i> Puanlar
+                </button>
+                <button class="feed-filter" data-filter="invite" onclick="filterFeed('invite', this)">
+                    <i class="fa-solid fa-envelope"></i> Davetler
+                </button>
+            </div>
+
+            <!-- Feed Stream -->
+            <div class="feed-stream" id="feed-stream">
+                <div style="text-align:center; color:#444; padding:3rem;">
+                    <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- Modal: Maça Davet Et -->
+<div class="modal-backdrop" id="invite-modal-backdrop" onclick="closeMatchInviteModal()" style="display:none;">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-paper-plane" style="color:var(--neon-cyan);"></i> Maça Davet Et</h3>
+            <button class="modal-close" onclick="closeMatchInviteModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-field"><label>Davet Edilecek Oyuncu</label><select id="invite-player-select" class="profile-select"></select></div>
+            <div class="modal-field"><label>Maç Tarihi</label><input type="date" id="invite-date" class="profile-input"></div>
+            <div class="modal-field"><label>Saat</label><input type="time" id="invite-time" class="profile-input" value="20:00"></div>
+            <div class="modal-field"><label>Saha / Yer</label><input type="text" id="invite-venue" class="profile-input" placeholder="Örn: Mecidiyeköy Arena"></div>
+            <div class="modal-field"><label>Not (opsiyonel)</label><textarea id="invite-note" class="profile-input" rows="2" style="resize:vertical;"></textarea></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-outline" onclick="closeMatchInviteModal()">İptal</button>
+            <button class="btn-primary" onclick="sendMatchInvite()" style="background:var(--neon-cyan); color:black;">
+                <i class="fa-solid fa-paper-plane"></i> Daveti Gönder
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- JS -->
+<script src="../db.js"></script>
+<script src="../assets/js/components.js"></script>
+<script src="../script.js"></script>
+<script src="../faz1.js"></script>
+<script src="../faz2-social.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () {
+        if (typeof window.renderFeed === 'function') window.renderFeed();
+        if (typeof initRealNotifications === 'function') initRealNotifications();
+    }, 300);
+});
+</script>
+</body>
+</html>
