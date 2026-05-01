@@ -954,76 +954,157 @@ window.savePitchAndShowToast = function() {
 // FAZ 4: DENGELİ TAKIM OLUŞTURMA ALGORİTMASI
 // ──────────────────────────────────────────────────────
 
+window._externalPoolPlayers = window._externalPoolPlayers || [];
+window._extSearchResults    = window._extSearchResults    || [];
+
 window.renderTakimOlusturTab = function() {
     const c = document.getElementById('ttab-olustur-content');
     const t = window._tmState?.team;
     if (!c || !t) return;
 
-    const teamPlayers = getTeamPlayers();
+    const teamPlayers  = getTeamPlayers();
+    const teamIds      = new Set(teamPlayers.map(p => p.id));
+    const externalOnly = (window._externalPoolPlayers || []).filter(p => !teamIds.has(p.id));
+    window._allPoolPlayers = [...teamPlayers, ...externalOnly];
+
+    const coreSquad  = JSON.parse(localStorage.getItem('ss_core_' + t.id) || '[]');
     const savedTeams = JSON.parse(localStorage.getItem('ss_balanced_teams') || 'null');
+
+    const renderPoolItem = (p, isExternal) => {
+        const pInfo  = _getPInfo(p);
+        const gen    = calcPlayerGEN(p);
+        const inCore = coreSquad.includes(pInfo.id);
+        return `
+        <label class="pool-player-item ${inCore ? 'in-core' : ''}" id="pool-item-${pInfo.id}" style="position:relative;">
+            <input type="checkbox" class="pool-checkbox" value="${pInfo.id}" ${inCore ? 'checked' : ''}>
+            <img src="${pInfo.avatar}" class="pool-avatar">
+            <div class="pool-info">
+                <span class="pool-name">${pInfo.name}${isExternal ? ' <span style="font-size:0.6rem;color:#ff6b35;border:1px solid rgba(255,107,53,0.4);border-radius:3px;padding:0 3px;vertical-align:middle;">Dış</span>' : ''}</span>
+                <span class="pool-pos" style="color:${pInfo.col};">${pInfo.pos}</span>
+            </div>
+            <span class="pool-gen" style="color:${gen>=80?'var(--neon-green)':'#ffd700'}">${gen}</span>
+            ${isExternal ? `<button onclick="event.preventDefault();_tmRemoveExternal('${pInfo.id}')" title="Havuzdan Çıkar"
+                style="position:absolute;top:2px;right:2px;background:rgba(255,0,127,0.15);border:none;color:#ff007f;border-radius:4px;width:18px;height:18px;font-size:0.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-xmark"></i></button>` : ''}
+        </label>`;
+    };
 
     c.innerHTML = `
         <div class="olustur-tab-wrapper">
-
-            <!-- Algorithm Config Card -->
             <div class="glass-card olustur-config-card">
                 <div class="section-label-pill" style="margin-bottom:1.2rem;">
-                    <i class="fa-solid fa-shuffle" style="color:var(--neon-cyan);"></i>
-                    7V7 DENGELİ TAKIM OLUŞTURUCU
+                    <i class="fa-solid fa-scale-balanced" style="color:var(--neon-cyan);"></i>
+                    7V7 ADİL DAĞITIM OLUŞTURUCU
                 </div>
                 <p style="color:#888; font-size:0.9rem; margin-bottom:1.5rem;">
-                    Oyuncu havuzundan GEN değerlerine göre dengeli iki takım oluşturur. 
-                    Mevki dengesini de göz önüne alır.
+                    Oyuncu havuzundan GEN değerlerine göre dengeli iki takım oluşturur.
+                    Takım dışından oyuncu ekleyebilirsiniz.
                 </p>
 
                 <div class="olustur-pool-header">
                     <span class="section-label-pill" style="margin-bottom:0.5rem;">
                         <i class="fa-solid fa-people-group"></i>
-                        OYUNCU HAVUZU (${teamPlayers.length} oyuncu)
+                        OYUNCU HAVUZU (${window._allPoolPlayers.length} oyuncu)
                     </span>
                     <button class="btn-sm btn-accent" onclick="selectAllPoolPlayers()">Tümünü Seç</button>
                 </div>
                 <div class="pool-player-grid" id="pool-player-grid">
-                    ${teamPlayers.map(p => {
-                        const gen = calcPlayerGEN(p);
-                        const pInfo = _getPInfo(p);
-                        const coreSquad = JSON.parse(localStorage.getItem('ss_core_' + t.id) || '[]');
-                        const isInCore = coreSquad.includes(pInfo.id);
-                        return `
-                        <label class="pool-player-item ${isInCore ? 'in-core' : ''}" id="pool-item-${pInfo.id}">
-                            <input type="checkbox" class="pool-checkbox" value="${pInfo.id}" ${isInCore ? 'checked' : ''}>
-                            <img src="${pInfo.avatar}" class="pool-avatar">
-                            <div class="pool-info">
-                                <span class="pool-name">${pInfo.name}</span>
-                                <span class="pool-pos" style="color:${pInfo.col};">${pInfo.pos}</span>
-                            </div>
-                            <span class="pool-gen" style="color:${gen>=80?'var(--neon-green)':'#ffd700'}">${gen}</span>
-                        </label>`;
-                    }).join('')}
+                    ${teamPlayers.map(p => renderPoolItem(p, false)).join('')}
+                    ${externalOnly.map(p => renderPoolItem(p, true)).join('')}
+                    ${window._allPoolPlayers.length === 0 ? '<div style="color:#444;font-size:0.85rem;padding:1rem;text-align:center;"><i class="fa-solid fa-users-slash"></i> Takımda oyuncu yok. Aşağıdan dışarıdan ekleyin.</div>' : ''}
                 </div>
 
-                <div class="olustur-algo-row">
+                <!-- Dışarıdan Oyuncu Ekleme -->
+                <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.07);">
+                    <div style="font-size:0.75rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;">
+                        <i class="fa-solid fa-user-plus" style="color:var(--neon-cyan);"></i> Dışarıdan Oyuncu Ekle
+                    </div>
+                    <input id="pool-ext-search" class="profile-input" placeholder="Kullanıcı adı ara..."
+                           style="width:100%;padding:0.45rem 0.7rem;border-radius:8px;font-size:0.85rem;"
+                           oninput="_tmSearchExtForPool(this.value)">
+                    <div id="pool-ext-results" style="margin-top:0.5rem;"></div>
+                </div>
+
+                <div class="olustur-algo-row" style="margin-top:1.2rem;">
                     <div class="algo-option">
                         <label>Algoritma</label>
                         <select id="algo-type" class="profile-select" style="max-width:220px;">
-                            <option value="gen">GEN Dengesi (Sürpriz)</option>
+                            <option value="gen">GEN Dengesi (Adil Dağıtım)</option>
                             <option value="pos">Mevki Öncelikli</option>
                             <option value="snake">Snake Draft (Serpme)</option>
                         </select>
                     </div>
-                    <button class="btn-primary" onclick="generateBalancedTeams()" 
+                    <button class="btn-primary" onclick="generateBalancedTeams()"
                             style="background:linear-gradient(135deg,var(--neon-green),var(--neon-cyan));color:black;">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i> TAKIM OLUŞTUR
+                        <i class="fa-solid fa-scale-balanced"></i> ADİL DAĞITIM
                     </button>
                 </div>
             </div>
 
-            <!-- Result -->
             <div id="balanced-teams-result">
                 ${savedTeams ? renderBalancedTeamsHTML(savedTeams.a, savedTeams.b, savedTeams.diff) : ''}
             </div>
         </div>
     `;
+};
+
+window._tmSearchExtForPool = async function(q) {
+    const resultsEl = document.getElementById('pool-ext-results');
+    if (!resultsEl) return;
+    if (!q || q.length < 2) { resultsEl.innerHTML = ''; window._extSearchResults = []; return; }
+
+    resultsEl.innerHTML = '<div style="color:#555;font-size:0.8rem;padding:0.3rem 0;"><i class="fa-solid fa-spinner fa-spin"></i> Aranıyor…</div>';
+
+    try {
+        const qNorm = typeof _tmNormalizeTR === 'function' ? _tmNormalizeTR(q) : q.toLowerCase();
+        const orFilter = qNorm !== q.toLowerCase()
+            ? `username.ilike.%${q}%,username.ilike.%${qNorm}%`
+            : `username.ilike.%${q}%`;
+
+        const { data } = await window.sbClient
+            .from('profiles')
+            .select('id, username, avatar_url, position, ana_mevki, gen_score, rating_teknik, rating_sut, rating_pas, rating_hiz, rating_fizik, rating_kondisyon')
+            .or(orFilter)
+            .limit(6);
+
+        const existingIds = new Set((window._allPoolPlayers || []).map(p => p.id));
+        window._extSearchResults = (data || []).filter(p => !existingIds.has(p.id));
+
+        if (!window._extSearchResults.length) {
+            resultsEl.innerHTML = '<div style="color:#555;font-size:0.8rem;padding:0.3rem 0;">Bulunamadı veya zaten havuzda.</div>';
+            return;
+        }
+
+        resultsEl.innerHTML = window._extSearchResults.map((p, i) => {
+            const gen = calcPlayerGEN(p);
+            const pInfo = _getPInfo(p);
+            return `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+                <img src="${pInfo.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">
+                <span style="flex:1;font-size:0.85rem;">${pInfo.name}</span>
+                <span style="font-size:0.75rem;color:#ffd700;">${gen} GEN</span>
+                <button onclick="_tmAddExternal(${i})" class="btn-sm" style="padding:0.2rem 0.6rem;font-size:0.75rem;background:rgba(0,229,255,0.15);border:1px solid rgba(0,229,255,0.3);color:var(--neon-cyan);border-radius:6px;cursor:pointer;">
+                    <i class="fa-solid fa-plus"></i> Ekle
+                </button>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        resultsEl.innerHTML = `<div style="color:#ff007f;font-size:0.8rem;">Hata: ${e.message}</div>`;
+    }
+};
+
+window._tmAddExternal = function(idx) {
+    const p = window._extSearchResults?.[idx];
+    if (!p) return;
+    window._externalPoolPlayers = window._externalPoolPlayers || [];
+    if (!window._externalPoolPlayers.find(ep => ep.id === p.id)) {
+        window._externalPoolPlayers.push(p);
+    }
+    renderTakimOlusturTab();
+};
+
+window._tmRemoveExternal = function(playerId) {
+    window._externalPoolPlayers = (window._externalPoolPlayers || []).filter(p => p.id !== playerId);
+    renderTakimOlusturTab();
 };
 
 window.selectAllPoolPlayers = function() {
@@ -1038,7 +1119,7 @@ window.generateBalancedTeams = function() {
     }
 
     const algo = document.getElementById('algo-type')?.value || 'gen';
-    const pool = (window.players||[]).filter(p => checked.includes(p.id));
+    const pool = (window._allPoolPlayers || []).filter(p => checked.includes(p.id));
     const sorted = [...pool].sort((a, b) => calcPlayerGEN(b) - calcPlayerGEN(a));
 
     let teamA = [], teamB = [];
@@ -1054,9 +1135,9 @@ window.generateBalancedTeams = function() {
     } else if (algo === 'pos') {
         // Position-first: alternate by position group
         const byPos = { KL: [], DEF: [], OS: [], FV: [] };
-        sorted.forEach(p => { 
-            const pos = (p.details && p.details.pos) || 'OS';
-            if (byPos[pos]) byPos[pos].push(p); 
+        sorted.forEach(p => {
+            const posKey = _getPInfo(p).posKey || 'OS';
+            if (byPos[posKey]) byPos[posKey].push(p);
         });
         let toggle = 0;
         ['KL','DEF','OS','FV'].forEach(pos => {
@@ -1105,12 +1186,11 @@ window.generateBalancedTeams = function() {
 };
 
 function renderBalancedTeamsHTML(aIds, bIds, diff) {
-    const teamA = (window.players||[]).filter(p => aIds.includes(p.id));
-    const teamB = (window.players||[]).filter(p => bIds.includes(p.id));
+    const allPool = window._allPoolPlayers || [];
+    const teamA = allPool.filter(p => aIds.includes(p.id));
+    const teamB = allPool.filter(p => bIds.includes(p.id));
     const genA = Math.round(teamA.reduce((s, p) => s + calcPlayerGEN(p), 0) / (teamA.length || 1));
     const genB = Math.round(teamB.reduce((s, p) => s + calcPlayerGEN(p), 0) / (teamB.length || 1));
-
-    const posColors = { KL: '#ffd700', DEF: '#00e5ff', OS: '#00ff88', FV: '#ff007f' };
 
     const renderTeamCol = (team, name, genAvg, color) => `
         <div class="balanced-team-col glass-card" style="border-color:${color}33;">
@@ -1119,15 +1199,14 @@ function renderBalancedTeamsHTML(aIds, bIds, diff) {
                 <span class="bal-gen-badge" style="border-color:${color}; color:${color};">${genAvg} GEN</span>
             </div>
             ${team.map(p => {
-                const gen = calcPlayerGEN(p);
-                const pos = (p.details && p.details.pos) || 'OS';
-                const col = posColors[pos] || '#aaa';
+                const pInfo = _getPInfo(p);
+                const gen   = calcPlayerGEN(p);
                 return `
                 <div class="bal-player-row">
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}" class="bal-avatar">
+                    <img src="${pInfo.avatar}" class="bal-avatar">
                     <div class="bal-player-info">
-                        <span class="bal-player-name">${p.name}</span>
-                        <span style="color:${col}; font-size:0.75rem;">${pos}</span>
+                        <span class="bal-player-name">${pInfo.name}</span>
+                        <span style="color:${pInfo.col}; font-size:0.75rem;">${pInfo.pos}</span>
                     </div>
                     <span class="bal-player-gen" style="color:${gen>=80?'var(--neon-green)':'#ffd700'}">${gen}</span>
                 </div>`;

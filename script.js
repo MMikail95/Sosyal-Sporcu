@@ -1228,12 +1228,10 @@ window.updateUI = function () {
         avatarEl.onerror = () => { avatarEl.src = ''; };
     }
 
-    // ── Sidebar senkronizasyonu: kendi profiline bakarken sidebar ile eşitle ──
-    const isSelf = player.supabase_id === window.__AUTH_USER__?.id
-                || player.id === (window.activePlayerId || activePlayerId);
-    const isViewingOther = !!(window.viewingAsFriend !== null && window.viewingAsFriend !== undefined
-                               && document.getElementById('section-profile')?.classList.contains('active'));
-    if (isSelf && !isViewingOther) {
+    // ── Sidebar senkronizasyonu: SADECE giriş yapmış kullanıcının kendi profilinde güncelle ──
+    const authId  = window.__AUTH_USER__?.id;
+    const isSelf  = authId && (player.supabase_id === authId || player.id === authId);
+    if (isSelf) {
         const sidebarName = document.getElementById('current-account-name');
         if (sidebarName && player.name) sidebarName.textContent = player.name;
         const sidebarAvatar = document.getElementById('current-account-avatar');

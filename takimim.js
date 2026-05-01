@@ -48,28 +48,32 @@ function _tmIsCapOrAdmin() {
 }
 
 // GEN hesaplama (Supabase profil objesi üzerinden)
+// gen_score önceliklidir; yoksa rating alanlarından hesapla; hiç veri yoksa null döner.
 function _tmPlayerGEN(p) {
-  if (!p) return 70;
+  if (!p) return null;
+  if (p.gen_score) return p.gen_score;
   const vals = [
     p.rating_teknik, p.rating_sut, p.rating_pas,
     p.rating_hiz, p.rating_fizik, p.rating_kondisyon,
-  ].map(v => v || 70);
-  return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+  ].filter(v => v != null && v > 0);
+  return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
 }
 
 function _tmTeamGEN() {
-  if (!_tmState.members.length) return 0;
-  const sorted = [..._tmState.members]
-    .map(m => ({ ...m, _gen: _tmPlayerGEN(m.player) }))
-    .sort((a, b) => b._gen - a._gen)
-    .slice(0, 7);
-  return Math.round(sorted.reduce((s, m) => s + m._gen, 0) / sorted.length);
+  if (!_tmState.members.length) return null;
+  const gens = _tmState.members
+    .map(m => _tmPlayerGEN(m.player))
+    .filter(g => g != null);
+  if (!gens.length) return null;
+  const top7 = [...gens].sort((a, b) => b - a).slice(0, 7);
+  return Math.round(top7.reduce((s, g) => s + g, 0) / top7.length);
 }
 
 function _tmTeamStatProfile() {
   const members = _tmState.members.slice();
   const sorted  = members
     .map(m => ({ ...m.player, _gen: _tmPlayerGEN(m.player) }))
+    .filter(p => p._gen != null)
     .sort((a, b) => b._gen - a._gen)
     .slice(0, 7);
   const keys = ['rating_teknik','rating_sut','rating_pas','rating_hiz','rating_fizik','rating_kondisyon'];
@@ -77,10 +81,10 @@ function _tmTeamStatProfile() {
                    rating_hiz:'hiz', rating_fizik:'fizik', rating_kondisyon:'kondisyon' };
   const result = {};
   keys.forEach(k => {
-    const avg = sorted.length
-      ? Math.round(sorted.reduce((s, p) => s + (p[k] || 70), 0) / sorted.length)
-      : 70;
-    result[labels[k]] = avg;
+    const realVals = sorted.map(p => p[k]).filter(v => v != null && v > 0);
+    result[labels[k]] = realVals.length
+      ? Math.round(realVals.reduce((s, v) => s + v, 0) / realVals.length)
+      : null;
   });
   return result;
 }
@@ -489,11 +493,9 @@ window._tmSubmitJoin = async function() {
     // Modal kapat
     document.getElementById('tm-new-team-modal')?.remove();
 
-    // Direkt state güncelle ve render et
-    _tmState.team    = _ntcFoundTeam;
-    _tmState.myRole  = 'player';
-    _tmState.members = [];
-    _tmRenderTeamUI();
+    // Takım verilerini ve üye listesini Supabase'den çek, sonra render et
+    _tmState.myRole = 'player';
+    await _tmLoadTeam(_ntcFoundTeam.id);
     _tmShowSubtabs();
 
   } catch (e) {
@@ -679,7 +681,7 @@ function _tmRenderHeader() {
         <h1 class="team-main-name" id="team-name-display">${t.name}</h1>
         <div class="team-meta-row">
           <span class="team-gen-badge">
-            <span id="team-gen-number">${gen}</span> GEN
+            <span id="team-gen-number">${gen ?? '—'}</span> GEN
           </span>
           <span class="team-member-count">
             <i class="fa-solid fa-users"></i> ${_tmState.members.length} Oyuncu
@@ -862,6 +864,12 @@ window._tmShareInvite = function(slug, url) {
   }
 };
 
+function _tmNormalizeTR(str) {
+  const map = {'ç':'c','Ç':'c','ğ':'g','Ğ':'g','ı':'i','İ':'i',
+               'ö':'o','Ö':'o','ş':'s','Ş':'s','ü':'u','Ü':'u'};
+  return (str || '').replace(/[çÇğĞıİöÖşŞüÜ]/g, m => map[m] || m).toLowerCase();
+}
+
 window._tmSearchPlayers = async function() {
   const q = document.getElementById('tm-inv-search-input')?.value?.trim();
   if (!q || q.length < 2) { window.showToast?.('En az 2 karakter girin', 'error'); return; }
@@ -870,13 +878,14 @@ window._tmSearchPlayers = async function() {
   if (!resultsEl) return;
   resultsEl.innerHTML = `<div class="tm-inv-searching"><i class="fa-solid fa-spinner fa-spin"></i> Aranıyor…</div>`;
 
+  // Arama kaynağı: Supabase `profiles` tablosu — username alanı (ilike, büyük/küçük harf duyarsız)
   try {
     const { data, error } = await window.sbClient
       .from('profiles')
       .select('id, username, avatar_url, position, ana_mevki, gen_score, current_team_id')
       .ilike('username', `%${q}%`)
       .neq('id', _tmState.userId)
-      .limit(8);
+      .limit(10);
 
     if (error) throw error;
 
@@ -892,13 +901,14 @@ window._tmSearchPlayers = async function() {
       const hasTeam  = !!p.current_team_id;
       const avatar   = p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.username||'u')}`;
       const pos      = p.ana_mevki || p.position || 'OS';
-      const gen      = p.gen_score || 70;
+      const gen      = p.gen_score || '—';
+      const displayName = p.username;
 
       return `
         <div class="tm-inv-result-row">
           <img src="${avatar}" class="tm-inv-result-avatar" alt="${p.username}">
           <div class="tm-inv-result-info">
-            <span class="tm-inv-result-name">${p.username}</span>
+            <span class="tm-inv-result-name">${displayName}</span>
             <span class="tm-inv-result-meta">${pos} · ${gen} GEN${hasTeam ? ' · <span style="color:#ff6b35">Takımlı</span>' : ''}</span>
           </div>
           ${isMember
@@ -961,14 +971,20 @@ window._tmLeaveOrDissolve = async function() {
   if (_tmIsCapOrAdmin()) {
     if (!confirm(`"${t.name}" takımını tamamen silmek istediğinden emin misin?\n\nBu işlem geri alınamaz. Tüm üyeler takımdan çıkarılır.`)) return;
     try {
-      await DB.Teams.dissolve(t.id, _tmState.userId);
+      // Önce realtime'ı durdur — dissolve sırasında gelen event UI'ı restore etmesin
+      if (_tmState.realtimeSub) {
+        try { _tmState.realtimeSub.unsubscribe(); } catch (_) {}
+        _tmState.realtimeSub = null;
+      }
+      await DB.Teams.dissolve(t.id, _tmState.userId, t.slug);
       window.showToast?.(`"${t.name}" silindi.`, 'success');
-      _tmState.realtimeSub?.unsubscribe?.();
-      _tmState.realtimeSub = null;
-      _tmRemoveFromMyTeams(t.id);
     } catch (e) {
       console.error('dissolve error:', e);
-      window.showToast?.('❌ Takım silinemedi: ' + e.message, 'error');
+      // DB hatası olsa bile üyeler zaten silindi — UI'ı temizle
+      window.showToast?.('⚠️ ' + e.message, 'warning');
+    } finally {
+      // Her durumda UI'dan takımı kaldır
+      _tmRemoveFromMyTeams(t.id);
     }
   } else {
     if (!confirm(`"${t.name}" takımından ayrılmak istediğinden emin misin?`)) return;
@@ -996,14 +1012,35 @@ function renderTeamOverview() {
 }
 
 function renderTeamRadarChart() {
+  const gen = _tmTeamGEN();
   const genChip = document.getElementById('team-gen-radar-val');
-  if (genChip) genChip.textContent = _tmTeamGEN();
+  if (genChip) genChip.textContent = gen ?? '—';
 
   const ctx = document.getElementById('team-radar-chart');
   if (!ctx || typeof Chart === 'undefined') return;
 
   const profile = _tmTeamStatProfile();
-  const vals = [profile.teknik, profile.sut, profile.pas, profile.hiz, profile.fizik, profile.kondisyon];
+  const rawVals = [profile.teknik, profile.sut, profile.pas, profile.hiz, profile.fizik, profile.kondisyon];
+  const hasData = rawVals.some(v => v != null);
+  const vals = rawVals.map(v => v ?? 0);
+
+  if (!hasData) {
+    if (teamChartInstance) { teamChartInstance.destroy(); teamChartInstance = null; }
+    ctx.style.display = 'none';
+    const parent = ctx.parentElement;
+    if (parent && !parent.querySelector('.radar-no-data')) {
+      const ph = document.createElement('div');
+      ph.className = 'radar-no-data';
+      ph.style.cssText = 'display:flex;align-items:center;justify-content:center;height:200px;color:#444;font-size:0.9rem;flex-direction:column;gap:0.5rem;';
+      ph.innerHTML = '<i class="fa-solid fa-chart-simple" style="font-size:2rem;opacity:0.3;"></i><span>Oyuncu rating verisi yok</span>';
+      parent.appendChild(ph);
+    }
+    return;
+  }
+
+  ctx.style.display = '';
+  const parent = ctx.parentElement;
+  if (parent) { const ph = parent.querySelector('.radar-no-data'); if (ph) ph.remove(); }
 
   if (teamChartInstance) {
     teamChartInstance.data.datasets[0].data = vals;
@@ -1067,9 +1104,9 @@ function renderTeamStrengthBadges() {
           ${i === allStats.length - 1 ? '<span class="weak-badge">GELİŞTİR</span>' : ''}
         </div>
         <div class="strength-bar-track">
-          <div class="strength-bar-fill" style="width:${val}%;background:${colors[key]};animation-delay:${i*0.1}s;"></div>
+          <div class="strength-bar-fill" style="width:${val ?? 0}%;background:${colors[key]};animation-delay:${i*0.1}s;"></div>
         </div>
-        <span class="strength-bar-val" style="color:${colors[key]};">${val}</span>
+        <span class="strength-bar-val" style="color:${colors[key]};">${val ?? '—'}</span>
       </div>`).join('')}
     </div>
   `;
@@ -1091,7 +1128,7 @@ function renderCoreSquadSection() {
       <div class="section-label-pill">
         <i class="fa-solid fa-star" style="color:#ffd700;"></i> BAŞLANGIÇ 7 / KİLİT KADRO
       </div>
-      <span class="core-gen-total">Ort. GEN: <b style="color:var(--neon-green);">${_tmTeamGEN()}</b></span>
+      <span class="core-gen-total">Ort. GEN: <b style="color:var(--neon-green);">${_tmTeamGEN() ?? '—'}</b></span>
     </div>
     <div class="core-squad-grid">
       ${top7.map((m, i) => {
@@ -1109,7 +1146,7 @@ function renderCoreSquadSection() {
             <span class="core-name">${p.username || '—'}</span>
             <span class="core-pos" style="color:${col};">${p.ana_mevki || p.position || '—'}</span>
           </div>
-          <div class="core-gen-chip" style="border-color:${m._gen>=80?'var(--neon-green)':'#555'};">${m._gen}</div>
+          <div class="core-gen-chip" style="border-color:${m._gen!=null&&m._gen>=80?'var(--neon-green)':'#555'};">${m._gen ?? '—'}</div>
           ${isCap ? '<i class="fa-solid fa-crown core-bone-icon" style="color:#ffd700;" title="Kaptan"></i>' : ''}
         </div>`;
       }).join('')}
@@ -1171,7 +1208,7 @@ function renderTeamMemberGrid() {
                   ${isCap ? '<i class="fa-solid fa-crown" style="color:#ffd700;font-size:0.7rem;"></i>' : ''}
                   ${roleBadge(m.role)}
                 </span>
-                <span class="member-chip-gen" style="color:${gen>=80?'var(--neon-green)':'orange'};">${gen} GEN</span>
+                <span class="member-chip-gen" style="color:${gen!=null&&gen>=80?'var(--neon-green)':gen!=null?'orange':'#555'};">${gen ?? '—'} GEN</span>
               </div>
               ${isCA && !isCap ? `<button class="member-chip-remove" title="Takımdan Çıkar"
                   onclick="event.stopPropagation();_tmRemoveMemberPrompt('${p.id}','${p.username||'Oyuncu'}')">
@@ -1380,10 +1417,18 @@ function _tmSubscribeRealtime() {
   if (!_tmState.team) return;
   _tmState.realtimeSub = DB.Teams.subscribeToTeam(_tmState.team.id, async () => {
     const updated = await DB.Teams.get(_tmState.team.id);
+    // Takım silinmiş veya pasife alınmışsa UI'ı temizle
+    if (!updated || updated.is_active === false) {
+      _tmRemoveFromMyTeams(_tmState.team?.id);
+      return;
+    }
     _tmState.team    = updated;
     _tmState.members = updated?.team_members || [];
     teamData = updated;
-    renderTeamOverview();
+    // Aktif sekmeyi koruyarak ilgili bölümleri yenile
+    _tmRenderHeader();
+    renderTeamOverview();         // ttab-genel içeriği (üye grid dahil)
+    if (typeof renderKadroTab === 'function') renderKadroTab(); // ttab-kadro (Kadro & Davet)
   });
 }
 

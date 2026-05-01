@@ -466,7 +466,7 @@ const Teams = {
   },
 
   // Takımı dağıt (kaptan yetkisi — tüm üyelikleri ve takımı sil)
-  async dissolve(teamId, captainId) {
+  async dissolve(teamId, captainId, currentSlug) {
     // 1. Tüm üyelerin profilinden takımı kaldır
     const { data: members } = await sb()
       .from('team_members')
@@ -480,19 +480,14 @@ const Teams = {
     // 2. Üyelikleri sil
     await sb().from('team_members').delete().eq('team_id', teamId);
 
-    // 3. Takımı pasif yap (captain_id koşulu olmadan — RLS politikası halleder)
-    const { error, data: updated } = await sb()
+    // 3. Takımı pasif yap + slug'ı serbest bırak (aynı isimde yeni takım kurulabilsin)
+    const deletedSlug = `DEL_${Date.now()}_${currentSlug || teamId.slice(0, 8)}`;
+    const { error } = await sb()
       .from('teams')
-      .update({ is_active: false })
-      .eq('id', teamId)
-      .select('id');
+      .update({ is_active: false, slug: deletedSlug })
+      .eq('id', teamId);
 
     if (error) throw error;
-
-    // Hiç satır güncellenmezse RLS engellemiş demektir
-    if (!updated || updated.length === 0) {
-      throw new Error('Takım silinemiyor: yetki reddedildi ya da takım bulunamadı.');
-    }
   },
 
   // Realtime: takım değişikliklerini dinle
