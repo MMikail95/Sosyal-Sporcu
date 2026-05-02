@@ -1557,12 +1557,13 @@ function calcCommunityAvg(player) {
     let count = 0;
     player.communityRatings.forEach(r => {
         keys.forEach(k => {
-            if (r[k] !== undefined) { total += r[k]; count++; }
+            if (r[k] !== undefined && r[k] !== null) { total += r[k]; count++; }
         });
     });
     if (count === 0) return 0;
-    // Scale 1-99 to 1-10
-    return ((total / count) / 99 * 10);
+    const raw = total / count;
+    // Community ratings are 1-10; return as-is for display
+    return parseFloat(raw.toFixed(1));
 }
 
 /**
@@ -1573,8 +1574,10 @@ function calcCommunityRatingsAvg(player) {
     const keys = ['teknik', 'sut', 'pas', 'hiz', 'fizik', 'kondisyon'];
     const result = {};
     keys.forEach(k => {
-        const vals = player.communityRatings.map(r => r[k]).filter(v => v !== undefined);
-        result[k] = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+        const vals = player.communityRatings.map(r => r[k]).filter(v => v !== undefined && v !== null);
+        const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+        // Scale 1-10 → 1-99 to match chart axis (self-ratings are 1-99)
+        result[k] = Math.round(avg * 9.9);
     });
     return result;
 }

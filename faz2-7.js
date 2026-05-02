@@ -1846,15 +1846,6 @@ const _pmrTechKeys = [
     { key: 'fizik',     label: 'Fizik' },
     { key: 'kondisyon', label: 'Kondisyon' }
 ];
-const _pmrSocialKeys = [
-    { key: 'dakiklik',       label: 'Dakiklik' },
-    { key: 'saha_iletisimi', label: 'Saha iletişimi' },
-    { key: 'mac_sosyal',     label: 'Maç sonu sosyallik' },
-    { key: 'mevki_sadakati', label: 'Mevki sadakati' },
-    { key: 'pres',           label: 'Pres gücü' },
-    { key: 'markaj',         label: 'Markaj' },
-    { key: 'pas_tercihleri', label: 'Pas tercihleri' }
-];
 
 function _pmrStepRow(key, label) {
     return `<div class="pmr-step-row">
@@ -1907,10 +1898,7 @@ function _pmrRenderCurrentPlayer() {
             </div>
         </div>
         <div class="pmr-ratings-scroll">
-            <div class="pmr-section-title"><i class="fa-solid fa-futbol"></i> Teknik</div>
             ${_pmrTechKeys.map(r => _pmrStepRow(r.key, r.label)).join('')}
-            <div class="pmr-section-title" style="margin-top:1rem;"><i class="fa-solid fa-handshake"></i> Sosyal</div>
-            ${_pmrSocialKeys.map(r => _pmrStepRow(r.key, r.label)).join('')}
         </div>
         <div class="pmr-footer">
             ${_pmrCurrentIdx > 0
@@ -1939,7 +1927,7 @@ window._pmrSubmitCurrent = async function() {
     const btn = document.getElementById('pmr-submit-btn');
     if (btn) { btn.disabled = true; btn.innerHTML = 'Kaydediliyor...'; }
 
-    const allKeys = [..._pmrTechKeys, ..._pmrSocialKeys];
+    const allKeys = _pmrTechKeys;
     const ratings = {};
     allKeys.forEach(({ key }) => {
         const el = document.getElementById('pmr-val-' + key);
@@ -2220,30 +2208,52 @@ function _mcMatchCard(row, ratingStatuses, userId, playerCounts) {
         </div>
     </div>` : '';
 
+    const noRatingReason = m.status === 'finished' && !ratingStatuses[mid]
+        ? `<span class="mc-no-peer-note"><i class="fa-solid fa-user-slash"></i> Puanlanacak oyuncu yok</span>`
+        : '';
+
     return `
     <div class="mc-match-card glass-card" id="mc-card-${_mcEsc(mid)}">
+
+        <!-- Üst meta satırı -->
         <div class="mc-card-top">
             <div class="mc-card-meta">
                 <span class="mc-status-badge ${st.cls}">${st.label}</span>
                 ${matchType}
-                ${playerBadge}
                 <span class="mc-card-date"><i class="fa-regular fa-calendar"></i> ${date}</span>
+                ${venueName !== 'Saha bilinmiyor' ? `<span class="mc-card-venue-inline"><i class="fa-solid fa-location-dot"></i> ${_mcEsc(venueName)}</span>` : ''}
             </div>
             <div class="mc-card-actions-right">
                 ${actionHtml}
+                ${noRatingReason}
                 ${statsBtn}
                 ${leaveBtn}
                 ${cancelBtn}
             </div>
         </div>
-        <div class="mc-card-teams">
-            <span class="mc-team-name">${_mcEsc(homeTeam)}</span>
+
+        <!-- Maç ana gövdesi: Ev — Skor — Deplasman -->
+        <div class="mc-card-matchup">
+            <div class="mc-matchup-side mc-matchup-home">
+                <span class="mc-matchup-team">${_mcEsc(homeTeam)}</span>
+                <span class="mc-matchup-role">Ev Sahibi</span>
+            </div>
             ${scoreHtml}
-            <span class="mc-team-name">${_mcEsc(awayTeam)}</span>
+            <div class="mc-matchup-side mc-matchup-away">
+                <span class="mc-matchup-team">${_mcEsc(awayTeam)}</span>
+                <span class="mc-matchup-role">Deplasman</span>
+            </div>
         </div>
-        <div class="mc-card-venue"><i class="fa-solid fa-location-dot"></i> ${_mcEsc(venueName)}</div>
-        ${m.notes ? `<div class="mc-card-notes"><i class="fa-regular fa-note-sticky"></i> ${_mcEsc(m.notes)}</div>` : ''}
+
+        <!-- Katılımcılar (toggle) -->
+        <div class="mc-card-footer">
+            <button class="mc-player-count mc-player-count-btn" onclick="mcToggleParticipants('${_mcEsc(mid)}')">
+                <i class="fa-solid fa-user-group"></i> ${pCount} oyuncu
+                <i class="fa-solid fa-chevron-down mc-chevron"></i>
+            </button>
+        </div>
         <div id="mc-participants-${_mcEsc(mid)}" class="mc-participants-panel" style="display:none;"></div>
+        ${m.notes ? `<div class="mc-card-notes"><i class="fa-regular fa-note-sticky"></i> ${_mcEsc(m.notes)}</div>` : ''}
         ${scoreForm}
     </div>`;
 }

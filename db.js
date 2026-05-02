@@ -891,14 +891,6 @@ const Ratings = {
       rating_hiz: ratings.hiz,
       rating_fizik: ratings.fizik,
       rating_kondisyon: ratings.kondisyon,
-      // Sosyal (1-10)
-      rating_dakiklik: ratings.dakiklik,
-      rating_saha_iletisimi: ratings.saha_iletisimi,
-      rating_mac_sosyal: ratings.mac_sosyal,
-      rating_mevki_sadakati: ratings.mevki_sadakati,
-      rating_pres: ratings.pres,
-      rating_markaj: ratings.markaj,
-      rating_pas_tercihleri: ratings.pas_tercihleri,
       comment,
       updated_at: new Date().toISOString()
     };
