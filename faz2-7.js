@@ -2168,12 +2168,28 @@ function _mcMatchCard(row, ratingStatuses, userId, playerCounts) {
     }
 
     const matchType  = m.match_type ? `<span class="mc-match-type">${_mcEsc(m.match_type)}</span>` : '';
-    const playerBadge = `<span class="mc-player-count"><i class="fa-solid fa-user-group"></i> ${pCount}</span>`;
+    const playerBadge = `<button class="mc-player-count mc-player-count-btn" onclick="mcToggleParticipants('${_mcEsc(mid)}')">
+        <i class="fa-solid fa-user-group"></i> ${pCount} oyuncu
+    </button>`;
+
+    // İstatistik butonu (creator, tamamlanmış maç)
+    const statsBtn = isCreator && m.status === 'finished'
+        ? `<button class="btn-sm mc-stats-btn" onclick="openStatsModal('${_mcEsc(mid)}', ${m.home_score ?? 0}, ${m.away_score ?? 0}, '${_mcEsc(homeTeam)}', '${_mcEsc(awayTeam)}')">
+               <i class="fa-solid fa-chart-bar"></i> İstatistik
+           </button>`
+        : '';
 
     // İptal butonu (creator, aktif maç)
     const cancelBtn = isCreator && isActive
         ? `<button class="btn-sm mc-cancel-match-btn" onclick="mcCancelMatch('${_mcEsc(mid)}')">
                <i class="fa-solid fa-xmark"></i> İptal Et
+           </button>`
+        : '';
+
+    // Ayrıl butonu (katılımcı ama yaratıcı değil, aktif maç)
+    const leaveBtn = !isCreator && isActive
+        ? `<button class="btn-sm mc-leave-btn" onclick="mcLeaveMatch('${_mcEsc(mid)}')">
+               <i class="fa-solid fa-person-walking-arrow-right"></i> Ayrıl
            </button>`
         : '';
 
@@ -2210,6 +2226,8 @@ function _mcMatchCard(row, ratingStatuses, userId, playerCounts) {
             </div>
             <div class="mc-card-actions-right">
                 ${actionHtml}
+                ${statsBtn}
+                ${leaveBtn}
                 ${cancelBtn}
             </div>
         </div>
@@ -2220,6 +2238,7 @@ function _mcMatchCard(row, ratingStatuses, userId, playerCounts) {
         </div>
         <div class="mc-card-venue"><i class="fa-solid fa-location-dot"></i> ${_mcEsc(venueName)}</div>
         ${m.notes ? `<div class="mc-card-notes"><i class="fa-regular fa-note-sticky"></i> ${_mcEsc(m.notes)}</div>` : ''}
+        <div id="mc-participants-${_mcEsc(mid)}" class="mc-participants-panel" style="display:none;"></div>
         ${scoreForm}
     </div>`;
 }
@@ -2300,6 +2319,345 @@ window.mcCancelMatch = async function (matchId) {
     }
 };
 
+// ── İstatistik Modalı ────────────────────────────────
+
+let _statMatchId = null;
+
+function _statInjectDOM() {
+    if (document.getElementById('stats-modal-overlay')) return;
+    const div = document.createElement('div');
+    div.innerHTML = `
+    <div id="stats-modal-overlay" class="stats-overlay" onclick="if(event.target===this)closeStatsModal()">
+        <div class="stats-box">
+            <div class="stats-header">
+                <span id="stats-modal-title">İSTATİSTİK GİRİŞİ</span>
+                <button class="stats-close-btn" onclick="closeStatsModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="stats-match-info" id="stats-match-info"></div>
+            <div class="stats-body" id="stats-body">
+                <div class="empty-state-sm"><i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor…</div>
+            </div>
+            <div class="stats-footer">
+                <button class="btn-sm btn-success-sm stats-save-btn" id="stats-save-btn" onclick="mcSubmitStats()">
+                    <i class="fa-solid fa-floppy-disk"></i> Kaydet
+                </button>
+                <button class="btn-sm btn-outline-sm" onclick="closeStatsModal()">Kapat</button>
+            </div>
+        </div>
+    </div>`;
+    document.body.appendChild(div.firstElementChild);
+}
+
+window.openStatsModal = async function (matchId, homeScore, awayScore, homeTeam, awayTeam) {
+    _statInjectDOM();
+    _statMatchId = matchId;
+
+    const overlay = document.getElementById('stats-modal-overlay');
+    const body    = document.getElementById('stats-body');
+    const info    = document.getElementById('stats-match-info');
+
+    overlay.style.display = 'flex';
+    setTimeout(() => overlay.classList.add('visible'), 10);
+
+    info.innerHTML = `<span class="stats-team">${_mcEsc(homeTeam)}</span>
+        <span class="stats-score-display">${homeScore} — ${awayScore}</span>
+        <span class="stats-team">${_mcEsc(awayTeam)}</span>`;
+    body.innerHTML = '<div class="empty-state-sm"><i class="fa-solid fa-spinner fa-spin"></i> Oyuncular yükleniyor…</div>';
+
+    const players = await DB.Matches.getMatchPlayers(matchId);
+
+    if (!players.length) {
+        body.innerHTML = '<div class="empty-state-sm">Bu maçta kayıtlı oyuncu bulunamadı.</div>';
+        return;
+    }
+
+    const home = players.filter(p => p.team_side === 'home');
+    const away = players.filter(p => p.team_side !== 'home');
+
+    let html = '';
+    if (home.length) {
+        html += `<div class="stats-group-label"><i class="fa-solid fa-house"></i> ${_mcEsc(homeTeam)}</div>`;
+        html += home.map(p => _statPlayerRow(p)).join('');
+    }
+    if (away.length) {
+        html += `<div class="stats-group-label" style="margin-top:1rem;"><i class="fa-solid fa-plane"></i> ${_mcEsc(awayTeam)}</div>`;
+        html += away.map(p => _statPlayerRow(p)).join('');
+    }
+    body.innerHTML = html;
+};
+
+function _statPlayerRow(mp) {
+    const p       = mp.player;
+    const avatar  = p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.username || 'x')}`;
+    const name    = _mcEsc(p.username || 'Oyuncu');
+    const goals   = mp.goals ?? 0;
+    const assists = mp.assists ?? 0;
+    const og      = mp.own_goals ?? 0;
+    const perf    = mp.performance_rating ?? '';
+
+    return `
+    <div class="stats-player-row" data-mp-id="${_mcEsc(mp.id)}">
+        <img class="stats-avatar" src="${_mcEsc(avatar)}" alt="${name}">
+        <span class="stats-name">${name}</span>
+        <div class="stats-inputs">
+            <label class="stats-inp-group">
+                <span>Gol</span>
+                <input type="number" class="stats-inp" name="goals" value="${goals}" min="0" max="30">
+            </label>
+            <label class="stats-inp-group">
+                <span>Asist</span>
+                <input type="number" class="stats-inp" name="assists" value="${assists}" min="0" max="30">
+            </label>
+            <label class="stats-inp-group">
+                <span>KK</span>
+                <input type="number" class="stats-inp" name="own_goals" value="${og}" min="0" max="10">
+            </label>
+            <label class="stats-inp-group">
+                <span>Perf</span>
+                <input type="number" class="stats-inp stats-inp-perf" name="performance_rating"
+                    value="${perf}" min="1" max="10" step="0.1" placeholder="—">
+            </label>
+        </div>
+    </div>`;
+}
+
+window.mcSubmitStats = async function () {
+    const btn = document.getElementById('stats-save-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Kaydediliyor…'; }
+
+    try {
+        const rows = document.querySelectorAll('#stats-body .stats-player-row');
+        const updates = Array.from(rows).map(row => {
+            const mpId = row.dataset.mpId;
+            const get  = name => {
+                const inp = row.querySelector(`input[name="${name}"]`);
+                return inp ? (parseFloat(inp.value) || 0) : 0;
+            };
+            const perfVal = parseFloat(row.querySelector('input[name="performance_rating"]')?.value);
+            return {
+                matchPlayerId:      mpId,
+                goals:              get('goals'),
+                assists:            get('assists'),
+                own_goals:          get('own_goals'),
+                performance_rating: isNaN(perfVal) ? null : perfVal
+            };
+        });
+
+        await Promise.all(
+            updates.map(u => DB.Matches.updatePlayerStats(u.matchPlayerId, u))
+        );
+
+        if (typeof showToast === 'function') showToast('İstatistikler kaydedildi!');
+        closeStatsModal();
+        await _mcLoadMatches();
+
+    } catch (e) {
+        console.error('mcSubmitStats error:', e);
+        if (typeof showToast === 'function') showToast('Hata: ' + (e.message || 'Kaydedilemedi'));
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Kaydet'; }
+    }
+};
+
+window.closeStatsModal = function () {
+    const overlay = document.getElementById('stats-modal-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('visible');
+    setTimeout(() => { overlay.style.display = 'none'; }, 220);
+};
+
+// ── Katılımcı Paneli ─────────────────────────────────
+
+window.mcToggleParticipants = async function (matchId) {
+    const panel = document.getElementById('mc-participants-' + matchId);
+    if (!panel) return;
+
+    if (panel.style.display !== 'none') {
+        panel.style.display = 'none';
+        return;
+    }
+
+    if (!panel.dataset.loaded) {
+        panel.innerHTML = '<div style="padding:0.5rem;color:#555;font-size:0.8rem;"><i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor…</div>';
+        panel.style.display = 'block';
+        const players = await DB.Matches.getMatchPlayers(matchId);
+        panel.innerHTML = _mcRenderParticipants(players);
+        panel.dataset.loaded = '1';
+    } else {
+        panel.style.display = 'block';
+    }
+};
+
+function _mcRenderParticipants(players) {
+    if (!players.length) {
+        return '<div style="padding:0.5rem;color:#555;font-size:0.8rem;">Henüz katılımcı yok.</div>';
+    }
+    const home = players.filter(p => p.team_side === 'home');
+    const away = players.filter(p => p.team_side !== 'home');
+
+    function group(list, label) {
+        if (!list.length) return '';
+        const chips = list.map(mp => {
+            const pl = mp.player;
+            const avatar = pl.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(pl.username || 'x')}`;
+            return `<div class="mc-participant-chip">
+                <img class="mc-participant-avatar" src="${_mcEsc(avatar)}" alt="${_mcEsc(pl.username || '')}">
+                <span class="mc-participant-name">${_mcEsc(pl.username || 'Oyuncu')}</span>
+            </div>`;
+        }).join('');
+        return `<div class="mc-participants-group">
+            <span class="mc-participants-side-label">${label}</span>
+            <div class="mc-participants-chips">${chips}</div>
+        </div>`;
+    }
+
+    return `<div class="mc-participants-inner">
+        ${group(home, '<i class="fa-solid fa-house"></i> Ev Sahibi')}
+        ${group(away, '<i class="fa-solid fa-plane"></i> Deplasman')}
+    </div>`;
+}
+
+// ── Ayrıl ────────────────────────────────────────────
+
+window.mcLeaveMatch = async function (matchId) {
+    if (!confirm('Bu maçtan ayrılmak istediğinize emin misiniz?')) return;
+    try {
+        const acc = typeof getActiveAccount === 'function' ? getActiveAccount() : null;
+        const userId = acc?.playerId;
+        if (!userId) throw new Error('Oturum açmanız gerekiyor.');
+        await DB.Matches.leaveMatch(matchId, userId);
+        if (typeof showToast === 'function') showToast('Maçtan ayrıldınız.');
+        await _mcLoadMatches();
+    } catch (e) {
+        console.error('mcLeaveMatch error:', e);
+        if (typeof showToast === 'function') showToast('Hata: ' + (e.message || 'Ayrılamadı'));
+    }
+};
+
+// ── Açık Maçlar Sekmesi ──────────────────────────────
+
+window.mcLoadOpenMatches = async function () {
+    const listEl = document.getElementById('mc-open-list');
+    if (!listEl) return;
+
+    const acc = typeof getActiveAccount === 'function' ? getActiveAccount() : null;
+    const userId = acc?.playerId;
+
+    if (!userId) {
+        listEl.innerHTML = '<div class="empty-state-sm">Oturum açmanız gerekiyor.</div>';
+        return;
+    }
+
+    // _mcMyTeams Phase 1'de doldurulur; dolmadıysa bekle
+    if (!_mcDropdownsLoaded) {
+        listEl.innerHTML = '<div class="empty-state-sm"><i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor…</div>';
+        await window.initMatchCenter();
+        return;
+    }
+
+    if (!_mcMyTeams.length) {
+        listEl.innerHTML = `<div class="mc-empty-state">
+            <i class="fa-solid fa-users-slash"></i>
+            <p>Herhangi bir takımda değilsin.</p>
+            <span>Takımına katılarak maçları buradan görebilirsin.</span>
+        </div>`;
+        return;
+    }
+
+    listEl.innerHTML = '<div class="empty-state-sm"><i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor…</div>';
+
+    const teamIds = _mcMyTeams.map(t => t.id);
+    const openMatches = await DB.Matches.getTeamOpenMatches(teamIds, userId).catch(() => []);
+
+    if (!openMatches.length) {
+        listEl.innerHTML = `<div class="mc-empty-state">
+            <i class="fa-solid fa-calendar-check"></i>
+            <p>Katılabileceğin açık maç yok.</p>
+            <span>Takımından birisi maç oluşturunca burada görünür.</span>
+        </div>`;
+        return;
+    }
+
+    const matchIds = openMatches.map(m => m.id);
+    const playerCounts = await DB.Matches.getPlayerCounts(matchIds).catch(() => ({}));
+
+    listEl.innerHTML = openMatches.map(m => _mcOpenMatchCard(m, playerCounts)).join('');
+};
+
+function _mcOpenMatchCard(m, playerCounts) {
+    const mid       = m.id;
+    const homeTeam  = m.home_team?.name || 'Ev Sahibi';
+    const awayTeam  = m.away_team?.name || 'Deplasman';
+    const venueName = m.venue
+        ? (m.venue.name + (m.venue.district ? ', ' + m.venue.district : ''))
+        : 'Saha bilinmiyor';
+    const date      = m.scheduled_at
+        ? new Date(m.scheduled_at).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })
+        : '—';
+    const pCount    = playerCounts[mid] || 0;
+    const matchType = m.match_type ? `<span class="mc-match-type">${_mcEsc(m.match_type)}</span>` : '';
+
+    return `
+    <div class="mc-match-card mc-open-card glass-card">
+        <div class="mc-card-top">
+            <div class="mc-card-meta">
+                <span class="mc-status-badge mc-status-open">Açık</span>
+                ${matchType}
+                <button class="mc-player-count mc-player-count-btn" onclick="mcToggleOpenParticipants('${_mcEsc(mid)}')">
+                    <i class="fa-solid fa-user-group"></i> ${pCount} oyuncu
+                </button>
+                <span class="mc-card-date"><i class="fa-regular fa-calendar"></i> ${date}</span>
+            </div>
+            <button class="btn-sm mc-join-btn" onclick="mcJoinOpen('${_mcEsc(mid)}')">
+                <i class="fa-solid fa-right-to-bracket"></i> Katıl
+            </button>
+        </div>
+        <div class="mc-card-teams">
+            <span class="mc-team-name">${_mcEsc(homeTeam)}</span>
+            <div class="mc-score mc-score-pending"><span class="mc-score-sep">vs</span></div>
+            <span class="mc-team-name">${_mcEsc(awayTeam)}</span>
+        </div>
+        <div class="mc-card-venue"><i class="fa-solid fa-location-dot"></i> ${_mcEsc(venueName)}</div>
+        ${m.notes ? `<div class="mc-card-notes"><i class="fa-regular fa-note-sticky"></i> ${_mcEsc(m.notes)}</div>` : ''}
+        <div id="mc-open-participants-${_mcEsc(mid)}" class="mc-participants-panel" style="display:none;"></div>
+    </div>`;
+}
+
+window.mcToggleOpenParticipants = async function (matchId) {
+    const panel = document.getElementById('mc-open-participants-' + matchId);
+    if (!panel) return;
+    if (panel.style.display !== 'none') { panel.style.display = 'none'; return; }
+    if (!panel.dataset.loaded) {
+        panel.innerHTML = '<div style="padding:0.5rem;color:#555;font-size:0.8rem;"><i class="fa-solid fa-spinner fa-spin"></i></div>';
+        panel.style.display = 'block';
+        const players = await DB.Matches.getMatchPlayers(matchId);
+        panel.innerHTML = _mcRenderParticipants(players);
+        panel.dataset.loaded = '1';
+    } else {
+        panel.style.display = 'block';
+    }
+};
+
+window.mcJoinOpen = async function (matchId) {
+    const btn = document.querySelector(`[onclick="mcJoinOpen('${matchId}')"]`);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+    try {
+        const acc = typeof getActiveAccount === 'function' ? getActiveAccount() : null;
+        const userId = acc?.playerId;
+        if (!userId) throw new Error('Oturum açmanız gerekiyor.');
+        await DB.Matches.joinMatch(matchId, userId, 'home');
+        if (typeof showToast === 'function') showToast('Maça katıldınız!');
+        await Promise.all([_mcLoadMatches(), window.mcLoadOpenMatches()]);
+        // Katıldıktan sonra "Maçlarım" sekmesine geç
+        const firstBtn = document.querySelector('.mc-tab-btn');
+        if (firstBtn) mcSwitchTab('my-matches', firstBtn);
+    } catch (e) {
+        console.error('mcJoinOpen error:', e);
+        if (typeof showToast === 'function') showToast('Hata: ' + (e.message || 'Katılınamadı'));
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Katıl'; }
+    }
+};
+
 // ── Sekme & Form ─────────────────────────────────────
 
 window.mcSwitchTab = function (tab, btn) {
@@ -2308,6 +2666,7 @@ window.mcSwitchTab = function (tab, btn) {
     if (btn) btn.classList.add('active');
     const el = document.getElementById('mc-tab-' + tab);
     if (el) el.style.display = 'block';
+    if (tab === 'open-matches') window.mcLoadOpenMatches();
 };
 
 window.mcSubmitCreate = async function () {

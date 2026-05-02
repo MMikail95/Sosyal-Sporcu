@@ -630,6 +630,73 @@ const Matches = {
     return counts;
   },
 
+  // Maçtaki tüm oyuncuları profil bilgileriyle getir
+  async getMatchPlayers(matchId) {
+    const { data, error } = await sb()
+      .from('match_players')
+      .select(`
+        id, team_side, goals, assists, own_goals, performance_rating, position_played, confirmed,
+        player:player_id(id, username, avatar_url, ana_mevki)
+      `)
+      .eq('match_id', matchId)
+      .order('team_side');
+    if (error) { console.error('getMatchPlayers error:', error); return []; }
+    return (data || []).filter(d => d.player !== null);
+  },
+
+  // Oyuncu maç istatistiklerini güncelle
+  async updatePlayerStats(matchPlayerId, stats) {
+    const { data, error } = await sb()
+      .from('match_players')
+      .update({
+        goals:              stats.goals ?? 0,
+        assists:            stats.assists ?? 0,
+        own_goals:          stats.own_goals ?? 0,
+        performance_rating: stats.performance_rating || null,
+        position_played:    stats.position_played || null
+      })
+      .eq('id', matchPlayerId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  // Takımın katılınabilir açık maçlarını getir (kullanıcı zaten içinde değilse)
+  async getTeamOpenMatches(teamIds, excludePlayerId) {
+    if (!teamIds || !teamIds.length) return [];
+    const idList = teamIds.join(',');
+
+    const [{ data: joined }, { data: matches, error }] = await Promise.all([
+      sb().from('match_players').select('match_id').eq('player_id', excludePlayerId),
+      sb().from('matches')
+        .select(`
+          id, scheduled_at, status, match_type, notes, created_by,
+          home_team:home_team_id(id, name),
+          away_team:away_team_id(id, name),
+          venue:venue_id(id, name, district)
+        `)
+        .or(`home_team_id.in.(${idList}),away_team_id.in.(${idList})`)
+        .in('status', ['scheduled', 'confirmed'])
+        .gte('scheduled_at', new Date().toISOString())
+        .order('scheduled_at')
+    ]);
+
+    if (error) { console.error('getTeamOpenMatches error:', error); return []; }
+    const joinedIds = new Set((joined || []).map(j => j.match_id));
+    return (matches || []).filter(m => !joinedIds.has(m.id));
+  },
+
+  // Maçtan ayrıl
+  async leaveMatch(matchId, playerId) {
+    const { error } = await sb()
+      .from('match_players')
+      .delete()
+      .eq('match_id', matchId)
+      .eq('player_id', playerId);
+    if (error) throw error;
+  },
+
   // Maçı iptal et (sadece yaratıcı)
   async cancelMatch(matchId, userId) {
     const { data, error } = await sb()

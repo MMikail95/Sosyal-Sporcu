@@ -1023,6 +1023,9 @@
                     <button class="mc-tab-btn active" onclick="mcSwitchTab('my-matches', this)">
                         <i class="fa-solid fa-calendar-check"></i> Maçlarım
                     </button>
+                    <button class="mc-tab-btn" onclick="mcSwitchTab('open-matches', this)">
+                        <i class="fa-solid fa-door-open"></i> Açık Maçlar
+                    </button>
                     <button class="mc-tab-btn" onclick="mcSwitchTab('create-match', this)">
                         <i class="fa-solid fa-plus"></i> Maç Oluştur
                     </button>
@@ -1030,6 +1033,10 @@
                 <!-- Sekme: Maçlarım -->
                 <div id="mc-tab-my-matches" class="mc-tab-content">
                     <div id="mc-matches-list"><div class="empty-state-sm"><i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor…</div></div>
+                </div>
+                <!-- Sekme: Açık Maçlar -->
+                <div id="mc-tab-open-matches" class="mc-tab-content" style="display:none;">
+                    <div id="mc-open-list"><div class="empty-state-sm"><i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor…</div></div>
                 </div>
                 <!-- Sekme: Maç Oluştur -->
                 <div id="mc-tab-create-match" class="mc-tab-content" style="display:none;">
