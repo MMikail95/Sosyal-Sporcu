@@ -9,7 +9,11 @@ let currentFeedFilter = 'all';
 function loadFeedEvents() {
     try { feedEvents = JSON.parse(localStorage.getItem('ss_feed_events') || '[]'); }
     catch(e) { feedEvents = []; }
-    if (feedEvents.length === 0) seedMockFeed();
+    // Mock veri temizle: eski sahte kayıtları localStorage'dan sil
+    if (feedEvents.length > 0 && feedEvents.some(e => e.actorId && e.actorId.startsWith('acc_'))) {
+        feedEvents = [];
+        localStorage.removeItem('ss_feed_events');
+    }
 }
 function saveFeedEvents() {
     localStorage.setItem('ss_feed_events', JSON.stringify(feedEvents));
@@ -30,17 +34,7 @@ window.addFeedEvent = function(type, data) {
 };
 
 function seedMockFeed() {
-    const n = Date.now();
-    feedEvents = [
-        { id:n-9, type:'rating', actorId:'acc_2',     actorName:'Barış',   targetName:'Mikimon', targetId:'p1', avgScore:85, comment:'Sahanın en iyi 10 numarası 🔥', timestamp:new Date(n-7200000).toISOString() },
-        { id:n-8, type:'match',  actorId:'acc_3',     actorName:'Kerem',   teamName:'Yıldızlar FC', score:'5-3', venue:'Mecidiyeköy Arena', goals:1, assists:2, timestamp:new Date(n-18000000).toISOString() },
-        { id:n-7, type:'invite', actorId:'acc_admin', actorName:'Mikimon', targetName:'Tarık', targetId:'p4', venue:'Kadıköy Spor Tesisleri', date:'Bu Cumartesi 20:00', status:'pending', timestamp:new Date(n-28800000).toISOString() },
-        { id:n-6, type:'rating', actorId:'acc_4',     actorName:'Tarık',   targetName:'Barış', targetId:'p2', avgScore:88, comment:null, timestamp:new Date(n-43200000).toISOString() },
-        { id:n-5, type:'match',  actorId:'acc_5',     actorName:'Emre',    teamName:'Yıldızlar FC', score:'3-3', venue:'Ataşehir Halısaha', goals:2, assists:0, timestamp:new Date(n-86400000).toISOString() },
-        { id:n-4, type:'join',   actorId:'acc_8',     actorName:'Serhat',  teamName:'Yıldızlar FC', timestamp:new Date(n-108000000).toISOString() },
-        { id:n-3, type:'rating', actorId:'acc_6',     actorName:'Oğuz',    targetName:'Kerem', targetId:'p3', avgScore:72, comment:'Savunmada çok sağlam 💪', timestamp:new Date(n-129600000).toISOString() }
-    ];
-    saveFeedEvents();
+    // Mock veri kaldırıldı — akış artık yalnızca Supabase'den gelir
 }
 
 function timeAgo(isoDate) {

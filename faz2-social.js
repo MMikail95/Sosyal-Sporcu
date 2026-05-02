@@ -95,7 +95,7 @@ function renderExploreTeams(teams) {
                 <div class="etc-info">
                     <h4 class="etc-name">${t.name || 'Takım'}</h4>
                     <div class="etc-meta">
-                        <span><i class="fa-solid fa-users"></i> ${t.player_count || 0} oyuncu</span>
+                        <span><i class="fa-solid fa-users"></i> ${t.team_members?.[0]?.count ?? t.player_count ?? 0} oyuncu</span>
                         ${t.city ? `<span><i class="fa-solid fa-location-dot"></i> ${t.city}</span>` : ''}
                     </div>
                     <div class="etc-captain">
@@ -1069,7 +1069,8 @@ function buildRealFeedCard(post) {
                 </div>
                 <span class="feed-time">${time}</span>
             </div>
-            <div class="feed-text">${escapeHtml(post.content)}</div>
+            <div class="feed-text">${escapeHtml(post.content || '')}</div>
+            ${post.post_type === 'rating' && post.related_player ? `<div class="feed-detail-row"><span class="feed-badge rating">⭐ ${post.related_player.username || 'Oyuncu'}</span></div>` : ''}
             ${post.related_team ? `<div class="feed-detail-row"><span class="feed-badge match">🏆 ${post.related_team.name}</span></div>` : ''}
             ${post.related_venue ? `<div class="feed-detail-row"><span class="feed-badge venue">🏟️ ${post.related_venue.name}</span></div>` : ''}
             <div class="feed-actions">
@@ -1725,7 +1726,7 @@ window.submitCommunityRating = async function() {
                 // Feed'e post ekle
                 const avg = Math.round(Object.values(ratings).reduce((a,b)=>a+b,0)/6);
                 await window.DB.Feed.createPost(user.id,
-                    `${targetPlayer?.name || 'Bir oyuncu'}'ı puanladım! GEN: ${avg} ⭐${comment ? ` — "${comment}"` : ''}`,
+                    `${targetPlayer?.username || targetPlayer?.name || 'Bir oyuncu'}'ı puanladım! GEN: ${avg}${comment ? ` — "${comment}"` : ''}`,
                     'rating',
                     { related_player_id: targetSupabaseId }
                 );
@@ -1831,7 +1832,7 @@ document.addEventListener('DOMContentLoaded', () => {
 let _savedMyPlayerId = null;
 
 // Modal'daki "Profil Sayfasına Git" butonu / herhangi bir yerden çağrılabilir
-window.openUserProfile = async function(supabaseId, username) {
+window.openUserProfile = window.__openUserProfileCore = async function(supabaseId, username) {
     const user = window.__AUTH_USER__;
 
     // Kendi profili → direkt profil sekmesi
@@ -1924,6 +1925,8 @@ window.openUserProfile = async function(supabaseId, username) {
         communityRatings: [],
         genScore:      profile.gen_score       || null,
         community_gen: profile.community_gen   || null,
+        avatar_url:    profile.avatar_url      || null,
+        username:      profile.username        || null,
     };
 
     // Community ratings yükle (Supabase)
@@ -2063,7 +2066,8 @@ let myFriendsList = [];
 
 window.loadFriendsList = async function() {
     const user = window.__AUTH_USER__;
-    const grid = document.getElementById('friends-list-grid');
+    // explore sayfası: 'friends-list-container', ana sayfa: 'friends-list-grid'
+    const grid = document.getElementById('friends-list-grid') || document.getElementById('friends-list-container');
     if (!grid) return;
 
     grid.innerHTML = `<div style="text-align:center; padding:2rem; color:#555; grid-column:1/-1;">
@@ -2221,12 +2225,14 @@ window.removeFriend = async function(friendshipId, btn) {
 // Explore sekme switcher
 window.switchExploreTab = function(tab, btn) {
     document.querySelectorAll('.explore-tab-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+    const activeBtn = btn || document.getElementById('etab-btn-' + tab);
+    if (activeBtn) activeBtn.classList.add('active');
 
-    const playersSection = document.getElementById('explore-players-section');
-    const teamsSection   = document.getElementById('explore-teams-section');
-    const friendsSection = document.getElementById('explore-friends-section');
-    const inviteSection  = document.getElementById('explore-invite-section');
+    // HTML'deki gerçek section ID'leri: etab-players, etab-teams, etab-friends
+    const playersSection = document.getElementById('etab-players');
+    const teamsSection   = document.getElementById('etab-teams');
+    const friendsSection = document.getElementById('etab-friends');
+    const inviteSection  = document.getElementById('etab-invite');
 
     if (playersSection) playersSection.style.display = 'none';
     if (teamsSection)   teamsSection.style.display   = 'none';
@@ -2243,7 +2249,6 @@ window.switchExploreTab = function(tab, btn) {
         window.loadFriendsList();
     } else if (tab === 'invite') {
         if (inviteSection) inviteSection.style.display  = '';
-        // Invite link preview'i doldur
         const preview = document.getElementById('invite-link-preview');
         if (preview) {
             const base = window.location.href.replace(/\/[^\/]*(\?.*)?$/, '/auth.html');

@@ -81,16 +81,16 @@ const Profiles = {
   },
 
   // Tüm profilleri getir (Keşfet sayfası için)
-  async getAll({ city, position, search, limit = 50 } = {}) {
+  async getAll({ city, position, search, limit = 200 } = {}) {
     let query = sb()
       .from('profiles_with_ratings')
       .select('*')
-      .order('gen_score', { ascending: false })
+      .order('gen_score', { ascending: false, nullsFirst: false })
       .limit(limit);
 
     if (city) query = query.eq('city', city);
     if (position) query = query.eq('position', position);
-    if (search) query = query.ilike('username', `%${search}%`);
+    if (search) query = query.or(`username.ilike.%${search}%,full_name.ilike.%${search}%`);
 
     const { data, error } = await query;
     if (error) { console.error('Profiles getAll error:', error); return []; }
@@ -210,7 +210,7 @@ const Teams = {
   async getAll(limit = 50) {
     const { data, error } = await sb()
       .from('teams')
-      .select('*, captain:captain_id(id, username, avatar_url)')
+      .select('*, captain:captain_id(id, username, avatar_url), team_members(count)')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -582,6 +582,38 @@ const Matches = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  // Kullanıcının tüm maçlarını getir (hem geçmiş hem yaklaşan)
+  async getMyMatches(userId, limit = 50) {
+    const { data, error } = await sb()
+      .from('match_players')
+      .select(`
+        id, team_side, confirmed,
+        match:match_id(
+          id, scheduled_at, status, home_score, away_score, match_type, notes, created_by,
+          home_team:home_team_id(id, name),
+          away_team:away_team_id(id, name),
+          venue:venue_id(id, name, district)
+        )
+      `)
+      .eq('player_id', userId)
+      .order('match_id', { ascending: false })
+      .limit(limit);
+    if (error) { console.error('getMyMatches error:', error); return []; }
+    return (data || []).filter(d => d.match !== null);
+  },
+
+  // Maça oyuncu olarak katıl
+  async joinMatch(matchId, playerId, teamSide = 'home') {
+    const { data, error } = await sb()
+      .from('match_players')
+      .upsert({ match_id: matchId, player_id: playerId, team_side: teamSide, confirmed: true },
+               { onConflict: 'match_id,player_id' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   }
 };
 
@@ -598,7 +630,8 @@ const Feed = {
         *,
         author:author_id(id, username, avatar_url, position),
         related_team:related_team_id(id, name),
-        related_venue:related_venue_id(id, name)
+        related_venue:related_venue_id(id, name),
+        related_player:related_player_id(id, username, avatar_url)
       `)
       .order('created_at', { ascending: false })
       .limit(limit);

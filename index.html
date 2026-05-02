@@ -1015,45 +1015,65 @@
             <!-- Section: Maç Merkezi -->
             <section id="matches" class="section">
                 <div class="section-header">
-                    <h1 class="section-title">Maç Merkezi</h1>
-                    <p class="section-subtitle">Maç Raporları ve Performans Değerlendirme</p>
+                    <h1 class="section-title"><i class="fa-solid fa-clipboard-list" style="color:var(--neon-cyan);"></i> Maç Merkezi</h1>
+                    <p class="section-subtitle">Maçlarını yönet, oluştur ve katıl</p>
                 </div>
-                <div class="match-center-grid">
-                    <div class="glass-card match-form">
-                        <h3 class="section-title" style="font-size: 1.2rem; color: var(--neon-green);">MAÇ RAPORU GİRİŞİ</h3>
-                        <div class="form-group">
-                            <label class="form-label">Halı Saha Seçimi</label>
-                            <select class="form-select">
-                                <option>Mecidiyeköy Arena</option>
-                                <option>Kadıköy Spor Tesisleri</option>
-                                <option>Ataşehir Halısaha</option>
-                                <option>Sarıyer Park</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Tarih / Saat</label>
-                            <input type="datetime-local" class="form-input">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Skor Girişi</label>
-                            <div class="score-inputs">
-                                <input type="number" class="form-input score-input" value="0">
-                                <span class="vs-badge">VS</span>
-                                <input type="number" class="form-input score-input" value="0">
+                <!-- Sekme çubuğu -->
+                <div class="glass-card mc-tabs-bar">
+                    <button class="mc-tab-btn active" onclick="mcSwitchTab('my-matches', this)">
+                        <i class="fa-solid fa-calendar-check"></i> Maçlarım
+                    </button>
+                    <button class="mc-tab-btn" onclick="mcSwitchTab('create-match', this)">
+                        <i class="fa-solid fa-plus"></i> Maç Oluştur
+                    </button>
+                </div>
+                <!-- Sekme: Maçlarım -->
+                <div id="mc-tab-my-matches" class="mc-tab-content">
+                    <div id="mc-matches-list"><div class="empty-state-sm"><i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor…</div></div>
+                </div>
+                <!-- Sekme: Maç Oluştur -->
+                <div id="mc-tab-create-match" class="mc-tab-content" style="display:none;">
+                    <div class="glass-card mc-create-form">
+                        <h3 class="mc-form-title"><i class="fa-solid fa-plus-circle"></i> Yeni Maç Oluştur</h3>
+                        <div class="mc-form-grid">
+                            <div class="form-group">
+                                <label class="form-label">Halı Saha</label>
+                                <select class="form-select" id="mc-venue-select">
+                                    <option value="">— Saha seçin —</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Tarih / Saat</label>
+                                <input type="datetime-local" class="form-input" id="mc-date-input">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Maç Tipi</label>
+                                <select class="form-select" id="mc-type-select">
+                                    <option value="5v5">5v5</option>
+                                    <option value="6v6">6v6</option>
+                                    <option value="7v7">7v7</option>
+                                    <option value="8v8">8v8</option>
+                                    <option value="11v11">11v11</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Takımın (Ev Sahibi)</label>
+                                <select class="form-select" id="mc-home-team-select">
+                                    <option value="">— Takım seçin —</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Rakip Takım Adı</label>
+                                <input type="text" class="form-input" id="mc-away-team-input" placeholder="Rakip takım adı…">
+                            </div>
+                            <div class="form-group mc-form-full">
+                                <label class="form-label">Notlar (opsiyonel)</label>
+                                <textarea class="form-input" id="mc-notes-input" rows="2" placeholder="Kurallar, buluşma noktası, vb."></textarea>
                             </div>
                         </div>
-                        <button class="btn-primary">Raporu Gönder</button>
-                    </div>
-                    <div class="glass-card">
-                        <h3 class="section-title" style="font-size: 1.2rem; margin-bottom: 1rem; color: var(--neon-green);">OYUNCU PERFORMANSI</h3>
-                        <div class="teammate-ratings">
-                            <div class="rating-item">
-                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" class="rating-avatar">
-                                <span class="rating-name">Alex</span>
-                                <input type="range" min="1" max="10" step="0.1" value="7" class="stat-range" style="width: 100px;">
-                                <span style="font-weight: bold; color: var(--neon-green);">7.0</span>
-                            </div>
-                        </div>
+                        <button class="btn-primary mc-submit-btn" id="mc-submit-btn" onclick="mcSubmitCreate()">
+                            <i class="fa-solid fa-check"></i> Maç Oluştur
+                        </button>
                     </div>
                 </div>
             </section>

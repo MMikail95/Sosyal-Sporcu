@@ -844,6 +844,9 @@ function showSection(id) {
             window.initExplore();
         }
     }
+    if (id === 'matches') {
+        if (typeof window.initMatchCenter === 'function') window.initMatchCenter();
+    }
     // Close panels on nav change
     closeAccountPanel();
     document.getElementById('notif-panel')?.classList.remove('open');

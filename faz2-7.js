@@ -2018,3 +2018,233 @@ window.closePostMatchRatingModal = function() {
     setTimeout(() => { overlay.style.display = 'none'; }, 250);
 };
 
+// ======================================================
+// MAÇ MERKEZİ — Phase 1
+// ======================================================
+(function () {
+
+let _mcVenues = [];
+let _mcMyTeams = [];
+let _mcDropdownsLoaded = false;
+
+function _mcEsc(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+window.initMatchCenter = async function () {
+    if (!_mcDropdownsLoaded) {
+        _mcDropdownsLoaded = true;
+        const acc = typeof getActiveAccount === 'function' ? getActiveAccount() : null;
+        const userId = acc?.playerId;
+
+        const [venues, myTeams] = await Promise.all([
+            DB.Venues.getAll().catch(() => []),
+            userId ? DB.Teams.getMyTeams(userId).catch(() => []) : Promise.resolve([])
+        ]);
+        _mcVenues = venues;
+        _mcMyTeams = myTeams;
+
+        const venueSelect = document.getElementById('mc-venue-select');
+        if (venueSelect) {
+            venueSelect.innerHTML = '<option value="">— Saha seçin —</option>' +
+                venues.map(v =>
+                    `<option value="${_mcEsc(v.id)}">${_mcEsc(v.name)}${v.district ? ' — ' + _mcEsc(v.district) : ''}</option>`
+                ).join('');
+        }
+
+        const homeSelect = document.getElementById('mc-home-team-select');
+        if (homeSelect) {
+            homeSelect.innerHTML = '<option value="">— Takım seçin —</option>' +
+                myTeams.map(t =>
+                    `<option value="${_mcEsc(t.id)}">${_mcEsc(t.name)}</option>`
+                ).join('');
+        }
+    }
+
+    await _mcLoadMatches();
+};
+
+async function _mcLoadMatches() {
+    const acc = typeof getActiveAccount === 'function' ? getActiveAccount() : null;
+    const userId = acc?.playerId;
+    const listEl = document.getElementById('mc-matches-list');
+    if (!listEl) return;
+
+    if (!userId) {
+        listEl.innerHTML = '<div class="empty-state-sm">Oturum açmanız gerekiyor.</div>';
+        return;
+    }
+
+    listEl.innerHTML = '<div class="empty-state-sm"><i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor…</div>';
+
+    const rows = await DB.Matches.getMyMatches(userId);
+
+    if (!rows.length) {
+        listEl.innerHTML = `
+            <div class="mc-empty-state">
+                <i class="fa-solid fa-calendar-xmark"></i>
+                <p>Henüz hiç maçın yok.</p>
+                <span>Yukarıdan yeni bir maç oluşturabilirsin.</span>
+            </div>`;
+        return;
+    }
+
+    const upcoming = rows.filter(r => ['scheduled', 'confirmed'].includes(r.match.status));
+    const past     = rows.filter(r => ['finished', 'cancelled'].includes(r.match.status));
+
+    const finishedIds = past.map(r => r.match.id).filter(Boolean);
+    let ratingStatuses = {};
+    try {
+        if (finishedIds.length) {
+            ratingStatuses = await DB.Ratings.getMatchRatingStatuses(userId, finishedIds);
+        }
+    } catch (e) { /* non-critical */ }
+
+    let html = '';
+    if (upcoming.length) {
+        html += '<div class="mc-group-label"><i class="fa-solid fa-clock"></i> Yaklaşan Maçlar</div>';
+        html += upcoming.map(r => _mcMatchCard(r, ratingStatuses)).join('');
+    }
+    if (past.length) {
+        html += `<div class="mc-group-label" style="${upcoming.length ? 'margin-top:1.5rem;' : ''}"><i class="fa-solid fa-rotate-left"></i> Geçmiş Maçlar</div>`;
+        html += past.map(r => _mcMatchCard(r, ratingStatuses)).join('');
+    }
+
+    listEl.innerHTML = html;
+}
+
+function _mcMatchCard(row, ratingStatuses) {
+    const m = row.match;
+    const homeTeam = m.home_team?.name || 'Ev Sahibi';
+    const awayTeam = m.away_team?.name || 'Deplasman';
+    const venueName = m.venue
+        ? (m.venue.name + (m.venue.district ? ', ' + m.venue.district : ''))
+        : 'Saha bilinmiyor';
+    const date = m.scheduled_at
+        ? new Date(m.scheduled_at).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })
+        : '—';
+
+    const statusMap = {
+        scheduled: { label: 'Planlandı',   cls: 'mc-status-scheduled' },
+        confirmed:  { label: 'Onaylandı',  cls: 'mc-status-confirmed'  },
+        finished:   { label: 'Tamamlandı', cls: 'mc-status-finished'   },
+        cancelled:  { label: 'İptal',      cls: 'mc-status-cancelled'  }
+    };
+    const st = statusMap[m.status] || { label: m.status, cls: '' };
+
+    const scoreHtml = m.status === 'finished'
+        ? `<div class="mc-score">
+               <span class="mc-score-num ${(m.home_score ?? 0) > (m.away_score ?? 0) ? 'mc-score-win' : ''}">${m.home_score ?? 0}</span>
+               <span class="mc-score-sep">—</span>
+               <span class="mc-score-num ${(m.away_score ?? 0) > (m.home_score ?? 0) ? 'mc-score-win' : ''}">${m.away_score ?? 0}</span>
+           </div>`
+        : `<div class="mc-score mc-score-pending"><span class="mc-score-sep">vs</span></div>`;
+
+    let actionHtml = '';
+    if (m.status === 'finished') {
+        const rs = ratingStatuses[m.id];
+        if (rs === 'pending') {
+            actionHtml = `<button class="pmr-badge-pending" onclick="openPostMatchRatingModal('${_mcEsc(m.id)}', '${_mcEsc(row.team_side || 'home')}')">
+                <i class="fa-solid fa-star"></i> Puan Ver
+            </button>`;
+        } else if (rs === 'done') {
+            actionHtml = `<span class="pmr-badge-done-sm"><i class="fa-solid fa-check"></i> Puanlandı</span>`;
+        }
+    }
+
+    const matchType = m.match_type ? `<span class="mc-match-type">${_mcEsc(m.match_type)}</span>` : '';
+
+    return `
+    <div class="mc-match-card glass-card">
+        <div class="mc-card-top">
+            <div class="mc-card-meta">
+                <span class="mc-status-badge ${st.cls}">${st.label}</span>
+                ${matchType}
+                <span class="mc-card-date"><i class="fa-regular fa-calendar"></i> ${date}</span>
+            </div>
+            ${actionHtml ? `<div class="mc-card-action">${actionHtml}</div>` : ''}
+        </div>
+        <div class="mc-card-teams">
+            <span class="mc-team-name">${_mcEsc(homeTeam)}</span>
+            ${scoreHtml}
+            <span class="mc-team-name">${_mcEsc(awayTeam)}</span>
+        </div>
+        <div class="mc-card-venue"><i class="fa-solid fa-location-dot"></i> ${_mcEsc(venueName)}</div>
+        ${m.notes ? `<div class="mc-card-notes"><i class="fa-regular fa-note-sticky"></i> ${_mcEsc(m.notes)}</div>` : ''}
+    </div>`;
+}
+
+window.mcSwitchTab = function (tab, btn) {
+    document.querySelectorAll('.mc-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.mc-tab-content').forEach(c => { c.style.display = 'none'; });
+    if (btn) btn.classList.add('active');
+    const el = document.getElementById('mc-tab-' + tab);
+    if (el) el.style.display = 'block';
+};
+
+window.mcSubmitCreate = async function () {
+    const btn = document.getElementById('mc-submit-btn');
+    const venueId    = document.getElementById('mc-venue-select')?.value || null;
+    const dateVal    = document.getElementById('mc-date-input')?.value;
+    const matchType  = document.getElementById('mc-type-select')?.value || '5v5';
+    const homeTeamId = document.getElementById('mc-home-team-select')?.value || null;
+    const awayName   = (document.getElementById('mc-away-team-input')?.value || '').trim();
+    const notes      = (document.getElementById('mc-notes-input')?.value || '').trim();
+
+    if (!dateVal) {
+        if (typeof showToast === 'function') showToast('Lütfen tarih ve saat girin.');
+        return;
+    }
+
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Oluşturuluyor…'; }
+
+    try {
+        const acc = typeof getActiveAccount === 'function' ? getActiveAccount() : null;
+        const userId = acc?.playerId;
+        if (!userId) throw new Error('Oturum açmanız gerekiyor.');
+
+        const fullNotes = [notes, awayName ? 'Rakip: ' + awayName : ''].filter(Boolean).join('\n') || null;
+
+        const created = await DB.Matches.create(userId, {
+            scheduled_at: new Date(dateVal).toISOString(),
+            match_type:   matchType,
+            status:       'scheduled',
+            venue_id:     venueId   || null,
+            home_team_id: homeTeamId || null,
+            notes:        fullNotes
+        });
+
+        // Yaratıcıyı ev sahibi oyuncu olarak otomatik ekle
+        await DB.Matches.joinMatch(created.id, userId, 'home').catch(() => {});
+
+        if (typeof showToast === 'function') showToast('Maç oluşturuldu! 🎉');
+
+        // Formu temizle
+        document.getElementById('mc-date-input').value = '';
+        document.getElementById('mc-away-team-input').value = '';
+        document.getElementById('mc-notes-input').value = '';
+
+        // "Maçlarım" sekmesine geç ve listeyi yenile
+        const firstBtn = document.querySelector('.mc-tab-btn');
+        mcSwitchTab('my-matches', firstBtn);
+        await _mcLoadMatches();
+
+    } catch (e) {
+        console.error('mcSubmitCreate error:', e);
+        if (typeof showToast === 'function') showToast('Hata: ' + (e.message || 'Oluşturulamadı'));
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Maç Oluştur'; }
+    }
+};
+
+// Maç Merkezi'ni her ziyarette yenile (hesap değişikliği gibi durumlarda)
+window._mcRefresh = async function () {
+    _mcDropdownsLoaded = false;
+    if (typeof initMatchCenter === 'function') await initMatchCenter();
+};
+
+})();
+

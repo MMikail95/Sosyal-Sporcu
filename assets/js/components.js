@@ -205,12 +205,12 @@
             sessionStorage.removeItem('ss_view_player_id');
             document.addEventListener('DOMContentLoaded', function () {
                 setTimeout(function () {
-                    if (typeof window.viewPlayerFromTeam === 'function') {
-                        window.viewPlayerFromTeam(pendingId);
-                    } else if (typeof window.openUserProfile === 'function') {
-                        window.openUserProfile(pendingId);
+                    // __openUserProfileCore → components.js sarmalayıcısını atlar
+                    var fn = window.__openUserProfileCore || window.openUserProfile;
+                    if (typeof fn === 'function') {
+                        fn(pendingId);
                     }
-                }, 600); // JS init tamamlanana kadar bekle
+                }, 900); // updateUI (300ms) bittikten sonra çalış
             });
         }
     })();
