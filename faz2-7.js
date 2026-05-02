@@ -1763,3 +1763,258 @@ window.initTeamSubTabContent = function(tabId) {
     }
 };
 
+// ══════════════════════════════════════════════════════════════
+// POST-MAÇ 360 DERECELİK PUANLAMA MODALİ
+// ══════════════════════════════════════════════════════════════
+
+let _pmrMatchId = null;
+let _pmrParticipants = [];
+let _pmrRatedSet = new Set();
+let _pmrCurrentIdx = 0;
+let _pmrCurrentUserSide = null;
+
+window.openPostMatchRatingModal = async function(matchId, currentUserSide) {
+    const user = window.__AUTH_USER__;
+    if (!user || !window.DB) return;
+
+    _pmrMatchId = matchId;
+    _pmrCurrentUserSide = currentUserSide;
+
+    if (!document.getElementById('pmr-modal-overlay')) {
+        _pmrInjectModalDOM();
+    }
+
+    const overlay = document.getElementById('pmr-modal-overlay');
+    overlay.style.display = 'flex';
+    setTimeout(() => overlay.classList.add('visible'), 10);
+
+    document.getElementById('pmr-body').innerHTML =
+        '<div style="text-align:center;padding:3rem;color:#555;">' +
+        '<i class="fa-solid fa-spinner fa-spin" style="font-size:2rem;"></i></div>';
+
+    try {
+        [_pmrParticipants, _pmrRatedSet] = await Promise.all([
+            window.DB.Ratings.getMatchParticipants(matchId, user.id),
+            window.DB.Ratings.getMyMatchRatings(user.id, matchId)
+        ]);
+    } catch(e) {
+        document.getElementById('pmr-body').innerHTML =
+            '<p style="color:#ff007f;text-align:center;padding:2rem;">Oyuncular yüklenemedi.</p>';
+        return;
+    }
+
+    if (_pmrParticipants.length === 0) {
+        document.getElementById('pmr-body').innerHTML =
+            '<p style="color:#555;text-align:center;padding:2rem;">Bu maçta puanlanacak oyuncu bulunamadı.</p>';
+        return;
+    }
+
+    _pmrCurrentIdx = _pmrParticipants.findIndex(p => !_pmrRatedSet.has(p.player_id));
+    if (_pmrCurrentIdx === -1) _pmrCurrentIdx = 0;
+
+    _pmrRenderCurrentPlayer();
+};
+
+function _pmrInjectModalDOM() {
+    const el = document.createElement('div');
+    el.id = 'pmr-modal-overlay';
+    el.className = 'pmr-overlay';
+    el.style.display = 'none';
+    el.onclick = function(e) { if (e.target === el) window.closePostMatchRatingModal(); };
+    el.innerHTML = `
+        <div class="pmr-box">
+            <div class="pmr-header">
+                <div class="pmr-header-title">
+                    <i class="fa-solid fa-star" style="color:var(--neon-green);"></i>
+                    <span id="pmr-header-text">Maç Puanlaması</span>
+                </div>
+                <div class="pmr-progress-pills" id="pmr-pills"></div>
+                <button class="tm-modal-close" onclick="closePostMatchRatingModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="pmr-body" class="pmr-body"></div>
+        </div>`;
+    document.body.appendChild(el);
+}
+
+function _pmrRenderCurrentPlayer() {
+    const p = _pmrParticipants[_pmrCurrentIdx];
+    if (!p) return;
+
+    const info = p.player || {};
+    const isOpponent = p.team_side !== _pmrCurrentUserSide;
+    const alreadyRated = _pmrRatedSet.has(p.player_id);
+    const total = _pmrParticipants.length;
+
+    document.getElementById('pmr-header-text').textContent =
+        `${_pmrCurrentIdx + 1} / ${total} — ${isOpponent ? 'Rakip' : 'Takım Arkadaşı'}`;
+
+    document.getElementById('pmr-pills').innerHTML = _pmrParticipants.map((pt, i) => {
+        const rated = _pmrRatedSet.has(pt.player_id);
+        const active = i === _pmrCurrentIdx;
+        return `<span class="pmr-pill${rated ? ' pmr-pill-done' : ''}${active ? ' pmr-pill-active' : ''}"></span>`;
+    }).join('');
+
+    const avatar = info.avatar_url ||
+        `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(info.username || 'x')}`;
+
+    const sliderKeys = ['teknik','sut','pas','hiz','fizik','kondisyon'];
+    const sliderLabels = { teknik:'Teknik', sut:'Şut', pas:'Pas', hiz:'Hız', fizik:'Fizik', kondisyon:'Kondisyon' };
+
+    const slidersHTML = sliderKeys.map(k => `
+        <div class="pmr-slider-row">
+            <span class="pmr-slider-label">${sliderLabels[k]}</span>
+            <input type="range" class="rating-slider" id="pmr-${k}"
+                   min="1" max="99" step="1" value="70"
+                   oninput="document.getElementById('pmr-disp-${k}').textContent=this.value">
+            <span class="pmr-slider-val" id="pmr-disp-${k}">70</span>
+        </div>`).join('');
+
+    const fairPlayHTML = isOpponent ? `
+        <div class="pmr-fairplay-row">
+            <span class="pmr-slider-label">Fair Play</span>
+            <div class="pmr-stars" id="pmr-fairplay-stars">
+                ${[1,2,3,4,5].map(n =>
+                    `<span class="pmr-star" onclick="_pmrSelectStar(${n})">&#9733;</span>`
+                ).join('')}
+            </div>
+            <input type="hidden" id="pmr-fairplay-val" value="3">
+        </div>` : '';
+
+    document.getElementById('pmr-body').innerHTML = `
+        <div class="pmr-player-header">
+            <img src="${avatar}" class="pmr-avatar" alt="" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=default'">
+            <div>
+                <div class="pmr-player-name">${info.username || 'Oyuncu'}</div>
+                <div class="pmr-player-meta" style="color:${isOpponent ? 'var(--neon-pink)' : 'var(--neon-cyan)'};">
+                    ${isOpponent ? 'Rakip Takım' : 'Takım Arkadaşı'}${alreadyRated ? '&nbsp;<span class="pmr-badge-done">Puanlandı</span>' : ''}
+                </div>
+            </div>
+        </div>
+        <div class="pmr-sliders">
+            ${slidersHTML}
+            ${fairPlayHTML}
+        </div>
+        <textarea id="pmr-comment" class="pmr-comment" maxlength="200"
+                  placeholder="Yorum (opsiyonel, max 200 karakter)..."></textarea>
+        <div class="pmr-footer">
+            ${_pmrCurrentIdx > 0
+                ? `<button class="btn-sm btn-outline-sm" onclick="_pmrGoTo(${_pmrCurrentIdx - 1})">
+                       <i class="fa-solid fa-arrow-left"></i> Geri
+                   </button>`
+                : '<span></span>'}
+            <button class="btn-sm btn-accent" onclick="_pmrSubmitCurrent()" id="pmr-submit-btn">
+                ${alreadyRated ? 'Güncelle' : 'Puanla'}&nbsp;<i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>`;
+
+    if (isOpponent) {
+        setTimeout(() => _pmrSelectStar(3), 0);
+    }
+}
+
+window._pmrSelectStar = function(n) {
+    const valEl = document.getElementById('pmr-fairplay-val');
+    if (valEl) valEl.value = n;
+    document.querySelectorAll('.pmr-star').forEach((el, i) => {
+        el.classList.toggle('pmr-star-active', i < n);
+    });
+};
+
+window._pmrGoTo = function(idx) {
+    _pmrCurrentIdx = idx;
+    _pmrRenderCurrentPlayer();
+};
+
+window._pmrSubmitCurrent = async function() {
+    const user = window.__AUTH_USER__;
+    if (!user) return;
+
+    const p = _pmrParticipants[_pmrCurrentIdx];
+    if (!p) return;
+
+    const btn = document.getElementById('pmr-submit-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = 'Kaydediliyor...'; }
+
+    const sliderKeys = ['teknik','sut','pas','hiz','fizik','kondisyon'];
+    const ratings = {};
+    sliderKeys.forEach(k => {
+        ratings[k] = parseInt(document.getElementById(`pmr-${k}`)?.value || 70);
+    });
+
+    const comment = document.getElementById('pmr-comment')?.value?.trim() || '';
+    const isOpponent = p.team_side !== _pmrCurrentUserSide;
+    const fairPlay = isOpponent
+        ? parseInt(document.getElementById('pmr-fairplay-val')?.value || 3)
+        : null;
+
+    try {
+        await window.DB.Ratings.upsertRating(
+            user.id, p.player_id, ratings, comment, _pmrMatchId, fairPlay
+        );
+
+        _pmrRatedSet.add(p.player_id);
+
+        if (window.DB.Notifications) {
+            window.DB.Notifications.send(
+                p.player_id, 'rating_received', 'Maç Puanı Aldın!',
+                `${user.email?.split('@')[0] || 'Bir oyuncu'} seni maç sonrası puanladı.`,
+                user.id
+            ).catch(() => {});
+        }
+
+        if (typeof updateChart === 'function' && typeof players !== 'undefined') {
+            const targetPlayer = players.find(pl =>
+                (pl.supabase_id || pl.id) === p.player_id
+            );
+            if (targetPlayer) {
+                if (!targetPlayer.communityRatings) targetPlayer.communityRatings = [];
+                const existIdx = targetPlayer.communityRatings
+                    .findIndex(r => r.supabase_from === user.id && r.match_id === _pmrMatchId);
+                const entry = { supabase_from: user.id, match_id: _pmrMatchId, ...ratings, comment };
+                if (existIdx >= 0) targetPlayer.communityRatings[existIdx] = entry;
+                else targetPlayer.communityRatings.push(entry);
+                setTimeout(() => updateChart(targetPlayer), 150);
+            }
+        }
+
+        if (typeof showToast === 'function') showToast('Puan kaydedildi!');
+
+        const nextUnrated = _pmrParticipants.findIndex((pt, i) =>
+            i > _pmrCurrentIdx && !_pmrRatedSet.has(pt.player_id)
+        );
+        if (nextUnrated !== -1) {
+            _pmrCurrentIdx = nextUnrated;
+            _pmrRenderCurrentPlayer();
+        } else {
+            _pmrShowDoneScreen();
+        }
+
+    } catch(e) {
+        console.error('PMR submit error:', e);
+        if (typeof showToast === 'function') showToast('Hata: ' + (e.message || 'Kaydedilemedi'));
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Tekrar Dene&nbsp;<i class="fa-solid fa-arrow-right"></i>'; }
+    }
+};
+
+function _pmrShowDoneScreen() {
+    document.getElementById('pmr-body').innerHTML = `
+        <div style="text-align:center;padding:3rem 1.5rem;">
+            <i class="fa-solid fa-circle-check" style="font-size:3rem;color:var(--neon-green);margin-bottom:1rem;"></i>
+            <h3 style="color:var(--neon-green);margin-bottom:0.5rem;">Tüm Oyuncular Puanlandı!</h3>
+            <p style="color:#666;font-size:0.9rem;margin-bottom:2rem;">Puanların topluluk ortalamasına eklendi.</p>
+            <button class="btn-sm btn-accent" onclick="closePostMatchRatingModal()" style="padding:0.7rem 2rem;">
+                Kapat
+            </button>
+        </div>`;
+    if (typeof loadMatchHistory === 'function') setTimeout(loadMatchHistory, 300);
+}
+
+window.closePostMatchRatingModal = function() {
+    const overlay = document.getElementById('pmr-modal-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('visible');
+    setTimeout(() => { overlay.style.display = 'none'; }, 250);
+};
+

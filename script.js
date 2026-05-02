@@ -2702,11 +2702,10 @@ async function loadMatchHistory() {
 
     const user = window.__AUTH_USER__;
     if (!user || !window.DB) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#555; padding:2rem;">Oturum a\u00e7\u0131k de\u011fil</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#555; padding:2rem;">Oturum a\u00e7\u0131k de\u011fil</td></tr>';
         return;
     }
 
-    // Y\u00fckleniyor g\u00f6ster
     if (loadingEl) loadingEl.style.display = 'block';
     tbody.innerHTML = '';
 
@@ -2714,9 +2713,18 @@ async function loadMatchHistory() {
         const history = await window.DB.Matches.getPlayerHistory(user.id);
 
         if (!history || history.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#555; padding:2rem;">\ud83c\udfc4 Hen\u00fcz kay\u0131tl\u0131 ma\u00e7 yok</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#555; padding:2rem;">\ud83c\udfc4 Hen\u00fcz kay\u0131tl\u0131 ma\u00e7 yok</td></tr>';
             return;
         }
+
+        // Biten ma\u00e7lar i\u00e7in puanlama durumlar\u0131n\u0131 toplu \u00e7ek
+        const finishedIds = history
+            .filter(mp => mp.match?.status === 'finished')
+            .map(mp => mp.match.id);
+
+        const ratingStatuses = finishedIds.length > 0
+            ? await window.DB.Ratings.getMatchRatingStatuses(user.id, finishedIds)
+            : {};
 
         tbody.innerHTML = history.map(mp => {
             const m = mp.match;
@@ -2725,12 +2733,10 @@ async function loadMatchHistory() {
                 ? new Date(m.scheduled_at).toLocaleDateString('tr-TR', { day:'2-digit', month:'short', year:'2-digit' })
                 : '\u2014';
 
-            // Hangi tak\u0131mda oynad\u0131?
             const teamName = mp.team_side === 'home'
                 ? (m.home_team?.name || 'Ev Sahibi')
                 : (m.away_team?.name || 'Deplasman');
 
-            // Skor
             const score = (m.home_score !== null && m.away_score !== null)
                 ? `${m.home_score} - ${m.away_score}` : '\u2014';
 
@@ -2743,6 +2749,22 @@ async function loadMatchHistory() {
 
             const posColor = { 'KL':'var(--neon-pink)', 'DEF':'var(--neon-cyan)', 'OS':'gold', 'FV':'var(--neon-green)' }[pos] || '#888';
 
+            // Puan ver / Puanland\u0131 rozeti \u2014 sadece biten ma\u00e7lar i\u00e7in
+            let ratingBadge = '';
+            if (m.status === 'finished') {
+                const status = ratingStatuses[m.id];
+                if (status === 'done') {
+                    ratingBadge = `<span class="pmr-badge-done-sm">Puanland\u0131</span>`;
+                } else if (status === 'pending') {
+                    ratingBadge = `<button class="pmr-badge-pending"
+                        onclick="openPostMatchRatingModal('${m.id}','${mp.team_side}')">
+                        Puan Ver
+                    </button>`;
+                } else {
+                    ratingBadge = `<span style="color:#444;font-size:0.75rem;">\u2014</span>`;
+                }
+            }
+
             return `<tr>
                 <td style="color:#888; font-size:0.85rem;">${date}</td>
                 <td>${score}</td>
@@ -2751,12 +2773,13 @@ async function loadMatchHistory() {
                 <td style="color:var(--neon-green); font-weight:700;">${goals}</td>
                 <td style="color:#aaa;">${assists}</td>
                 <td>${rating}</td>
+                <td>${ratingBadge}</td>
             </tr>`;
         }).join('');
 
     } catch(e) {
         console.error('Match history error:', e);
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#555; padding:2rem;">\u274c Y\u00fcklenemedi</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#555; padding:2rem;">\u274c Y\u00fcklenemedi</td></tr>';
     } finally {
         if (loadingEl) loadingEl.style.display = 'none';
     }

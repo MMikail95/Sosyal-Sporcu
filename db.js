@@ -752,22 +752,28 @@ const Ratings = {
     return data || [];
   },
 
-  // Puan ver / güncelle
-  async upsertRating(raterId, ratedPlayerId, ratings, comment = '') {
+  // Puan ver / güncelle — matchId & fairPlay opsiyonel (maç sonu puanlama için)
+  async upsertRating(raterId, ratedPlayerId, ratings, comment = '', matchId = null, fairPlay = null) {
+    const payload = {
+      rater_id: raterId,
+      rated_player_id: ratedPlayerId,
+      rating_teknik: ratings.teknik,
+      rating_sut: ratings.sut,
+      rating_pas: ratings.pas,
+      rating_hiz: ratings.hiz,
+      rating_fizik: ratings.fizik,
+      rating_kondisyon: ratings.kondisyon,
+      comment,
+      updated_at: new Date().toISOString()
+    };
+    if (matchId) payload.match_id = matchId;
+    if (fairPlay !== null) payload.fair_play = fairPlay;
+    const conflictTarget = matchId
+      ? 'rated_player_id,rater_id,match_id'
+      : 'rated_player_id,rater_id';
     const { data, error } = await sb()
       .from('community_ratings')
-      .upsert({
-        rater_id: raterId,
-        rated_player_id: ratedPlayerId,
-        rating_teknik: ratings.teknik,
-        rating_sut: ratings.sut,
-        rating_pas: ratings.pas,
-        rating_hiz: ratings.hiz,
-        rating_fizik: ratings.fizik,
-        rating_kondisyon: ratings.kondisyon,
-        comment,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'rated_player_id,rater_id' })
+      .upsert(payload, { onConflict: conflictTarget })
       .select()
       .single();
     if (error) throw error;
@@ -783,6 +789,60 @@ const Ratings = {
       .eq('rated_player_id', ratedPlayerId)
       .single();
     return data || null;
+  },
+
+  // Bir maçtaki tüm oyuncuları getir (kullanıcı hariç)
+  async getMatchParticipants(matchId, excludePlayerId) {
+    const { data, error } = await sb()
+      .from('match_players')
+      .select(`
+        player_id, team_side,
+        player:player_id(id, username, avatar_url, ana_mevki, gen_score,
+          rating_teknik, rating_sut, rating_pas, rating_hiz, rating_fizik, rating_kondisyon)
+      `)
+      .eq('match_id', matchId)
+      .neq('player_id', excludePlayerId);
+    if (error) return [];
+    return (data || []).filter(d => d.player !== null);
+  },
+
+  // Bu maçta hangi oyuncuları puanladım? (Set döndürür)
+  async getMyMatchRatings(raterId, matchId) {
+    const { data } = await sb()
+      .from('community_ratings')
+      .select('rated_player_id')
+      .eq('rater_id', raterId)
+      .eq('match_id', matchId);
+    return new Set((data || []).map(r => r.rated_player_id));
+  },
+
+  // Maç geçmişi tablosu için toplu durum sorgulama
+  // Döndürür: { [matchId]: 'pending' | 'done' | null }
+  async getMatchRatingStatuses(userId, matchIds) {
+    if (!matchIds || matchIds.length === 0) return {};
+    const { data: participants } = await sb()
+      .from('match_players')
+      .select('match_id, player_id')
+      .in('match_id', matchIds)
+      .neq('player_id', userId);
+    const { data: given } = await sb()
+      .from('community_ratings')
+      .select('match_id, rated_player_id')
+      .eq('rater_id', userId)
+      .in('match_id', matchIds);
+    const result = {};
+    const givenSet = new Set((given || []).map(r => `${r.match_id}:${r.rated_player_id}`));
+    const byMatch = {};
+    (participants || []).forEach(p => {
+      if (!byMatch[p.match_id]) byMatch[p.match_id] = [];
+      byMatch[p.match_id].push(p.player_id);
+    });
+    matchIds.forEach(mid => {
+      const peers = byMatch[mid] || [];
+      if (peers.length === 0) { result[mid] = null; return; }
+      result[mid] = peers.every(pid => givenSet.has(`${mid}:${pid}`)) ? 'done' : 'pending';
+    });
+    return result;
   }
 };
 

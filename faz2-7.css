@@ -997,4 +997,136 @@
     .psn-form-btn { padding: 0.45rem 0.6rem; min-width: 60px; }
 }
 
+/* ═══════════════════════════════════════════════════════
+   POST-MAÇ 360 DERECELİK PUANLAMA MODALİ
+   ═══════════════════════════════════════════════════════ */
+
+.pmr-overlay {
+    position: fixed; inset: 0; z-index: 9995;
+    background: rgba(0,0,0,0.78); backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem; opacity: 0; transition: opacity 0.25s ease;
+}
+.pmr-overlay.visible { opacity: 1; }
+
+.pmr-box {
+    background: #12121a;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px; width: 100%; max-width: 480px;
+    max-height: 92vh; overflow-y: auto;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.7);
+    animation: slideInUp 0.3s ease;
+}
+
+.pmr-header {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-wrap: wrap; position: sticky; top: 0;
+    background: #12121a; z-index: 1;
+}
+.pmr-header-title {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-weight: 800; font-size: 0.95rem; flex: 1;
+}
+
+.pmr-progress-pills {
+    display: flex; gap: 4px; align-items: center; flex-wrap: wrap;
+}
+.pmr-pill {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    transition: all 0.2s;
+}
+.pmr-pill-done { background: var(--neon-green); border-color: var(--neon-green); }
+.pmr-pill-active { background: var(--neon-cyan); border-color: var(--neon-cyan); transform: scale(1.3); }
+
+.pmr-body { padding: 1.25rem; }
+
+.pmr-player-header {
+    display: flex; align-items: center; gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+.pmr-avatar {
+    width: 52px; height: 52px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.15);
+    flex-shrink: 0; object-fit: cover;
+}
+.pmr-player-name { font-size: 1.05rem; font-weight: 800; margin-bottom: 0.15rem; }
+.pmr-player-meta { font-size: 0.8rem; font-weight: 600; }
+
+.pmr-badge-done {
+    display: inline-block; font-size: 0.72rem; font-weight: 700;
+    background: rgba(0,255,136,0.1); color: var(--neon-green);
+    border: 1px solid rgba(0,255,136,0.3); border-radius: 6px;
+    padding: 1px 6px; margin-left: 0.4rem;
+}
+
+.pmr-sliders { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; }
+
+.pmr-slider-row {
+    display: grid; grid-template-columns: 90px 1fr 38px;
+    align-items: center; gap: 0.75rem;
+}
+.pmr-slider-label { font-size: 0.82rem; font-weight: 700; color: #aaa; }
+.pmr-slider-val {
+    text-align: right; font-size: 0.9rem; font-weight: 800;
+    color: var(--neon-green); min-width: 28px;
+}
+
+.pmr-fairplay-row {
+    display: grid; grid-template-columns: 90px 1fr 38px;
+    align-items: center; gap: 0.75rem; margin-top: 0.25rem;
+}
+.pmr-stars { display: flex; gap: 4px; }
+.pmr-star {
+    font-size: 1.4rem; color: rgba(255,255,255,0.15);
+    cursor: pointer; transition: color 0.15s, transform 0.15s;
+    user-select: none;
+}
+.pmr-star:hover { color: #ffd700; transform: scale(1.1); }
+.pmr-star-active { color: #ffd700; }
+
+.pmr-comment {
+    width: 100%; background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
+    color: #ccc; font-family: 'Outfit', sans-serif; font-size: 0.85rem;
+    padding: 0.6rem 0.8rem; resize: vertical; min-height: 56px;
+    margin-bottom: 1rem; box-sizing: border-box;
+}
+.pmr-comment:focus {
+    outline: none; border-color: rgba(0,229,255,0.4);
+    background: rgba(0,229,255,0.04);
+}
+
+.pmr-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 0.5rem;
+}
+
+/* Maç geçmişi tablosu rozetleri */
+.pmr-badge-pending {
+    background: rgba(255,215,0,0.12); color: #ffd700;
+    border: 1px solid rgba(255,215,0,0.35); border-radius: 6px;
+    padding: 3px 9px; font-size: 0.75rem; font-weight: 700;
+    cursor: pointer; font-family: 'Outfit', sans-serif;
+    transition: background 0.2s;
+}
+.pmr-badge-pending:hover { background: rgba(255,215,0,0.25); }
+
+.pmr-badge-done-sm {
+    display: inline-block;
+    background: rgba(0,255,136,0.06); color: #555;
+    border: 1px solid rgba(0,255,136,0.18);
+    font-size: 0.72rem; font-weight: 700;
+    padding: 2px 7px; border-radius: 6px;
+}
+
+@media (max-width: 480px) {
+    .pmr-slider-row { grid-template-columns: 72px 1fr 32px; }
+    .pmr-fairplay-row { grid-template-columns: 72px 1fr 32px; }
+    .pmr-box { border-radius: 14px; }
+}
+
 
