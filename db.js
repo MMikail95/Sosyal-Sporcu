@@ -879,22 +879,30 @@ const Ratings = {
     return data || [];
   },
 
-  // Puan ver / güncelle — matchId & fairPlay opsiyonel (maç sonu puanlama için)
-  async upsertRating(raterId, ratedPlayerId, ratings, comment = '', matchId = null, fairPlay = null) {
+  // Puan ver / güncelle — matchId opsiyonel (maç sonu puanlama için)
+  async upsertRating(raterId, ratedPlayerId, ratings, comment = '', matchId = null) {
     const payload = {
       rater_id: raterId,
       rated_player_id: ratedPlayerId,
+      // Teknik (1-10)
       rating_teknik: ratings.teknik,
       rating_sut: ratings.sut,
       rating_pas: ratings.pas,
       rating_hiz: ratings.hiz,
       rating_fizik: ratings.fizik,
       rating_kondisyon: ratings.kondisyon,
+      // Sosyal (1-10)
+      rating_dakiklik: ratings.dakiklik,
+      rating_saha_iletisimi: ratings.saha_iletisimi,
+      rating_mac_sosyal: ratings.mac_sosyal,
+      rating_mevki_sadakati: ratings.mevki_sadakati,
+      rating_pres: ratings.pres,
+      rating_markaj: ratings.markaj,
+      rating_pas_tercihleri: ratings.pas_tercihleri,
       comment,
       updated_at: new Date().toISOString()
     };
     if (matchId) payload.match_id = matchId;
-    if (fairPlay !== null) payload.fair_play = fairPlay;
     const conflictTarget = matchId
       ? 'rated_player_id,rater_id,match_id'
       : 'rated_player_id,rater_id';

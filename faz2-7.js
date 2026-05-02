@@ -1838,6 +1838,43 @@ function _pmrInjectModalDOM() {
     document.body.appendChild(el);
 }
 
+const _pmrTechKeys = [
+    { key: 'teknik',    label: 'Teknik' },
+    { key: 'sut',       label: 'Şut' },
+    { key: 'pas',       label: 'Pas' },
+    { key: 'hiz',       label: 'Hız' },
+    { key: 'fizik',     label: 'Fizik' },
+    { key: 'kondisyon', label: 'Kondisyon' }
+];
+const _pmrSocialKeys = [
+    { key: 'dakiklik',       label: 'Dakiklik' },
+    { key: 'saha_iletisimi', label: 'Saha iletişimi' },
+    { key: 'mac_sosyal',     label: 'Maç sonu sosyallik' },
+    { key: 'mevki_sadakati', label: 'Mevki sadakati' },
+    { key: 'pres',           label: 'Pres gücü' },
+    { key: 'markaj',         label: 'Markaj' },
+    { key: 'pas_tercihleri', label: 'Pas tercihleri' }
+];
+
+function _pmrStepRow(key, label) {
+    return `<div class="pmr-step-row">
+        <span class="pmr-step-label">${label}</span>
+        <div class="pmr-stepper">
+            <button class="pmr-step-btn pmr-step-minus" type="button" onclick="_pmrStep('${key}',-1)">−</button>
+            <span class="pmr-step-val" id="pmr-val-${key}">5</span>
+            <button class="pmr-step-btn pmr-step-plus" type="button" onclick="_pmrStep('${key}',1)">+</button>
+        </div>
+    </div>`;
+}
+
+window._pmrStep = function(key, delta) {
+    const el = document.getElementById('pmr-val-' + key);
+    if (!el) return;
+    const next = Math.max(1, Math.min(10, parseInt(el.textContent) + delta));
+    el.textContent = next;
+    el.className = 'pmr-step-val' + (next >= 8 ? ' pmr-val-high' : next <= 3 ? ' pmr-val-low' : '');
+};
+
 function _pmrRenderCurrentPlayer() {
     const p = _pmrParticipants[_pmrCurrentIdx];
     if (!p) return;
@@ -1859,29 +1896,6 @@ function _pmrRenderCurrentPlayer() {
     const avatar = info.avatar_url ||
         `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(info.username || 'x')}`;
 
-    const sliderKeys = ['teknik','sut','pas','hiz','fizik','kondisyon'];
-    const sliderLabels = { teknik:'Teknik', sut:'Şut', pas:'Pas', hiz:'Hız', fizik:'Fizik', kondisyon:'Kondisyon' };
-
-    const slidersHTML = sliderKeys.map(k => `
-        <div class="pmr-slider-row">
-            <span class="pmr-slider-label">${sliderLabels[k]}</span>
-            <input type="range" class="rating-slider" id="pmr-${k}"
-                   min="1" max="99" step="1" value="70"
-                   oninput="document.getElementById('pmr-disp-${k}').textContent=this.value">
-            <span class="pmr-slider-val" id="pmr-disp-${k}">70</span>
-        </div>`).join('');
-
-    const fairPlayHTML = isOpponent ? `
-        <div class="pmr-fairplay-row">
-            <span class="pmr-slider-label">Fair Play</span>
-            <div class="pmr-stars" id="pmr-fairplay-stars">
-                ${[1,2,3,4,5].map(n =>
-                    `<span class="pmr-star" onclick="_pmrSelectStar(${n})">&#9733;</span>`
-                ).join('')}
-            </div>
-            <input type="hidden" id="pmr-fairplay-val" value="3">
-        </div>` : '';
-
     document.getElementById('pmr-body').innerHTML = `
         <div class="pmr-player-header">
             <img src="${avatar}" class="pmr-avatar" alt="" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=default'">
@@ -1892,12 +1906,12 @@ function _pmrRenderCurrentPlayer() {
                 </div>
             </div>
         </div>
-        <div class="pmr-sliders">
-            ${slidersHTML}
-            ${fairPlayHTML}
+        <div class="pmr-ratings-scroll">
+            <div class="pmr-section-title"><i class="fa-solid fa-futbol"></i> Teknik</div>
+            ${_pmrTechKeys.map(r => _pmrStepRow(r.key, r.label)).join('')}
+            <div class="pmr-section-title" style="margin-top:1rem;"><i class="fa-solid fa-handshake"></i> Sosyal</div>
+            ${_pmrSocialKeys.map(r => _pmrStepRow(r.key, r.label)).join('')}
         </div>
-        <textarea id="pmr-comment" class="pmr-comment" maxlength="200"
-                  placeholder="Yorum (opsiyonel, max 200 karakter)..."></textarea>
         <div class="pmr-footer">
             ${_pmrCurrentIdx > 0
                 ? `<button class="btn-sm btn-outline-sm" onclick="_pmrGoTo(${_pmrCurrentIdx - 1})">
@@ -1908,19 +1922,7 @@ function _pmrRenderCurrentPlayer() {
                 ${alreadyRated ? 'Güncelle' : 'Puanla'}&nbsp;<i class="fa-solid fa-arrow-right"></i>
             </button>
         </div>`;
-
-    if (isOpponent) {
-        setTimeout(() => _pmrSelectStar(3), 0);
-    }
 }
-
-window._pmrSelectStar = function(n) {
-    const valEl = document.getElementById('pmr-fairplay-val');
-    if (valEl) valEl.value = n;
-    document.querySelectorAll('.pmr-star').forEach((el, i) => {
-        el.classList.toggle('pmr-star-active', i < n);
-    });
-};
 
 window._pmrGoTo = function(idx) {
     _pmrCurrentIdx = idx;
@@ -1937,21 +1939,16 @@ window._pmrSubmitCurrent = async function() {
     const btn = document.getElementById('pmr-submit-btn');
     if (btn) { btn.disabled = true; btn.innerHTML = 'Kaydediliyor...'; }
 
-    const sliderKeys = ['teknik','sut','pas','hiz','fizik','kondisyon'];
+    const allKeys = [..._pmrTechKeys, ..._pmrSocialKeys];
     const ratings = {};
-    sliderKeys.forEach(k => {
-        ratings[k] = parseInt(document.getElementById(`pmr-${k}`)?.value || 70);
+    allKeys.forEach(({ key }) => {
+        const el = document.getElementById('pmr-val-' + key);
+        ratings[key] = el ? parseInt(el.textContent) : 5;
     });
-
-    const comment = document.getElementById('pmr-comment')?.value?.trim() || '';
-    const isOpponent = p.team_side !== _pmrCurrentUserSide;
-    const fairPlay = isOpponent
-        ? parseInt(document.getElementById('pmr-fairplay-val')?.value || 3)
-        : null;
 
     try {
         await window.DB.Ratings.upsertRating(
-            user.id, p.player_id, ratings, comment, _pmrMatchId, fairPlay
+            user.id, p.player_id, ratings, '', _pmrMatchId
         );
 
         _pmrRatedSet.add(p.player_id);
@@ -2026,6 +2023,8 @@ window.closePostMatchRatingModal = function() {
 let _mcVenues = [];
 let _mcMyTeams = [];
 let _mcDropdownsLoaded = false;
+let _mcSelectedAwayTeam = null;
+let _mcSearchTimeout = null;
 
 function _mcEsc(str) {
     if (!str) return '';
@@ -2034,11 +2033,18 @@ function _mcEsc(str) {
         .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// Supabase auth > localStorage account > null
+function _mcGetUserId() {
+    const authId = window.__AUTH_USER__?.id;
+    if (authId) return authId;
+    const acc = typeof getActiveAccount === 'function' ? getActiveAccount() : null;
+    return acc?.playerId || null;
+}
+
 window.initMatchCenter = async function () {
     if (!_mcDropdownsLoaded) {
         _mcDropdownsLoaded = true;
-        const acc = typeof getActiveAccount === 'function' ? getActiveAccount() : null;
-        const userId = acc?.playerId;
+        const userId = _mcGetUserId();
 
         const [venues, myTeams] = await Promise.all([
             DB.Venues.getAll().catch(() => []),
@@ -2068,8 +2074,7 @@ window.initMatchCenter = async function () {
 };
 
 async function _mcLoadMatches() {
-    const acc = typeof getActiveAccount === 'function' ? getActiveAccount() : null;
-    const userId = acc?.playerId;
+    const userId = _mcGetUserId();
     const listEl = document.getElementById('mc-matches-list');
     if (!listEl) return;
 
@@ -2274,8 +2279,7 @@ window.mcSubmitScore = async function (matchId, teamSide) {
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
 
     try {
-        const acc = typeof getActiveAccount === 'function' ? getActiveAccount() : null;
-        const userId = acc?.playerId;
+        const userId = _mcGetUserId();
         if (!userId) throw new Error('Oturum açmanız gerekiyor.');
 
         await DB.Matches.updateScore(matchId, homeScore, awayScore, userId);
@@ -2306,8 +2310,7 @@ window.mcCancelMatch = async function (matchId) {
     if (!confirm('Bu maçı iptal etmek istediğinize emin misiniz?')) return;
 
     try {
-        const acc = typeof getActiveAccount === 'function' ? getActiveAccount() : null;
-        const userId = acc?.playerId;
+        const userId = _mcGetUserId();
         if (!userId) throw new Error('Oturum açmanız gerekiyor.');
 
         await DB.Matches.cancelMatch(matchId, userId);
@@ -2522,8 +2525,7 @@ function _mcRenderParticipants(players) {
 window.mcLeaveMatch = async function (matchId) {
     if (!confirm('Bu maçtan ayrılmak istediğinize emin misiniz?')) return;
     try {
-        const acc = typeof getActiveAccount === 'function' ? getActiveAccount() : null;
-        const userId = acc?.playerId;
+        const userId = _mcGetUserId();
         if (!userId) throw new Error('Oturum açmanız gerekiyor.');
         await DB.Matches.leaveMatch(matchId, userId);
         if (typeof showToast === 'function') showToast('Maçtan ayrıldınız.');
@@ -2540,19 +2542,22 @@ window.mcLoadOpenMatches = async function () {
     const listEl = document.getElementById('mc-open-list');
     if (!listEl) return;
 
-    const acc = typeof getActiveAccount === 'function' ? getActiveAccount() : null;
-    const userId = acc?.playerId;
-
+    const userId = _mcGetUserId();
     if (!userId) {
         listEl.innerHTML = '<div class="empty-state-sm">Oturum açmanız gerekiyor.</div>';
         return;
     }
 
-    // _mcMyTeams Phase 1'de doldurulur; dolmadıysa bekle
-    if (!_mcDropdownsLoaded) {
-        listEl.innerHTML = '<div class="empty-state-sm"><i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor…</div>';
-        await window.initMatchCenter();
-        return;
+    listEl.innerHTML = '<div class="empty-state-sm"><i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor…</div>';
+
+    // Her zaman güncel userId ile takımları yeniden çek
+    _mcMyTeams = await DB.Teams.getMyTeams(userId).catch(() => []);
+
+    // Dropdown'u da güncelle (MPA sayfasında init erken çalışmış olabilir)
+    const homeSelect = document.getElementById('mc-home-team-select');
+    if (homeSelect && _mcMyTeams.length) {
+        homeSelect.innerHTML = '<option value="">— Takım seçin —</option>' +
+            _mcMyTeams.map(t => `<option value="${_mcEsc(t.id)}">${_mcEsc(t.name)}</option>`).join('');
     }
 
     if (!_mcMyTeams.length) {
@@ -2642,8 +2647,7 @@ window.mcJoinOpen = async function (matchId) {
     const btn = document.querySelector(`[onclick="mcJoinOpen('${matchId}')"]`);
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
     try {
-        const acc = typeof getActiveAccount === 'function' ? getActiveAccount() : null;
-        const userId = acc?.playerId;
+        const userId = _mcGetUserId();
         if (!userId) throw new Error('Oturum açmanız gerekiyor.');
         await DB.Matches.joinMatch(matchId, userId, 'home');
         if (typeof showToast === 'function') showToast('Maça katıldınız!');
@@ -2675,7 +2679,6 @@ window.mcSubmitCreate = async function () {
     const dateVal    = document.getElementById('mc-date-input')?.value;
     const matchType  = document.getElementById('mc-type-select')?.value || '5v5';
     const homeTeamId = document.getElementById('mc-home-team-select')?.value || null;
-    const awayName   = (document.getElementById('mc-away-team-input')?.value || '').trim();
     const notes      = (document.getElementById('mc-notes-input')?.value || '').trim();
 
     if (!dateVal) {
@@ -2686,28 +2689,55 @@ window.mcSubmitCreate = async function () {
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Oluşturuluyor…'; }
 
     try {
-        const acc = typeof getActiveAccount === 'function' ? getActiveAccount() : null;
-        const userId = acc?.playerId;
+        const userId = _mcGetUserId();
         if (!userId) throw new Error('Oturum açmanız gerekiyor.');
 
-        const fullNotes = [notes, awayName ? 'Rakip: ' + awayName : ''].filter(Boolean).join('\n') || null;
+        const awayTeamId   = _mcSelectedAwayTeam?.id || null;
+        const awayCapId    = _mcSelectedAwayTeam?.captainId || null;
+        const awayTeamName = _mcSelectedAwayTeam?.name || null;
 
-        const created = await DB.Matches.create(userId, {
+        // Rakip takım seçilmediyse text input'tan al ve notes'a ekle
+        const awayFallback = !awayTeamId
+            ? (document.getElementById('mc-away-team-input')?.value || '').trim()
+            : null;
+        const fullNotes = [notes, awayFallback ? 'Rakip: ' + awayFallback : ''].filter(Boolean).join('\n') || null;
+
+        const matchPayload = {
             scheduled_at: new Date(dateVal).toISOString(),
             match_type:   matchType,
-            status:       'scheduled',
-            venue_id:     venueId   || null,
-            home_team_id: homeTeamId || null,
-            notes:        fullNotes
-        });
+            status:       'scheduled'
+        };
+        if (venueId)    matchPayload.venue_id     = venueId;
+        if (homeTeamId) matchPayload.home_team_id = homeTeamId;
+        if (awayTeamId) matchPayload.away_team_id = awayTeamId;
+        if (fullNotes)  matchPayload.notes        = fullNotes;
+
+        const created = await DB.Matches.create(userId, matchPayload);
 
         await DB.Matches.joinMatch(created.id, userId, 'home').catch(() => {});
 
-        if (typeof showToast === 'function') showToast('Maç oluşturuldu!');
+        // Rakip takım kaptanına davet bildirimi gönder
+        if (awayCapId && awayTeamName) {
+            const matchDate = new Date(dateVal).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' });
+            await DB.Notifications.send(
+                awayCapId,
+                'match_invite',
+                'Maç Daveti',
+                `${matchDate} tarihinde takımınıza maç daveti gönderildi.`,
+                userId,
+                created.id
+            ).catch(() => {});
+        }
 
+        if (typeof showToast === 'function') {
+            showToast(awayCapId ? 'Maç oluşturuldu, davet gönderildi!' : 'Maç oluşturuldu!');
+        }
+
+        // Formu sıfırla
         document.getElementById('mc-date-input').value = '';
         document.getElementById('mc-away-team-input').value = '';
         document.getElementById('mc-notes-input').value = '';
+        mcClearAwayTeam();
 
         const firstBtn = document.querySelector('.mc-tab-btn');
         mcSwitchTab('my-matches', firstBtn);
@@ -2719,6 +2749,69 @@ window.mcSubmitCreate = async function () {
     } finally {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Maç Oluştur'; }
     }
+};
+
+// ── Rakip Takım Arama ────────────────────────────────
+
+window.mcSearchAwayTeam = function (query) {
+    _mcSelectedAwayTeam = null;
+    const resultsEl = document.getElementById('mc-away-results');
+    clearTimeout(_mcSearchTimeout);
+
+    if (!query || query.trim().length < 1) {
+        if (resultsEl) resultsEl.style.display = 'none';
+        return;
+    }
+
+    _mcSearchTimeout = setTimeout(async () => {
+        const ownIds = new Set(_mcMyTeams.map(t => t.id));
+        const results = await DB.Teams.search(query.trim(), 8).catch(() => []);
+        const filtered = results.filter(t => !ownIds.has(t.id));
+
+        if (!resultsEl) return;
+        if (!filtered.length) {
+            resultsEl.innerHTML = '<div class="mc-away-no-results"><i class="fa-solid fa-magnifying-glass"></i> Takım bulunamadı</div>';
+        } else {
+            resultsEl.innerHTML = filtered.map(t => `
+                <div class="mc-away-result-item" onclick="mcSelectAwayTeam('${_mcEsc(t.id)}','${_mcEsc(t.name)}','${_mcEsc(t.captain?.id || '')}','${_mcEsc(t.captain?.username || '')}')">
+                    <i class="fa-solid fa-shield" style="color:var(--neon-cyan);font-size:0.8rem;"></i>
+                    <span class="mc-away-result-name">${_mcEsc(t.name)}</span>
+                    ${t.captain ? `<span class="mc-away-result-cap">Kpt: ${_mcEsc(t.captain.username)}</span>` : ''}
+                </div>`).join('');
+        }
+        resultsEl.style.display = 'block';
+    }, 280);
+};
+
+window.mcSelectAwayTeam = function (teamId, teamName, captainId, captainName) {
+    _mcSelectedAwayTeam = { id: teamId, name: teamName, captainId: captainId || null };
+
+    const input     = document.getElementById('mc-away-team-input');
+    const resultsEl = document.getElementById('mc-away-results');
+    const selectedEl = document.getElementById('mc-away-selected');
+
+    if (input) input.value = teamName;
+    if (resultsEl) resultsEl.style.display = 'none';
+    if (selectedEl) {
+        selectedEl.innerHTML = `
+            <div class="mc-away-tag">
+                <i class="fa-solid fa-shield"></i>
+                <span>${_mcEsc(teamName)}</span>
+                ${captainId ? `<span class="mc-away-tag-notif"><i class="fa-solid fa-bell"></i> Davet gönderilecek</span>` : ''}
+                <button class="mc-away-clear-btn" onclick="mcClearAwayTeam()"><i class="fa-solid fa-xmark"></i></button>
+            </div>`;
+        selectedEl.style.display = 'block';
+    }
+};
+
+window.mcClearAwayTeam = function () {
+    _mcSelectedAwayTeam = null;
+    const input = document.getElementById('mc-away-team-input');
+    const selectedEl = document.getElementById('mc-away-selected');
+    const resultsEl = document.getElementById('mc-away-results');
+    if (input) input.value = '';
+    if (selectedEl) { selectedEl.innerHTML = ''; selectedEl.style.display = 'none'; }
+    if (resultsEl) resultsEl.style.display = 'none';
 };
 
 window._mcRefresh = async function () {

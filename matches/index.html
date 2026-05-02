@@ -116,8 +116,14 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Rakip Takım Adı</label>
-                            <input type="text" class="form-input" id="mc-away-team-input" placeholder="Rakip takım adı…">
+                            <label class="form-label">Rakip Takım</label>
+                            <div class="mc-away-search-wrap">
+                                <input type="text" class="form-input" id="mc-away-team-input"
+                                    placeholder="Takım ara…" autocomplete="off"
+                                    oninput="mcSearchAwayTeam(this.value)">
+                                <div class="mc-away-results" id="mc-away-results" style="display:none;"></div>
+                            </div>
+                            <div id="mc-away-selected" class="mc-away-selected" style="display:none;"></div>
                         </div>
                         <div class="form-group mc-form-full">
                             <label class="form-label">Notlar (opsiyonel)</label>
