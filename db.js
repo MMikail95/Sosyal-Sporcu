@@ -614,6 +614,33 @@ const Matches = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  // Birden fazla maç için oyuncu sayısını tek sorguda getir
+  async getPlayerCounts(matchIds) {
+    if (!matchIds || !matchIds.length) return {};
+    const { data } = await sb()
+      .from('match_players')
+      .select('match_id')
+      .in('match_id', matchIds);
+    const counts = {};
+    (data || []).forEach(p => {
+      counts[p.match_id] = (counts[p.match_id] || 0) + 1;
+    });
+    return counts;
+  },
+
+  // Maçı iptal et (sadece yaratıcı)
+  async cancelMatch(matchId, userId) {
+    const { data, error } = await sb()
+      .from('matches')
+      .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+      .eq('id', matchId)
+      .eq('created_by', userId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   }
 };
 

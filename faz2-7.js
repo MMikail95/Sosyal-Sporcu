@@ -2019,7 +2019,7 @@ window.closePostMatchRatingModal = function() {
 };
 
 // ======================================================
-// MAÇ MERKEZİ — Phase 1
+// MAÇ MERKEZİ — Phase 1 + 2
 // ======================================================
 (function () {
 
@@ -2095,29 +2095,33 @@ async function _mcLoadMatches() {
     const upcoming = rows.filter(r => ['scheduled', 'confirmed'].includes(r.match.status));
     const past     = rows.filter(r => ['finished', 'cancelled'].includes(r.match.status));
 
+    // Tüm maç ID'leri için oyuncu sayısı + rating durumu
+    const allIds      = rows.map(r => r.match.id).filter(Boolean);
     const finishedIds = past.map(r => r.match.id).filter(Boolean);
-    let ratingStatuses = {};
-    try {
-        if (finishedIds.length) {
-            ratingStatuses = await DB.Ratings.getMatchRatingStatuses(userId, finishedIds);
-        }
-    } catch (e) { /* non-critical */ }
+
+    const [playerCounts, ratingStatuses] = await Promise.all([
+        DB.Matches.getPlayerCounts(allIds).catch(() => ({})),
+        finishedIds.length
+            ? DB.Ratings.getMatchRatingStatuses(userId, finishedIds).catch(() => ({}))
+            : Promise.resolve({})
+    ]);
 
     let html = '';
     if (upcoming.length) {
         html += '<div class="mc-group-label"><i class="fa-solid fa-clock"></i> Yaklaşan Maçlar</div>';
-        html += upcoming.map(r => _mcMatchCard(r, ratingStatuses)).join('');
+        html += upcoming.map(r => _mcMatchCard(r, ratingStatuses, userId, playerCounts)).join('');
     }
     if (past.length) {
         html += `<div class="mc-group-label" style="${upcoming.length ? 'margin-top:1.5rem;' : ''}"><i class="fa-solid fa-rotate-left"></i> Geçmiş Maçlar</div>`;
-        html += past.map(r => _mcMatchCard(r, ratingStatuses)).join('');
+        html += past.map(r => _mcMatchCard(r, ratingStatuses, userId, playerCounts)).join('');
     }
 
     listEl.innerHTML = html;
 }
 
-function _mcMatchCard(row, ratingStatuses) {
+function _mcMatchCard(row, ratingStatuses, userId, playerCounts) {
     const m = row.match;
+    const mid = m.id;
     const homeTeam = m.home_team?.name || 'Ev Sahibi';
     const awayTeam = m.away_team?.name || 'Deplasman';
     const venueName = m.venue
@@ -2126,6 +2130,9 @@ function _mcMatchCard(row, ratingStatuses) {
     const date = m.scheduled_at
         ? new Date(m.scheduled_at).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })
         : '—';
+    const isCreator  = userId && m.created_by === userId;
+    const isActive   = ['scheduled', 'confirmed'].includes(m.status);
+    const pCount     = playerCounts[mid] || 0;
 
     const statusMap = {
         scheduled: { label: 'Planlandı',   cls: 'mc-status-scheduled' },
@@ -2143,29 +2150,68 @@ function _mcMatchCard(row, ratingStatuses) {
            </div>`
         : `<div class="mc-score mc-score-pending"><span class="mc-score-sep">vs</span></div>`;
 
+    // Sağ üst aksiyon alanı: puan ver / puanlandı / skor gir
     let actionHtml = '';
     if (m.status === 'finished') {
-        const rs = ratingStatuses[m.id];
+        const rs = ratingStatuses[mid];
         if (rs === 'pending') {
-            actionHtml = `<button class="pmr-badge-pending" onclick="openPostMatchRatingModal('${_mcEsc(m.id)}', '${_mcEsc(row.team_side || 'home')}')">
+            actionHtml = `<button class="pmr-badge-pending" onclick="openPostMatchRatingModal('${_mcEsc(mid)}', '${_mcEsc(row.team_side || 'home')}')">
                 <i class="fa-solid fa-star"></i> Puan Ver
             </button>`;
         } else if (rs === 'done') {
             actionHtml = `<span class="pmr-badge-done-sm"><i class="fa-solid fa-check"></i> Puanlandı</span>`;
         }
+    } else if (isCreator && isActive) {
+        actionHtml = `<button class="btn-sm mc-score-entry-btn" onclick="mcOpenScoreEntry('${_mcEsc(mid)}')">
+            <i class="fa-solid fa-pen-to-square"></i> Skoru Gir
+        </button>`;
     }
 
-    const matchType = m.match_type ? `<span class="mc-match-type">${_mcEsc(m.match_type)}</span>` : '';
+    const matchType  = m.match_type ? `<span class="mc-match-type">${_mcEsc(m.match_type)}</span>` : '';
+    const playerBadge = `<span class="mc-player-count"><i class="fa-solid fa-user-group"></i> ${pCount}</span>`;
+
+    // İptal butonu (creator, aktif maç)
+    const cancelBtn = isCreator && isActive
+        ? `<button class="btn-sm mc-cancel-match-btn" onclick="mcCancelMatch('${_mcEsc(mid)}')">
+               <i class="fa-solid fa-xmark"></i> İptal Et
+           </button>`
+        : '';
+
+    // Inline skor form (gizli)
+    const scoreForm = isCreator && isActive ? `
+    <div id="mc-score-form-${_mcEsc(mid)}" class="mc-score-form" style="display:none;">
+        <div class="mc-score-inputs-row">
+            <div class="mc-score-team-col">
+                <span class="mc-score-team-lbl">${_mcEsc(homeTeam)}</span>
+                <input type="number" id="mc-hs-${_mcEsc(mid)}" class="form-input mc-score-inp" min="0" max="99" value="0">
+            </div>
+            <span class="mc-score-vs-lbl">—</span>
+            <div class="mc-score-team-col">
+                <span class="mc-score-team-lbl">${_mcEsc(awayTeam)}</span>
+                <input type="number" id="mc-as-${_mcEsc(mid)}" class="form-input mc-score-inp" min="0" max="99" value="0">
+            </div>
+        </div>
+        <div class="mc-score-form-btns">
+            <button class="btn-sm btn-success-sm" onclick="mcSubmitScore('${_mcEsc(mid)}', '${_mcEsc(row.team_side || 'home')}')">
+                <i class="fa-solid fa-check"></i> Onayla
+            </button>
+            <button class="btn-sm btn-outline-sm" onclick="mcCloseScoreEntry('${_mcEsc(mid)}')">İptal</button>
+        </div>
+    </div>` : '';
 
     return `
-    <div class="mc-match-card glass-card">
+    <div class="mc-match-card glass-card" id="mc-card-${_mcEsc(mid)}">
         <div class="mc-card-top">
             <div class="mc-card-meta">
                 <span class="mc-status-badge ${st.cls}">${st.label}</span>
                 ${matchType}
+                ${playerBadge}
                 <span class="mc-card-date"><i class="fa-regular fa-calendar"></i> ${date}</span>
             </div>
-            ${actionHtml ? `<div class="mc-card-action">${actionHtml}</div>` : ''}
+            <div class="mc-card-actions-right">
+                ${actionHtml}
+                ${cancelBtn}
+            </div>
         </div>
         <div class="mc-card-teams">
             <span class="mc-team-name">${_mcEsc(homeTeam)}</span>
@@ -2174,8 +2220,87 @@ function _mcMatchCard(row, ratingStatuses) {
         </div>
         <div class="mc-card-venue"><i class="fa-solid fa-location-dot"></i> ${_mcEsc(venueName)}</div>
         ${m.notes ? `<div class="mc-card-notes"><i class="fa-regular fa-note-sticky"></i> ${_mcEsc(m.notes)}</div>` : ''}
+        ${scoreForm}
     </div>`;
 }
+
+// ── Skor Girişi ───────────────────────────────────────
+
+window.mcOpenScoreEntry = function (matchId) {
+    // Diğer açık formları kapat
+    document.querySelectorAll('.mc-score-form').forEach(f => { f.style.display = 'none'; });
+    // "Skoru Gir" butonunu gizle
+    const card = document.getElementById('mc-card-' + matchId);
+    if (card) card.querySelector('.mc-score-entry-btn')?.style.setProperty('display', 'none');
+    // Formu aç
+    const form = document.getElementById('mc-score-form-' + matchId);
+    if (form) { form.style.display = 'block'; form.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+};
+
+window.mcCloseScoreEntry = function (matchId) {
+    const form = document.getElementById('mc-score-form-' + matchId);
+    if (form) form.style.display = 'none';
+    const card = document.getElementById('mc-card-' + matchId);
+    if (card) {
+        const btn = card.querySelector('.mc-score-entry-btn');
+        if (btn) btn.style.removeProperty('display');
+    }
+};
+
+window.mcSubmitScore = async function (matchId, teamSide) {
+    const homeScore = parseInt(document.getElementById('mc-hs-' + matchId)?.value, 10) || 0;
+    const awayScore = parseInt(document.getElementById('mc-as-' + matchId)?.value, 10) || 0;
+    const btn = document.querySelector(`#mc-score-form-${matchId} .btn-success-sm`);
+
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+
+    try {
+        const acc = typeof getActiveAccount === 'function' ? getActiveAccount() : null;
+        const userId = acc?.playerId;
+        if (!userId) throw new Error('Oturum açmanız gerekiyor.');
+
+        await DB.Matches.updateScore(matchId, homeScore, awayScore, userId);
+        if (typeof showToast === 'function') showToast('Skor kaydedildi!');
+
+        await _mcLoadMatches();
+
+        // Puanlanacak oyuncu varsa PMR modal'ı aç
+        setTimeout(async () => {
+            const statuses = await DB.Ratings.getMatchRatingStatuses(userId, [matchId]).catch(() => ({}));
+            if (statuses[matchId] === 'pending') {
+                if (typeof openPostMatchRatingModal === 'function') {
+                    openPostMatchRatingModal(matchId, teamSide || 'home');
+                }
+            }
+        }, 500);
+
+    } catch (e) {
+        console.error('mcSubmitScore error:', e);
+        if (typeof showToast === 'function') showToast('Hata: ' + (e.message || 'Kaydedilemedi'));
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Onayla'; }
+    }
+};
+
+// ── Maç İptali ────────────────────────────────────────
+
+window.mcCancelMatch = async function (matchId) {
+    if (!confirm('Bu maçı iptal etmek istediğinize emin misiniz?')) return;
+
+    try {
+        const acc = typeof getActiveAccount === 'function' ? getActiveAccount() : null;
+        const userId = acc?.playerId;
+        if (!userId) throw new Error('Oturum açmanız gerekiyor.');
+
+        await DB.Matches.cancelMatch(matchId, userId);
+        if (typeof showToast === 'function') showToast('Maç iptal edildi.');
+        await _mcLoadMatches();
+    } catch (e) {
+        console.error('mcCancelMatch error:', e);
+        if (typeof showToast === 'function') showToast('Hata: ' + (e.message || 'İptal edilemedi'));
+    }
+};
+
+// ── Sekme & Form ─────────────────────────────────────
 
 window.mcSwitchTab = function (tab, btn) {
     document.querySelectorAll('.mc-tab-btn').forEach(b => b.classList.remove('active'));
@@ -2217,17 +2342,14 @@ window.mcSubmitCreate = async function () {
             notes:        fullNotes
         });
 
-        // Yaratıcıyı ev sahibi oyuncu olarak otomatik ekle
         await DB.Matches.joinMatch(created.id, userId, 'home').catch(() => {});
 
-        if (typeof showToast === 'function') showToast('Maç oluşturuldu! 🎉');
+        if (typeof showToast === 'function') showToast('Maç oluşturuldu!');
 
-        // Formu temizle
         document.getElementById('mc-date-input').value = '';
         document.getElementById('mc-away-team-input').value = '';
         document.getElementById('mc-notes-input').value = '';
 
-        // "Maçlarım" sekmesine geç ve listeyi yenile
         const firstBtn = document.querySelector('.mc-tab-btn');
         mcSwitchTab('my-matches', firstBtn);
         await _mcLoadMatches();
@@ -2240,7 +2362,6 @@ window.mcSubmitCreate = async function () {
     }
 };
 
-// Maç Merkezi'ni her ziyarette yenile (hesap değişikliği gibi durumlarda)
 window._mcRefresh = async function () {
     _mcDropdownsLoaded = false;
     if (typeof initMatchCenter === 'function') await initMatchCenter();
