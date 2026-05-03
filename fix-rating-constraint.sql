@@ -1,33 +1,27 @@
 -- =====================================================
--- FIX: community_ratings + takım istatistikleri
--- Supabase SQL Editor'da çalıştır
+-- FIX v2: community_ratings + takım istatistikleri
+-- Supabase SQL Editor'da çalıştır (idempotent)
 -- =====================================================
 
 -- ──────────────────────────────────────────────────────
--- KISIM 1: community_ratings UNIQUE CONSTRAINT düzeltmesi
--- Sorun: UNIQUE INDEX yerine gerçek CONSTRAINT gerekli
---        çünkü Supabase upsert onConflict sadece CONSTRAINT tanır
+-- KISIM 1: community_ratings → match_id kolonu + constraint
 -- ──────────────────────────────────────────────────────
 
--- 1a. Önce eski index'leri kaldır
+-- 1a. Eski index'leri kaldır
 DROP INDEX IF EXISTS community_ratings_per_match_unique;
 DROP INDEX IF EXISTS community_ratings_global_unique;
 
--- 1b. Eski UNIQUE constraint kaldır (zaten kaldırılmış olabilir)
+-- 1b. Eski UNIQUE constraint'leri kaldır
 ALTER TABLE community_ratings
   DROP CONSTRAINT IF EXISTS community_ratings_rated_player_id_rater_id_key;
+ALTER TABLE community_ratings
+  DROP CONSTRAINT IF EXISTS community_ratings_per_match_unique;
 
 -- 1c. match_id kolonu ekle (yoksa)
 ALTER TABLE community_ratings
   ADD COLUMN IF NOT EXISTS match_id UUID REFERENCES matches(id) ON DELETE SET NULL DEFAULT NULL;
 
--- 1d. fair_play kolonu ekle (yoksa)
-ALTER TABLE community_ratings
-  ADD COLUMN IF NOT EXISTS fair_play INTEGER DEFAULT NULL
-    CHECK (fair_play IS NULL OR fair_play BETWEEN 1 AND 5);
-
--- 1e. Çakışan satırları temizle: aynı (rater_id, rated_player_id, match_id) çiftinin
---     birden fazla kaydı varsa eskisini sil, yenisini koru
+-- 1d. Çakışan satırları temizle (aynı rater+rated+match kombinasyonu)
 DELETE FROM community_ratings cr1
 USING community_ratings cr2
 WHERE cr1.id < cr2.id
@@ -35,21 +29,26 @@ WHERE cr1.id < cr2.id
   AND cr1.rater_id = cr2.rater_id
   AND cr1.match_id IS NOT DISTINCT FROM cr2.match_id;
 
--- 1f. Gerçek UNIQUE CONSTRAINT ekle (match_id dahil, NULL-safe)
---     Bu özel constraint NULL değerleri eşit sayar
-ALTER TABLE community_ratings
-  ADD CONSTRAINT community_ratings_per_match_unique
-    UNIQUE (rated_player_id, rater_id, match_id);
+-- 1e. match_id IS NOT NULL olan kayıtlar için UNIQUE INDEX (maç bazlı)
+--     Supabase upsert: onConflict='rated_player_id,rater_id,match_id' bu index'i kullanır
+CREATE UNIQUE INDEX IF NOT EXISTS uq_community_ratings_match
+  ON community_ratings (rated_player_id, rater_id, match_id)
+  WHERE match_id IS NOT NULL;
+
+-- 1f. match_id IS NULL olan kayıtlar için UNIQUE INDEX (global puan)
+--     Supabase upsert: onConflict='rated_player_id,rater_id' bunu kullanır  
+CREATE UNIQUE INDEX IF NOT EXISTS uq_community_ratings_global
+  ON community_ratings (rated_player_id, rater_id)
+  WHERE match_id IS NULL;
 
 -- ──────────────────────────────────────────────────────
 -- KISIM 2: Takım istatistikleri trigger'ı
--- Sorun: Maç bitince takımın wins/losses/draws güncellenmiyor
+-- Maç 'finished' olunca takımların wins/losses/draws'ını günceller
 -- ──────────────────────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION public.update_team_stats_on_match_finish()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Sadece status 'finished' olduğunda çalıştır
   IF NEW.status = 'finished' AND (OLD.status IS NULL OR OLD.status != 'finished') THEN
     -- Ev sahibi takımı güncelle
     IF NEW.home_team_id IS NOT NULL THEN
@@ -103,7 +102,6 @@ BEGIN
       END IF;
     END IF;
   END IF;
-
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -115,15 +113,16 @@ CREATE TRIGGER on_match_finish_update_team_stats
   EXECUTE FUNCTION public.update_team_stats_on_match_finish();
 
 -- ──────────────────────────────────────────────────────
--- KISIM 3: match_players'a position_played kolonu ekle (yoksa)
+-- KISIM 3: match_players.position_played kolonu (yoksa)
 -- ──────────────────────────────────────────────────────
 ALTER TABLE match_players
   ADD COLUMN IF NOT EXISTS position_played TEXT DEFAULT NULL;
 
 -- ──────────────────────────────────────────────────────
--- Doğrulama sorguları
+-- Doğrulama (çalıştırdıktan sonra kontrol et)
 -- ──────────────────────────────────────────────────────
--- SELECT constraint_name FROM information_schema.table_constraints
--- WHERE table_name = 'community_ratings' AND constraint_type = 'UNIQUE';
+-- SELECT column_name FROM information_schema.columns
+--   WHERE table_name = 'community_ratings';
+-- SELECT indexname FROM pg_indexes WHERE tablename = 'community_ratings';
 -- SELECT trigger_name FROM information_schema.triggers
--- WHERE event_object_table = 'matches';
+--   WHERE event_object_table = 'matches';

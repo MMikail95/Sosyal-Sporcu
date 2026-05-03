@@ -1078,7 +1078,7 @@ function renderTeamRadarChart() {
         angleLines: { color: 'rgba(255,255,255,0.1)' },
         grid: { color: 'rgba(255,255,255,0.1)' },
         pointLabels: { color: '#ddd', font: { size: 13, weight: '600' } },
-        suggestedMin: 0, suggestedMax: 99,
+        suggestedMin: 0, suggestedMax: 10,
         ticks: { display: false },
       }},
       plugins: { legend: { display: false } },

@@ -935,35 +935,58 @@ const Ratings = {
 
   // Puan ver / güncelle — matchId opsiyonel (maç sonu puanlama için)
   // ratings: { teknik, sut, pas, hiz, fizik, kondisyon } — 1-10 arası stepper değerleri
-  // DB'ye kaydederken 1-10 → 11-99 aralığına ölçeklenir (10*val - 1)
+  // DB'ye 1-10 olarak kaydedilir (dönüşüm yapılmaz).
+  // Profiles.rating_* kolonları community ortalaması trigger'ı ile güncellenir.
   async upsertRating(raterId, ratedPlayerId, ratings, comment = '', matchId = null) {
-    // 1-10 stepper değerini 1-99 DB aralığına dönüştür
-    const scale = v => Math.min(99, Math.max(1, Math.round((v || 5) * 9.9)));
+    const clamp = v => Math.min(10, Math.max(1, Math.round(v || 5)));
     const payload = {
       rater_id: raterId,
       rated_player_id: ratedPlayerId,
-      rating_teknik:    scale(ratings.teknik),
-      rating_sut:       scale(ratings.sut),
-      rating_pas:       scale(ratings.pas),
-      rating_hiz:       scale(ratings.hiz),
-      rating_fizik:     scale(ratings.fizik),
-      rating_kondisyon: scale(ratings.kondisyon),
+      rating_teknik:    clamp(ratings.teknik),
+      rating_sut:       clamp(ratings.sut),
+      rating_pas:       clamp(ratings.pas),
+      rating_hiz:       clamp(ratings.hiz),
+      rating_fizik:     clamp(ratings.fizik),
+      rating_kondisyon: clamp(ratings.kondisyon),
       comment: comment || '',
       updated_at: new Date().toISOString()
     };
     if (matchId) payload.match_id = matchId;
-    // Constraint adı fix-rating-constraint.sql ile oluşturuldu:
-    // community_ratings_per_match_unique (match_id dahil NULL-safe)
-    const conflictTarget = matchId
-      ? 'community_ratings_per_match_unique'
-      : 'rated_player_id,rater_id';
-    const { data, error } = await sb()
-      .from('community_ratings')
-      .upsert(payload, { onConflict: conflictTarget, ignoreDuplicates: false })
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+
+    // Supabase JS onConflict: kolon adı alır, constraint adı değil.
+    if (matchId) {
+      try {
+        const { data, error } = await sb()
+          .from('community_ratings')
+          .upsert(payload, { onConflict: 'rated_player_id,rater_id,match_id', ignoreDuplicates: false })
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      } catch (e) {
+        // match_id kolonu yoksa (SQL migration çalıştırılmamış) → fallback
+        if (e.message && (e.message.includes('match_id') || e.message.includes('column'))) {
+          const fb = { ...payload };
+          delete fb.match_id;
+          const { data, error } = await sb()
+            .from('community_ratings')
+            .upsert(fb, { onConflict: 'rated_player_id,rater_id', ignoreDuplicates: false })
+            .select()
+            .single();
+          if (error) throw error;
+          return data;
+        }
+        throw e;
+      }
+    } else {
+      const { data, error } = await sb()
+        .from('community_ratings')
+        .upsert(payload, { onConflict: 'rated_player_id,rater_id', ignoreDuplicates: false })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    }
   },
 
   // Puanlayan kişi bu maçta oynadı mı? (güvenlik kontrolü için)
@@ -990,8 +1013,10 @@ const Ratings = {
   },
 
   // Bir maçtaki tüm oyuncuları getir (kullanıcı hariç)
+  // Önce match_players tablosundan çeker; yetersizse her iki takımın üyelerini de ekler.
   async getMatchParticipants(matchId, excludePlayerId) {
-    const { data, error } = await sb()
+    // 1) match_players'dan çek
+    const { data: mpData } = await sb()
       .from('match_players')
       .select(`
         player_id, team_side,
@@ -1000,8 +1025,46 @@ const Ratings = {
       `)
       .eq('match_id', matchId)
       .neq('player_id', excludePlayerId);
-    if (error) return [];
-    return (data || []).filter(d => d.player !== null);
+
+    const direct = (mpData || []).filter(d => d.player !== null);
+    const directIds = new Set(direct.map(d => d.player_id));
+
+    // 2) Maçın home/away takım ID'lerini çek
+    const { data: matchData } = await sb()
+      .from('matches')
+      .select('home_team_id, away_team_id')
+      .eq('id', matchId)
+      .maybeSingle();
+
+    if (!matchData) return direct;
+
+    const teamIdSideMap = {};
+    if (matchData.home_team_id) teamIdSideMap[matchData.home_team_id] = 'home';
+    if (matchData.away_team_id) teamIdSideMap[matchData.away_team_id] = 'away';
+
+    const teamIds = Object.keys(teamIdSideMap);
+    if (teamIds.length === 0) return direct;
+
+    // 3) Her iki takımın üyelerini çek
+    const { data: memberData } = await sb()
+      .from('team_members')
+      .select(`
+        player_id, team_id,
+        player:player_id(id, username, avatar_url, ana_mevki, gen_score,
+          rating_teknik, rating_sut, rating_pas, rating_hiz, rating_fizik, rating_kondisyon)
+      `)
+      .in('team_id', teamIds)
+      .neq('player_id', excludePlayerId);
+
+    const extra = (memberData || [])
+      .filter(m => m.player !== null && !directIds.has(m.player_id))
+      .map(m => ({
+        player_id: m.player_id,
+        team_side: teamIdSideMap[m.team_id] || 'home',
+        player: m.player
+      }));
+
+    return [...direct, ...extra];
   },
 
   // Bu maçta hangi oyuncuları puanladım? (Set döndürür)
@@ -1018,26 +1081,76 @@ const Ratings = {
   // Döndürür: { [matchId]: 'pending' | 'done' | null }
   async getMatchRatingStatuses(userId, matchIds) {
     if (!matchIds || matchIds.length === 0) return {};
-    const { data: participants } = await sb()
+
+    // 1) match_players'dan doğrudan katılımcıları çek
+    const { data: mpRows } = await sb()
       .from('match_players')
       .select('match_id, player_id')
       .in('match_id', matchIds)
       .neq('player_id', userId);
+
+    // 2) Maçların home/away takım ID'lerini çek
+    const { data: matchRows } = await sb()
+      .from('matches')
+      .select('id, home_team_id, away_team_id')
+      .in('id', matchIds);
+
+    // 3) Takım ID'lerinden üye listesini çek (fallback)
+    const teamIds = [];
+    const matchTeamMap = {}; // matchId -> [teamId, ...]
+    (matchRows || []).forEach(m => {
+      matchTeamMap[m.id] = [];
+      if (m.home_team_id) { teamIds.push(m.home_team_id); matchTeamMap[m.id].push(m.home_team_id); }
+      if (m.away_team_id) { teamIds.push(m.away_team_id); matchTeamMap[m.id].push(m.away_team_id); }
+    });
+
+    let memberRows = [];
+    if (teamIds.length > 0) {
+      const { data: tm } = await sb()
+        .from('team_members')
+        .select('team_id, player_id')
+        .in('team_id', [...new Set(teamIds)])
+        .neq('player_id', userId);
+      memberRows = tm || [];
+    }
+
+    // 4) Her maç için benzersiz oyuncu seti oluştur
+    const byMatch = {};
+    matchIds.forEach(mid => { byMatch[mid] = new Set(); });
+
+    (mpRows || []).forEach(p => {
+      if (byMatch[p.match_id]) byMatch[p.match_id].add(p.player_id);
+    });
+
+    // Takım üyelerini de ekle (match_players'da yoksa)
+    const teamPlayerTeamMap = {}; // teamId -> Set(player_id)
+    memberRows.forEach(m => {
+      if (!teamPlayerTeamMap[m.team_id]) teamPlayerTeamMap[m.team_id] = new Set();
+      teamPlayerTeamMap[m.team_id].add(m.player_id);
+    });
+
+    matchIds.forEach(mid => {
+      (matchTeamMap[mid] || []).forEach(tid => {
+        (teamPlayerTeamMap[tid] || new Set()).forEach(pid => {
+          byMatch[mid].add(pid);
+        });
+      });
+    });
+
+    // 5) Verilen puanları çek
     const { data: given } = await sb()
       .from('community_ratings')
       .select('match_id, rated_player_id')
       .eq('rater_id', userId)
       .in('match_id', matchIds);
-    const result = {};
+
     const givenSet = new Set((given || []).map(r => `${r.match_id}:${r.rated_player_id}`));
-    const byMatch = {};
-    (participants || []).forEach(p => {
-      if (!byMatch[p.match_id]) byMatch[p.match_id] = [];
-      byMatch[p.match_id].push(p.player_id);
-    });
+
+    // 6) Sonucu hesapla
+    const result = {};
     matchIds.forEach(mid => {
-      const peers = byMatch[mid] || [];
-      if (peers.length === 0) { result[mid] = null; return; }
+      const peers = [...byMatch[mid]];
+      if (peers.length === 0) { result[mid] = 'pending'; return; } // takım varsa pending göster
       result[mid] = peers.every(pid => givenSet.has(`${mid}:${pid}`)) ? 'done' : 'pending';
     });
     return result;

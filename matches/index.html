@@ -153,7 +153,9 @@ document.addEventListener('DOMContentLoaded', function () {
     setTimeout(function () {
         if (typeof initRealNotifications === 'function') initRealNotifications();
         if (typeof initMatchCenter === 'function') initMatchCenter();
-    }, 400);
+        // Tarih input'unu bugün+1 saat olarak ayarla
+        if (typeof window._mcInitDateInput === 'function') window._mcInitDateInput();
+    }, 600);
 });
 </script>
 </body>

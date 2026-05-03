@@ -2756,6 +2756,25 @@ window.mcSwitchTab = function (tab, btn) {
     const el = document.getElementById('mc-tab-' + tab);
     if (el) el.style.display = 'block';
     if (tab === 'open-matches') window.mcLoadOpenMatches();
+    if (tab === 'create' || tab === 'create-match') window._mcInitDateInput();
+};
+
+// Maç oluşturma formunda tarih input'unu bugün + 1 saat olarak ayarla
+window._mcInitDateInput = function () {
+    const el = document.getElementById('mc-date-input');
+    if (!el) return;
+    // Zaten dolu ise dokunma
+    if (el.value) return;
+    // Yerel saat: YYYY-MM-DDTHH:mm formatı
+    const now = new Date();
+    now.setHours(now.getHours() + 1, 0, 0, 0); // +1 saat, saniyeleri sıfırla
+    const pad = n => String(n).padStart(2, '0');
+    const localStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    el.value = localStr;
+    // min değerini bugün olarak ayarla (geçmiş tarih seçimi engelle)
+    const minNow = new Date();
+    const minStr = `${minNow.getFullYear()}-${pad(minNow.getMonth()+1)}-${pad(minNow.getDate())}T${pad(minNow.getHours())}:${pad(minNow.getMinutes())}`;
+    el.min = minStr;
 };
 
 window.mcSubmitCreate = async function () {
@@ -2787,8 +2806,20 @@ window.mcSubmitCreate = async function () {
             : null;
         const fullNotes = [notes, awayFallback ? 'Rakip: ' + awayFallback : ''].filter(Boolean).join('\n') || null;
 
+        // datetime-local değeri 'YYYY-MM-DDTHH:mm' formatında gelir.
+        // new Date() doğrudan bu string'i UTC'den parse eder ama local timezone
+        // farkı nedeniyle yanlış tarih üretebilir.
+        // Güvenli parse: string'i direkt ISO formatına dönüştür.
+        const safeDateStr = dateVal.includes('T') ? dateVal + ':00' : dateVal;
+        const parsedDate = new Date(safeDateStr);
+        if (isNaN(parsedDate.getTime())) {
+            showToast?.('Geçersiz tarih formatı. Lütfen takvimden seçin.');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-plus"></i> Maç Oluştur'; }
+            return;
+        }
+
         const matchPayload = {
-            scheduled_at: new Date(dateVal).toISOString(),
+            scheduled_at: parsedDate.toISOString(),
             match_type:   matchType,
             status:       'scheduled'
         };

@@ -1531,7 +1531,7 @@ function updateChart(player) {
                         grid:       { color: 'rgba(255, 255, 255, 0.1)'  },
                         pointLabels:{ color: '#888', font: { size: 12 } },
                         suggestedMin: 0,
-                        suggestedMax: 100,
+                        suggestedMax: 10,
                         ticks: { display: false, beginAtZero: true }
                     }
                 },
@@ -1580,9 +1580,8 @@ function calcCommunityRatingsAvg(player) {
     const result = {};
     keys.forEach(k => {
         const vals = player.communityRatings.map(r => r[k]).filter(v => v !== undefined && v !== null);
-        const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-        // Scale 1-10 → 1-99 to match chart axis (self-ratings are 1-99)
-        result[k] = Math.round(avg * 9.9);
+        // Community ratings are stored as 1-10; return as-is (no scaling)
+        result[k] = vals.length ? parseFloat((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)) : 0;
     });
     return result;
 }
@@ -1602,7 +1601,7 @@ function renderCommunityRatingForm(container) {
 
     const keys = ['teknik', 'sut', 'pas', 'hiz', 'fizik', 'kondisyon'];
     const labels = { teknik: 'Teknik', sut: 'Şut', pas: 'Pas', hiz: 'Hız', fizik: 'Fizik', kondisyon: 'Kondisyon' };
-    const defaults = existing || { teknik: 70, sut: 70, pas: 70, hiz: 70, fizik: 70, kondisyon: 70 };
+    const defaults = existing || { teknik: 5, sut: 5, pas: 5, hiz: 5, fizik: 5, kondisyon: 5 };
 
     container.innerHTML = `
         <div class="glass-card community-rating-card" style="max-width:600px; margin:0 auto;">
@@ -1627,7 +1626,7 @@ function renderCommunityRatingForm(container) {
                 <div class="rating-row">
                     <span class="rating-label">${labels[k]}</span>
                     <input type="range" class="rating-slider" id="cr-${k}"
-                        min="1" max="99" step="1" value="${defaults[k]}"
+                        min="1" max="10" step="1" value="${defaults[k]}"
                         oninput="updateCRDisp('${k}', this.value)">
                     <span class="rating-val" id="cr-disp-${k}">${defaults[k]}</span>
                 </div>`).join('')}
