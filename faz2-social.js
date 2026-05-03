@@ -186,8 +186,14 @@ window._openTeamDetail = async function(cardEl) {
             joinBtnHtml = `<button class="epc-btn epc-btn-friend" onclick="showToast('⚠️ Giriş yapmanız gerekiyor.')">
                 <i class="fa-solid fa-right-to-bracket"></i> Katılma İsteği Gönder
             </button>`;
-        } else if (isCapOrOwn) {
+        } else if (isCapOrOwn && isMember) {
             joinBtnHtml = `<span class="etc-badge-own"><i class="fa-solid fa-crown"></i> Kendi Takımın</span>`;
+        } else if (isCapOrOwn && !isMember) {
+            // Kaptan ama takımdan çıkmış — geri dönebilir
+            joinBtnHtml = `<button class="epc-btn epc-btn-friend" id="tdm-join-btn"
+                onclick="joinExploreTeam('${teamId}','${(team.name||'').replace(/'/g,"\\'")}','${team.slug||''}',this)">
+                <i class="fa-solid fa-rotate-left"></i> Takımına Dön
+            </button>`;
         } else if (isMember) {
             joinBtnHtml = `<span class="epc-btn epc-btn-friend accepted" style="cursor:default;">
                 <i class="fa-solid fa-check"></i> Zaten Üyesin
@@ -375,7 +381,11 @@ window.joinExploreTeam = async function(teamId, teamName, slug, btn) {
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Katılıyor...'; }
 
     try {
-        await window.DB.Teams.addMember(teamId, user.id, 'player');
+        // Kaptan geri dönüyorsa 'captain' rolüyle ekle
+        const { data: teamMeta } = await window.sbClient
+            .from('teams').select('captain_id').eq('id', teamId).single();
+        const role = teamMeta?.captain_id === user.id ? 'captain' : 'player';
+        await window.DB.Teams.addMember(teamId, user.id, role);
         await window.sbClient.from('profiles')
             .update({ current_team_id: teamId })
             .eq('id', user.id);
