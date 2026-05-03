@@ -34,13 +34,13 @@ window._getPInfo = function(p) {
 };
 
 window.calcPlayerGEN = window.calcPlayerGEN || function(p) {
-    if (!p) return 70;
+    if (!p) return 7;
     if (p.gen_score) return p.gen_score;
     if (p.rating_teknik !== undefined) {
-        const vals = [p.rating_teknik, p.rating_sut, p.rating_pas, p.rating_hiz, p.rating_fizik, p.rating_kondisyon].map(v => v || 70);
-        return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+        const vals = [p.rating_teknik, p.rating_sut, p.rating_pas, p.rating_hiz, p.rating_fizik, p.rating_kondisyon].filter(v => v != null && v > 0);
+        return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
     }
-    return 70;
+    return null;
 };
 
 window.calcTeamGEN = window.calcTeamGEN || function() {
@@ -2338,7 +2338,7 @@ window.mcSubmitScore = async function (matchId, teamSide) {
                 ? `🏆 ${winner} kazandı! ${homeTeamName} ${homeScore} - ${awayScore} ${awayTeamName} #MaçSonucu`
                 : `🤝 Berabere! ${homeTeamName} ${homeScore} - ${awayScore} ${awayTeamName} #MaçSonucu`;
             await DB.Feed.createPost(userId, resultText, 'match_result', { related_match_id: matchId })
-                .catch(() => {});
+                .catch(e => console.error('Feed post (match) error:', e));
         } catch(_) {}
 
         if (typeof showToast === 'function') showToast('Skor kaydedildi!');

@@ -525,8 +525,8 @@ window.renderExploreGrid = function() {
     grid.innerHTML = filtered.map(p => {
         const avatarSeed = p.username || p.id;
         const avatarUrl  = p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(avatarSeed)}`;
-        const gen        = p.gen_score || p.community_gen || 70;
-        const genColor   = gen >= 85 ? 'var(--neon-green)' : gen >= 75 ? 'var(--neon-cyan)' : 'orange';
+        const gen        = p.gen_score || p.community_gen || null;
+        const genColor   = gen >= 8 ? 'var(--neon-green)' : gen >= 7 ? 'var(--neon-cyan)' : 'orange';
         const posIcon    = { KL:'🧤', DEF:'🛡️', OS:'⚡', FV:'⚽' }[p.position] || '⚽';
         const isMe       = currentUserId && p.id === currentUserId;
 
@@ -743,8 +743,8 @@ async function showProfileModal(playerId, username, context = 'explore') {
 
         const avatarSeed = profile.username || profile.id;
         const avatarUrl  = profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(avatarSeed)}`;
-        const gen        = Math.round(profile.gen_score || profile.community_gen || 70);
-        const genColor   = gen >= 85 ? 'var(--neon-green)' : gen >= 75 ? 'var(--neon-cyan)' : 'orange';
+        const gen        = Math.round(profile.gen_score || profile.community_gen || 0) || null;
+        const genColor   = gen >= 8 ? 'var(--neon-green)' : gen >= 7 ? 'var(--neon-cyan)' : 'orange';
         const posIcon    = { KL:'\uD83E\uDDE4', DEF:'\uD83D\uDEE1\uFE0F', OS:'\u26A1', FV:'\u26BD' }[profile.position] || '\u26BD';
 
         // ─── GİZLİLİK KONT ROLÜ ───
@@ -1081,6 +1081,8 @@ function buildRealFeedCard(post) {
             </div>
             <div class="feed-text">${escapeHtml(post.content || '')}</div>
             ${post.post_type === 'rating' && post.related_player ? `<div class="feed-detail-row"><span class="feed-badge rating">⭐ ${post.related_player.username || 'Oyuncu'}</span></div>` : ''}
+            ${post.post_type === 'match_result' ? `<div class="feed-detail-row"><span class="feed-badge match">⚽ Maç Sonucu</span></div>` : ''}
+            ${post.post_type === 'invitation' ? `<div class="feed-detail-row"><span class="feed-badge venue">📅 Maç Daveti</span></div>` : ''}
             ${post.related_team ? `<div class="feed-detail-row"><span class="feed-badge match">🏆 ${post.related_team.name}</span></div>` : ''}
             ${post.related_venue ? `<div class="feed-detail-row"><span class="feed-badge venue">🏟️ ${post.related_venue.name}</span></div>` : ''}
             <div class="feed-actions">
@@ -1873,18 +1875,19 @@ window.openUserProfile = window.__openUserProfileCore = async function(supabaseI
     let profile = null;
     try {
         if (window.DB) profile = await window.DB.Profiles.get(supabaseId);
-    } catch(e) {}
+    } catch(e) { console.error('Profile fetch error (DB.Profiles.get):', e); }
     if (!profile) profile = explorePlayers.find(p => p.id === supabaseId);
     if (!profile) {
-        // Friendships'ten çekmeyi dene
+        // Direkt Supabase sorgusu ile dene
         try {
-            const { data } = await window.sbClient.from('profiles').select('*').eq('id', supabaseId).single();
+            const { data, error } = await window.sbClient.from('profiles').select('*').eq('id', supabaseId).single();
+            if (error) console.error('Profile fetch error (direct):', error);
             profile = data;
-        } catch(e) {}
+        } catch(e) { console.error('Profile fetch error (fallback):', e); }
     }
 
     if (!profile) {
-        showToast('❌ Profil bulunamadı.');
+        showToast('❌ Profil bulunamadı. Konsolu kontrol et.');
         return;
     }
 
@@ -1955,7 +1958,7 @@ window.openUserProfile = window.__openUserProfileCore = async function(supabaseI
                 comment:       r.comment          || '',
                 date:          r.created_at       || '',
             }));
-        } catch(e) {}
+        } catch(e) { console.error('Community ratings fetch error:', e); }
     }
 
     // Arkadaş olduğu için tam profil açılıyor
@@ -2136,8 +2139,8 @@ window.loadFriendsList = async function() {
             const name     = friend.username || 'Oyuncu';
             const seed     = friend.username || friendId;
             const avatar   = friend.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
-            const gen      = friend.gen_score || 70;
-            const genColor = gen >= 85 ? 'var(--neon-green)' : gen >= 75 ? 'var(--neon-cyan)' : 'orange';
+            const gen      = friend.gen_score || null;
+            const genColor = gen >= 8 ? 'var(--neon-green)' : gen >= 7 ? 'var(--neon-cyan)' : 'orange';
             const posIcon  = { KL:'🧤', DEF:'🛡️', OS:'⚡', FV:'⚽' }[friend.position] || '⚽';
             return `
             <div class="explore-player-card">

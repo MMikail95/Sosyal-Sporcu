@@ -1148,14 +1148,14 @@ function renderCoreSquadSection() {
         <div class="core-player-card ${isCap ? 'is-core' : ''}">
           <div class="core-rank">${i + 1}</div>
           <div class="core-avatar-wrap">
-            <img src="${_tmAvatar(p.username)}" class="core-avatar">
+            <img src="${p.avatar_url || _tmAvatar(p.username)}" class="core-avatar">
             <div class="core-pos-dot" style="background:${col};" title="${p.position || ''}"></div>
           </div>
           <div class="core-info">
             <span class="core-name">${p.username || '—'}</span>
             <span class="core-pos" style="color:${col};">${p.ana_mevki || p.position || '—'}</span>
           </div>
-          <div class="core-gen-chip" style="border-color:${m._gen!=null&&m._gen>=80?'var(--neon-green)':'#555'};">${m._gen ?? '—'}</div>
+          <div class="core-gen-chip" style="border-color:${m._gen!=null&&m._gen>=8?'var(--neon-green)':m._gen!=null&&m._gen>=7?'var(--neon-cyan)':'#555'};">${m._gen ?? '—'}</div>
           ${isCap ? '<i class="fa-solid fa-crown core-bone-icon" style="color:#ffd700;" title="Kaptan"></i>' : ''}
         </div>`;
       }).join('')}
@@ -1210,14 +1210,14 @@ function renderTeamMemberGrid() {
             const isCap  = m.role === 'captain';
             return `
             <div class="member-chip" onclick="viewPlayerFromTeam('${p.id}')" title="${p.username||'—'} — GEN ${gen}">
-              <img src="${_tmAvatar(p.username)}" class="member-chip-avatar">
+              <img src="${p.avatar_url || _tmAvatar(p.username)}" class="member-chip-avatar">
               <div class="member-chip-info">
                 <span class="member-chip-name">
                   ${p.username || '—'}
                   ${isCap ? '<i class="fa-solid fa-crown" style="color:#ffd700;font-size:0.7rem;"></i>' : ''}
                   ${roleBadge(m.role)}
                 </span>
-                <span class="member-chip-gen" style="color:${gen!=null&&gen>=80?'var(--neon-green)':gen!=null?'orange':'#555'};">${gen ?? '—'} GEN</span>
+                <span class="member-chip-gen" style="color:${gen!=null&&gen>=8?'var(--neon-green)':gen!=null&&gen>=7?'var(--neon-cyan)':gen!=null?'orange':'#555'};">${gen ?? '—'} GEN</span>
               </div>
               ${isCA && !isCap ? `<button class="member-chip-remove" title="Takımdan Çıkar"
                   onclick="event.stopPropagation();_tmRemoveMemberPrompt('${p.id}','${p.username||'Oyuncu'}')">

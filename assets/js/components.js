@@ -174,8 +174,9 @@
                         ? _origOpenProfile(supabaseId, username)
                         : null;
                 }
-                // Yoksa: ID'yi sessionStorage'a yaz ve character sayfasına git
+                // Yoksa: ID ve username'i sessionStorage'a yaz, character sayfasına git
                 sessionStorage.setItem('ss_view_player_id', supabaseId);
+                if (username) sessionStorage.setItem('ss_view_player_username', username);
                 window.location.href = NAV_MAP.profile;
             };
         }, 150);
@@ -198,17 +199,19 @@
         }, 150);
     });
 
-    // ── Character sayfasında: sessionStorage'dan player ID'si oku ──
+    // ── Character sayfasında: sessionStorage'dan player ID ve username oku ──
     (function () {
-        var pendingId = sessionStorage.getItem('ss_view_player_id');
+        var pendingId       = sessionStorage.getItem('ss_view_player_id');
+        var pendingUsername = sessionStorage.getItem('ss_view_player_username');
         if (pendingId && location.pathname.includes('/character')) {
             sessionStorage.removeItem('ss_view_player_id');
+            sessionStorage.removeItem('ss_view_player_username');
             document.addEventListener('DOMContentLoaded', function () {
                 setTimeout(function () {
                     // __openUserProfileCore → components.js sarmalayıcısını atlar
                     var fn = window.__openUserProfileCore || window.openUserProfile;
                     if (typeof fn === 'function') {
-                        fn(pendingId);
+                        fn(pendingId, pendingUsername || undefined);
                     }
                 }, 900); // updateUI (300ms) bittikten sonra çalış
             });

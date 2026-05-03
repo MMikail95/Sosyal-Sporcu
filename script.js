@@ -1669,7 +1669,7 @@ function renderCommunityLog(player) {
     if (!player.communityRatings || player.communityRatings.length === 0) return '';
     return player.communityRatings.map(r => {
         const fromAcc = accounts.find(a => a.id === r.fromAccountId);
-        const fromName = fromAcc ? fromAcc.name : 'Bilinmeyen';
+        const fromName = r.raterName || r.username || (fromAcc ? fromAcc.name : 'Bilinmeyen');
         const vals = ['teknik', 'sut', 'pas', 'hiz', 'fizik', 'kondisyon'];
         const avg = Math.round(vals.reduce((s, k) => s + (r[k] || 0), 0) / vals.length);
         const isMe = r.fromAccountId === activeAccountId;

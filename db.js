@@ -779,7 +779,8 @@ const Feed = {
         author:author_id(id, username, avatar_url, position),
         related_team:related_team_id(id, name),
         related_venue:related_venue_id(id, name),
-        related_player:related_player_id(id, username, avatar_url)
+        related_player:related_player_id(id, username, avatar_url),
+        related_match:related_match_id(id, home_score, away_score, status)
       `)
       .order('created_at', { ascending: false })
       .limit(limit);
