@@ -1555,6 +1555,16 @@
 .mc-participant-name {
     font-size: 0.75rem; font-weight: 600; color: #ccc;
 }
+.mc-part-goal {
+    font-size: 0.68rem; font-weight: 700; color: var(--neon-green);
+    background: rgba(173,255,47,0.1); border-radius: 99px;
+    padding: 0 5px; white-space: nowrap;
+}
+.mc-part-assist {
+    font-size: 0.68rem; font-weight: 700; color: var(--neon-cyan);
+    background: rgba(0,229,255,0.1); border-radius: 99px;
+    padding: 0 5px; white-space: nowrap;
+}
 
 /* ── Phase 4: Ayrıl Butonu ── */
 .mc-leave-btn {

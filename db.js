@@ -584,24 +584,78 @@ const Matches = {
     return data;
   },
 
+  // Maç bitince her iki takımın tüm üyelerini match_players'a ekle (upsert)
+  async autoPopulateTeamPlayers(matchId) {
+    const { data: match } = await sb()
+      .from('matches')
+      .select('home_team_id, away_team_id')
+      .eq('id', matchId)
+      .single();
+    if (!match) return;
+
+    const entries = [];
+    for (const [teamId, side] of [[match.home_team_id, 'home'], [match.away_team_id, 'away']]) {
+      if (!teamId) continue;
+      const { data: members } = await sb()
+        .from('team_members')
+        .select('player_id')
+        .eq('team_id', teamId);
+      (members || []).forEach(m => entries.push({
+        match_id: matchId, player_id: m.player_id,
+        team_side: side, confirmed: true
+      }));
+    }
+    if (!entries.length) return;
+    await sb().from('match_players')
+      .upsert(entries, { onConflict: 'match_id,player_id' });
+  },
+
   // Kullanıcının tüm maçlarını getir (hem geçmiş hem yaklaşan)
-  async getMyMatches(userId, limit = 50) {
-    const { data, error } = await sb()
+  async getMyMatches(userId, myTeamIds = [], limit = 50) {
+    const matchSelect = `
+      id, scheduled_at, status, home_score, away_score, match_type, notes, created_by,
+      home_team_id, away_team_id,
+      home_team:home_team_id(id, name),
+      away_team:away_team_id(id, name),
+      venue:venue_id(id, name, district)
+    `;
+
+    // 1. Kişisel katılımlar (match_players)
+    const { data: personal, error } = await sb()
       .from('match_players')
-      .select(`
-        id, team_side, confirmed,
-        match:match_id(
-          id, scheduled_at, status, home_score, away_score, match_type, notes, created_by,
-          home_team:home_team_id(id, name),
-          away_team:away_team_id(id, name),
-          venue:venue_id(id, name, district)
-        )
-      `)
+      .select(`id, team_side, confirmed, match:match_id(${matchSelect})`)
       .eq('player_id', userId)
-      .order('match_id', { ascending: false })
       .limit(limit);
-    if (error) { console.error('getMyMatches error:', error); return []; }
-    return (data || []).filter(d => d.match !== null);
+    if (error) console.error('getMyMatches personal error:', error);
+
+    const personalEntries = (personal || []).filter(d => d.match !== null);
+    const personalMatchIds = new Set(personalEntries.map(e => e.match.id));
+
+    // 2. Takım maçları (kullanıcının takımı ev/deplasman ama bizzat join etmemiş)
+    let teamEntries = [];
+    if (myTeamIds.length > 0) {
+      const orFilter = myTeamIds
+        .flatMap(id => [`home_team_id.eq.${id}`, `away_team_id.eq.${id}`])
+        .join(',');
+      const { data: teamMatches } = await sb()
+        .from('matches')
+        .select(matchSelect)
+        .or(orFilter)
+        .order('scheduled_at', { ascending: false })
+        .limit(limit);
+
+      teamEntries = (teamMatches || [])
+        .filter(m => !personalMatchIds.has(m.id))
+        .map(m => {
+          const isHome = myTeamIds.includes(m.home_team_id);
+          return { id: null, team_side: isHome ? 'home' : 'away', confirmed: false, match: m };
+        });
+    }
+
+    // Birleştir ve tarihe göre sırala
+    const all = [...personalEntries, ...teamEntries];
+    all.sort((a, b) => new Date(b.match.scheduled_at) - new Date(a.match.scheduled_at));
+    return all.slice(0, limit);
   },
 
   // Maça oyuncu olarak katıl

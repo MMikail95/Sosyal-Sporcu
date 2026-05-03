@@ -685,17 +685,22 @@ function addLogoutButton(profile) {
 }
 
 // Oturumu kapat
+function _authRedirectPath() {
+    // Alt sayfalarda (matches/, character/, explore/) '../auth.html' gerekir
+    const segs = window.location.pathname.split('/').filter(Boolean);
+    return segs.length > 1 ? '../auth.html' : 'auth.html';
+}
+
 window.handleLogout = async function() {
     if (!confirm('Oturumu kapatmak istediğinize emin misiniz?')) return;
 
     try {
         if (window.DB) await window.DB.Auth.signOut();
-        // localStorage temizle
         localStorage.removeItem('ss_active_account');
-        window.location.replace('auth.html');
+        window.location.replace(_authRedirectPath());
     } catch (err) {
         console.error('Logout error:', err);
-        window.location.replace('auth.html');
+        window.location.replace(_authRedirectPath());
     }
 };
 
@@ -2700,7 +2705,7 @@ window.handleAvatarUpload = async function(input) {
 /**
  * Aktif oyuncunun ma\u00e7 ge\u00e7mi\u015fini Supabase'den \u00e7eker ve tabloya render eder
  */
-async function loadMatchHistory() {
+async function loadMatchHistory(targetPlayerId) {
     'use strict';
     const tbody = document.getElementById('match-history-body');
     const loadingEl = document.getElementById('match-history-loading');
@@ -2712,11 +2717,16 @@ async function loadMatchHistory() {
         return;
     }
 
+    // Bak\u0131lan profil kendi profilimiz mi, ba\u015fkas\u0131n\u0131n m\u0131?
+    const playerId = targetPlayerId
+        || sessionStorage.getItem('ss_view_player_id')
+        || user.id;
+
     if (loadingEl) loadingEl.style.display = 'block';
     tbody.innerHTML = '';
 
     try {
-        const history = await window.DB.Matches.getPlayerHistory(user.id);
+        const history = await window.DB.Matches.getPlayerHistory(playerId);
 
         if (!history || history.length === 0) {
             tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#555; padding:2rem;">\ud83c\udfc4 Hen\u00fcz kay\u0131tl\u0131 ma\u00e7 yok</td></tr>';

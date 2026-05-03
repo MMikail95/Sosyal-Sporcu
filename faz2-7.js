@@ -2073,7 +2073,8 @@ async function _mcLoadMatches() {
 
     listEl.innerHTML = '<div class="empty-state-sm"><i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor…</div>';
 
-    const rows = await DB.Matches.getMyMatches(userId);
+    const teamIds = (_mcMyTeams || []).map(t => t.id).filter(Boolean);
+    const rows = await DB.Matches.getMyMatches(userId, teamIds);
 
     if (!rows.length) {
         listEl.innerHTML = `
@@ -2292,12 +2293,33 @@ window.mcSubmitScore = async function (matchId, teamSide) {
         const userId = _mcGetUserId();
         if (!userId) throw new Error('Oturum açmanız gerekiyor.');
 
-        await DB.Matches.updateScore(matchId, homeScore, awayScore, userId);
+        // 1. Skoru kaydet (status → finished)
+        const matchData = await DB.Matches.updateScore(matchId, homeScore, awayScore, userId);
+
+        // 2. Her iki takımın tüm üyelerini match_players'a ekle
+        await DB.Matches.autoPopulateTeamPlayers(matchId).catch(e => console.warn('autoPopulate:', e));
+
+        // 3. Feed'e maç sonucu postu oluştur
+        try {
+            const hTeam = matchData?.home_team_id ? '' : '';
+            // Kart DOM'ından takım isimlerini al
+            const card = document.getElementById('mc-card-' + matchId);
+            const teamNames = card ? Array.from(card.querySelectorAll('.mc-matchup-team')).map(e => e.textContent) : [];
+            const homeTeamName = teamNames[0] || 'Ev Sahibi';
+            const awayTeamName = teamNames[1] || 'Deplasman';
+            const winner = homeScore > awayScore ? homeTeamName : awayScore > homeScore ? awayTeamName : null;
+            const resultText = winner
+                ? `🏆 ${winner} kazandı! ${homeTeamName} ${homeScore} - ${awayScore} ${awayTeamName} #MaçSonucu`
+                : `🤝 Berabere! ${homeTeamName} ${homeScore} - ${awayScore} ${awayTeamName} #MaçSonucu`;
+            await DB.Feed.createPost(userId, resultText, 'match_result', { related_match_id: matchId })
+                .catch(() => {});
+        } catch(_) {}
+
         if (typeof showToast === 'function') showToast('Skor kaydedildi!');
 
         await _mcLoadMatches();
 
-        // Puanlanacak oyuncu varsa PMR modal'ı aç
+        // 4. Puanlanacak oyuncu varsa PMR modal'ı aç
         setTimeout(async () => {
             const statuses = await DB.Ratings.getMatchRatingStatuses(userId, [matchId]).catch(() => ({}));
             if (statuses[matchId] === 'pending') {
@@ -2305,7 +2327,7 @@ window.mcSubmitScore = async function (matchId, teamSide) {
                     openPostMatchRatingModal(matchId, teamSide || 'home');
                 }
             }
-        }, 500);
+        }, 800);
 
     } catch (e) {
         console.error('mcSubmitScore error:', e);
@@ -2513,9 +2535,12 @@ function _mcRenderParticipants(players) {
         const chips = list.map(mp => {
             const pl = mp.player;
             const avatar = pl.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(pl.username || 'x')}`;
+            const goalBadge  = mp.goals   > 0 ? `<span class="mc-part-goal">⚽ ${mp.goals}</span>`  : '';
+            const assistBadge = mp.assists > 0 ? `<span class="mc-part-assist">🎯 ${mp.assists}</span>` : '';
             return `<div class="mc-participant-chip">
                 <img class="mc-participant-avatar" src="${_mcEsc(avatar)}" alt="${_mcEsc(pl.username || '')}">
                 <span class="mc-participant-name">${_mcEsc(pl.username || 'Oyuncu')}</span>
+                ${goalBadge}${assistBadge}
             </div>`;
         }).join('');
         return `<div class="mc-participants-group">
@@ -2724,7 +2749,13 @@ window.mcSubmitCreate = async function () {
 
         const created = await DB.Matches.create(userId, matchPayload);
 
+        // Maç oluşturucuyu (ev sahibi) ekle
         await DB.Matches.joinMatch(created.id, userId, 'home').catch(() => {});
+
+        // Rakip takım kaptanını otomatik olarak deplasman tarafına ekle
+        if (awayCapId) {
+            await DB.Matches.joinMatch(created.id, awayCapId, 'away').catch(() => {});
+        }
 
         // Rakip takım kaptanına davet bildirimi gönder
         if (awayCapId && awayTeamName) {

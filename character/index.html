@@ -422,7 +422,10 @@ document.addEventListener('DOMContentLoaded', function () {
             updateChart(p);
         }
         if (typeof initRealNotifications === 'function') initRealNotifications();
-    }, 300);
+        // Maç geçmişini yükle (bakılan oyuncunun ID'si ile)
+        const viewedId = sessionStorage.getItem('ss_view_player_id') || (window.__AUTH_USER__ && window.__AUTH_USER__.id);
+        if (typeof loadMatchHistory === 'function' && viewedId) loadMatchHistory(viewedId);
+    }, 400);
 });
 </script>
 </body>
