@@ -1777,6 +1777,20 @@ window.openPostMatchRatingModal = async function(matchId, currentUserSide) {
     const user = window.__AUTH_USER__;
     if (!user || !window.DB) return;
 
+    // ✅ Kullanıcının bu maçta oynayıp oynamadığını kontrol et
+    try {
+        const isParticipant = await window.DB.Ratings.isParticipantInMatch(user.id, matchId);
+        if (!isParticipant) {
+            if (typeof showToast === 'function') {
+                showToast('⚠️ Bu maçta yer almadığın için puan veremezsin.');
+            }
+            return;
+        }
+    } catch(e) {
+        console.warn('Participation check failed:', e);
+        // Hata durumunda devam et (izin ver)
+    }
+
     _pmrMatchId = matchId;
     _pmrCurrentUserSide = currentUserSide;
 
@@ -2259,15 +2273,11 @@ function _mcMatchCard(row, ratingStatuses, userId, playerCounts) {
     </div>`;
 }
 
-// ── Skor Girişi ───────────────────────────────────────
-
+// ── Skor Girişi ───────────────────────────────────────────────────
 window.mcOpenScoreEntry = function (matchId) {
-    // Diğer açık formları kapat
     document.querySelectorAll('.mc-score-form').forEach(f => { f.style.display = 'none'; });
-    // "Skoru Gir" butonunu gizle
     const card = document.getElementById('mc-card-' + matchId);
     if (card) card.querySelector('.mc-score-entry-btn')?.style.setProperty('display', 'none');
-    // Formu aç
     const form = document.getElementById('mc-score-form-' + matchId);
     if (form) { form.style.display = 'block'; form.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
 };
@@ -2299,10 +2309,26 @@ window.mcSubmitScore = async function (matchId, teamSide) {
         // 2. Her iki takımın tüm üyelerini match_players'a ekle
         await DB.Matches.autoPopulateTeamPlayers(matchId).catch(e => console.warn('autoPopulate:', e));
 
-        // 3. Feed'e maç sonucu postu oluştur
+        // 3. Takım istatistiklerini güncelle (JS fallback — SQL trigger yoksa da çalışır)
         try {
-            const hTeam = matchData?.home_team_id ? '' : '';
-            // Kart DOM'ından takım isimlerini al
+            if (matchData?.home_team_id) {
+                const homeWin  = homeScore > awayScore;
+                const homeDraw = homeScore === awayScore;
+                const homeLoss = homeScore < awayScore;
+                await _mcUpdateTeamStats(matchData.home_team_id, homeWin, homeDraw, homeLoss, homeScore, awayScore);
+            }
+            if (matchData?.away_team_id) {
+                const awayWin  = awayScore > homeScore;
+                const awayDraw = awayScore === homeScore;
+                const awayLoss = awayScore < homeScore;
+                await _mcUpdateTeamStats(matchData.away_team_id, awayWin, awayDraw, awayLoss, awayScore, homeScore);
+            }
+        } catch(statsErr) {
+            console.warn('Team stats update (JS fallback) failed:', statsErr);
+        }
+
+        // 4. Feed'e maç sonucu postu oluştur
+        try {
             const card = document.getElementById('mc-card-' + matchId);
             const teamNames = card ? Array.from(card.querySelectorAll('.mc-matchup-team')).map(e => e.textContent) : [];
             const homeTeamName = teamNames[0] || 'Ev Sahibi';
@@ -2319,7 +2345,7 @@ window.mcSubmitScore = async function (matchId, teamSide) {
 
         await _mcLoadMatches();
 
-        // 4. Puanlanacak oyuncu varsa PMR modal'ı aç
+        // 5. Puanlanacak oyuncu varsa PMR modal'ı aç
         setTimeout(async () => {
             const statuses = await DB.Ratings.getMatchRatingStatuses(userId, [matchId]).catch(() => ({}));
             if (statuses[matchId] === 'pending') {
@@ -2335,6 +2361,30 @@ window.mcSubmitScore = async function (matchId, teamSide) {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Onayla'; }
     }
 };
+
+// Takım istatistiklerini JS tarafında güncelle (SQL trigger yoksa fallback)
+async function _mcUpdateTeamStats(teamId, isWin, isDraw, isLoss, scored, conceded) {
+    if (!teamId || !window.sbClient) return;
+    try {
+        const { data: team, error } = await window.sbClient
+            .from('teams')
+            .select('total_wins,total_draws,total_losses,total_goals_scored,total_goals_conceded')
+            .eq('id', teamId)
+            .single();
+        if (error || !team) return; // SQL trigger bunu halleder
+
+        await window.sbClient.from('teams').update({
+            total_wins:           (team.total_wins   || 0) + (isWin  ? 1 : 0),
+            total_draws:          (team.total_draws  || 0) + (isDraw ? 1 : 0),
+            total_losses:         (team.total_losses || 0) + (isLoss ? 1 : 0),
+            total_goals_scored:   (team.total_goals_scored   || 0) + scored,
+            total_goals_conceded: (team.total_goals_conceded || 0) + conceded,
+            updated_at: new Date().toISOString()
+        }).eq('id', teamId);
+    } catch(e) {
+        console.warn('_mcUpdateTeamStats error:', e);
+    }
+}
 
 // ── Maç İptali ────────────────────────────────────────
 

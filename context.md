@@ -29,38 +29,43 @@
 ```
 [Browser]
    │
-   ├── index.html (SPA shell — 1294 satır)
-   │     ├── Section: #profile   (Karakterim)
-   │     ├── Section: #takimim   (Takımım)
-   │     ├── Section: #matches   (Maç Merkezi)
-   │     ├── Section: #feed      (Akış)
-   │     └── Section: #explore   (Keşfet)
+   ├── MPA (Multi-Page Application) Yapısı
+   │     ├── /character/index.html   (Karakterim)
+   │     ├── /team/index.html        (Takımım)
+   │     ├── /matches/index.html     (Maç Merkezi)
+   │     ├── /feed/index.html        (Akış)
+   │     ├── /explore/index.html     (Keşfet)
+   │     └── /auth.html              (Giriş/Kayıt)
    │
    ├── CSS katmanı (4 dosya)
    │     style.css (82KB) → faz2-7.css (47KB) → fixes.css (42KB) → team-fix.css
    │
+   ├── Ortak Bileşenler (Components)
+   │     └── assets/js/components.js (Sidebar inject, MPA routing, cross-page iletişimi)
+   │
    └── JS katmanı (yükleme sırası)
          supabase.js      → window.sbClient
          db.js            → window.DB.*
+         components.js    → Ortak UI parçaları ve MPA navigasyonu
          faz1.js          → Legacy feed + toast (localStorage)
-         script.js        → Ana routing, profil render, GEN grafik (101KB)
-         faz2-social.js   → Supabase feed, keşfet, arkadaşlık (88KB)
-         faz2-7.js        → Maç merkezi, saha, community rating (76KB)
-         takimim.js       → Supabase-first takım modülü (49KB)
+         script.js        → Ana logic, updateUI, profil render
+         faz2-social.js   → Supabase feed, keşfet, arkadaşlık
+         faz2-7.js        → Maç merkezi, saha, community rating
+         takimim.js       → Supabase-first takım modülü
          auth.js          → Sadece auth.html'de kullanılır
 
 [Supabase Cloud]
    ├── PostgreSQL (14 tablo, 1 view, 5 trigger)
    ├── Auth (email/password)
    ├── Realtime (posts, notifications, friendships, match_invitations)
-   └── Storage (avatars bucket — schema'da tanımlanmış)
+   └── Storage (avatars bucket)
 ```
 
 ### Routing Sistemi
-- **SPA (Single Page App)** — Sayfa yenilemesi olmadan section geçişi
-- `showSection(name)` fonksiyonu ile bölüm değişimi
-- URL yönetimi yok (hash routing entegre edilmemiş — planlananlar listesinde)
-- Auth koruma: `index.html`'in `<head>`'inde session guard scripti (`guardSession()`)
+- **MPA (Multi-Page App)** — Her modül için ayrı bir HTML sayfası.
+- **Navigasyon**: `assets/js/components.js` dosyası her sayfanın içine statik bir sidebar gömer ve linkleri yönetir.
+- **Cross-Page State**: Başka bir sayfadaki profili görüntülemek için `sessionStorage.setItem('ss_view_player_id', id)` kullanılıp `/character/` sayfasına yönlendirme yapılır.
+- Auth koruma: Her sayfanın `<head>`'inde `guardSession()` scripti çalışır.
 
 ### Oturum Yönetimi
 - Giriş → `auth.html` (ayrı sayfa)

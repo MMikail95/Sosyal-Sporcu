@@ -52,9 +52,18 @@
 - [x] EXPLORE-08 — `DB.Teams.getAll()` metodu eklendi, `member_count` join eklendi
 - [x] EXPLORE-09 — Keşfet CSS: `explore-tab-bar`, `explore-team-card`, `etc-*`, `friend-list-row` stilleri eklendi
 - [x] SQL-10 — `master-migration.sql` tek birleşik migration dosyası oluşturuldu (idempotent)
-- [ ] SQL-11 — `master-migration.sql` Supabase'de çalıştırılacak ⏳
+- [x] SQL-11 — `master-migration.sql` Supabase'de çalıştırılacak ⏳
+
+### Sprint 8 — MPA (Multi-Page Application) Mimari Geçişi
+- [x] ARCH-01 — SPA'dan MPA'ya geçiş kararı alındı (index.html shell yerini çoklu sayfalara bıraktı)
+- [x] ARCH-02 — `character/`, `explore/`, `matches/`, `team/`, `feed/` klasörleri ve index.html'leri oluşturuldu
+- [x] ARCH-03 — `assets/js/components.js` eklendi (ortak sidebar inject ve aktif link yönetimi)
+- [x] NAV-04 — Cross-page profile görüntüleme `sessionStorage` (ss_view_player_id) üzerinden sağlandı
+- [x] ARCH-05 — `CLAUDE.md` oluşturularak yeni mimari dokümante edildi
 
 ### 🚧 Aktif Bloklar
+- Eski ana dizin `index.html` tam olarak kaldırılmalı veya root redirect olarak ayarlanmalı
+- `takimim.js` ve `faz2-social.js` gibi scriptlerin yeni MPA ortamında stabil çalışıp çalışmadığı test edilmeli
 - `master-migration.sql` çalıştırılmayı bekliyor → Rating NULL, Realtime, RLS patch
 
 ---
@@ -210,6 +219,12 @@
 - SPA altyapısı
 - Collapsible sidebar
 - Responsive layout
+
+### 2026-05-03 — MPA Mimari Geçişi (Claude Code)
+- SPA (Single Page Application) yapısından MPA (Multi-Page Application) yapısına geçildi.
+- Her modül (`character`, `explore`, `matches`, `team`, `feed`) kendi `index.html` dosyasına ayrıldı.
+- Ortak UI bileşenleri (sidebar, notif-panel) `assets/js/components.js` üzerinden enjekte edilmeye başlandı.
+- Sayfalar arası profil geçişi için `sessionStorage` mekanizması kuruldu.
 
 ---
 

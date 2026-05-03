@@ -934,31 +934,48 @@ const Ratings = {
   },
 
   // Puan ver / güncelle — matchId opsiyonel (maç sonu puanlama için)
+  // ratings: { teknik, sut, pas, hiz, fizik, kondisyon } — 1-10 arası stepper değerleri
+  // DB'ye kaydederken 1-10 → 11-99 aralığına ölçeklenir (10*val - 1)
   async upsertRating(raterId, ratedPlayerId, ratings, comment = '', matchId = null) {
+    // 1-10 stepper değerini 1-99 DB aralığına dönüştür
+    const scale = v => Math.min(99, Math.max(1, Math.round((v || 5) * 9.9)));
     const payload = {
       rater_id: raterId,
       rated_player_id: ratedPlayerId,
-      // Teknik (1-10)
-      rating_teknik: ratings.teknik,
-      rating_sut: ratings.sut,
-      rating_pas: ratings.pas,
-      rating_hiz: ratings.hiz,
-      rating_fizik: ratings.fizik,
-      rating_kondisyon: ratings.kondisyon,
-      comment,
+      rating_teknik:    scale(ratings.teknik),
+      rating_sut:       scale(ratings.sut),
+      rating_pas:       scale(ratings.pas),
+      rating_hiz:       scale(ratings.hiz),
+      rating_fizik:     scale(ratings.fizik),
+      rating_kondisyon: scale(ratings.kondisyon),
+      comment: comment || '',
       updated_at: new Date().toISOString()
     };
     if (matchId) payload.match_id = matchId;
+    // Constraint adı fix-rating-constraint.sql ile oluşturuldu:
+    // community_ratings_per_match_unique (match_id dahil NULL-safe)
     const conflictTarget = matchId
-      ? 'rated_player_id,rater_id,match_id'
+      ? 'community_ratings_per_match_unique'
       : 'rated_player_id,rater_id';
     const { data, error } = await sb()
       .from('community_ratings')
-      .upsert(payload, { onConflict: conflictTarget })
+      .upsert(payload, { onConflict: conflictTarget, ignoreDuplicates: false })
       .select()
       .single();
     if (error) throw error;
     return data;
+  },
+
+  // Puanlayan kişi bu maçta oynadı mı? (güvenlik kontrolü için)
+  async isParticipantInMatch(playerId, matchId) {
+    if (!playerId || !matchId) return false;
+    const { data } = await sb()
+      .from('match_players')
+      .select('player_id')
+      .eq('match_id', matchId)
+      .eq('player_id', playerId)
+      .maybeSingle();
+    return !!data;
   },
 
   // Benim bu oyuncuya verdiğim puan
