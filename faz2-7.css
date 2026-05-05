@@ -1666,4 +1666,154 @@
 }
 .mc-away-clear-btn:hover { color: #ff007f; }
 
+/* ================================================================
+   ONUR MODALİ — Honor System CSS
+   ================================================================ */
+
+.honor-modal-box {
+    max-width: 620px;
+    width: 95vw;
+}
+
+.honor-modal-body {
+    padding: 1.25rem;
+    overflow-y: auto;
+    max-height: 60vh;
+}
+
+.honor-modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.85rem 1.25rem;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    gap: 0.75rem;
+}
+
+.honor-count-badge {
+    background: rgba(0,229,255,0.1);
+    color: var(--neon-cyan);
+    font-weight: 800;
+    font-size: 0.82rem;
+    padding: 0.2rem 0.75rem;
+    border-radius: 99px;
+    border: 1px solid rgba(0,229,255,0.25);
+    white-space: nowrap;
+}
+
+.honor-modal-hint {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+/* Oyuncu grid */
+.honor-player-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 0.75rem;
+}
+
+.honor-player-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 0.85rem;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.honor-player-card.honor-player-selected {
+    border-color: rgba(0,229,255,0.3);
+    background: rgba(0,229,255,0.05);
+}
+
+.honor-player-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.honor-player-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.1);
+    flex-shrink: 0;
+}
+
+.honor-player-name { font-size: 0.9rem; font-weight: 700; }
+.honor-player-side { font-size: 0.72rem; font-weight: 600; margin-top: 2px; }
+
+.honor-type-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.honor-type-btn {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #888;
+    border-radius: 99px;
+    padding: 0.22rem 0.6rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.honor-type-btn:hover {
+    background: rgba(255,255,255,0.09);
+    color: #ccc;
+}
+
+.honor-type-btn.honor-type-selected {
+    background: rgba(0,229,255,0.15);
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+}
+
+/* Rozet galerisi — tab-kariyer */
+.honor-badges-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.75rem;
+}
+
+@media (max-width: 600px) {
+    .honor-badges-grid { grid-template-columns: repeat(3, 1fr); }
+    .honor-player-grid { grid-template-columns: 1fr; }
+}
+
+.honor-badge-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.9rem 0.5rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.07);
+    text-align: center;
+    transition: border-color 0.2s;
+    cursor: default;
+}
+
+.honor-badge-card.honor-earned {
+    background: rgba(255,255,255,0.03);
+}
+
+.honor-badge-card.honor-locked {
+    opacity: 0.3;
+    filter: grayscale(1);
+}
+
+.honor-badge-icon   { font-size: 1.8rem; }
+.honor-badge-label  { font-size: 0.72rem; font-weight: 700; margin-top: 0.3rem; }
+.honor-badge-count  { font-size: 0.67rem; margin-top: 0.15rem; }
+.honor-badge-tier   { font-size: 0.62rem; font-weight: 800; text-transform: uppercase;
+                      letter-spacing: 1px; margin-top: 0.25rem; }
+
 

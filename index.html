@@ -203,15 +203,8 @@
                         <button class="tab-btn active" onclick="switchProfileTab('tab-genel')" data-tab="tab-genel">
                             <i class="fa-solid fa-house"></i> Genel Bakış
                         </button>
-                        <button class="tab-btn" onclick="switchProfileTab('tab-detay')" data-tab="tab-detay">
-                            <i class="fa-solid fa-chart-simple"></i> Detaylı Veriler
-                        </button>
-                        <button class="tab-btn" onclick="switchProfileTab('tab-yetenekler')" data-tab="tab-yetenekler">
-                            <i class="fa-solid fa-bolt"></i> Yetenekler
-                        </button>
-                        <button class="tab-btn" onclick="switchProfileTab('tab-puanla')" data-tab="tab-puanla">
-                            <i class="fa-solid fa-star-half-stroke"></i> Puanla
-                            <span id="community-count-badge" class="community-badge" style="display:none;"></span>
+                        <button class="tab-btn" onclick="switchProfileTab('tab-kariyer')" data-tab="tab-kariyer">
+                            <i class="fa-solid fa-trophy"></i> Kariyer ve Rozetler
                         </button>
                         <button class="tab-btn" onclick="switchProfileTab('tab-maclar')" data-tab="tab-maclar">
                             <i class="fa-solid fa-calendar-days"></i> Maç Geçmişi
@@ -401,9 +394,42 @@
                                     <span style="color:#444; font-size:0.82rem;">— henüz rozet yok —</span>
                                 </div>
                             </div>
+
+                            <!-- ONUR SHOWCASE -->
+                            <div id="honor-showcase-container" class="glass-card"
+                                 style="margin-top:1rem; padding:1rem 1.25rem; min-height:60px;">
+                                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem;">
+                                    <i class="fa-solid fa-shield-heart" style="color:var(--neon-cyan); font-size:0.9rem;"></i>
+                                    <span style="font-size:0.75rem; font-weight:700; color:#888; letter-spacing:1px; text-transform:uppercase;">Kazanılan Onurlar</span>
+                                </div>
+                                <div id="honor-strip" style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center;">
+                                    <span style="color:#444; font-size:0.82rem;">— henüz onur yok —</span>
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- TAB 2: DETAYLI VERİLER -->
+                        <!-- TAB KARİYER VE ROZETLER (Detaylı Veriler + Yetenekler birleşimi) -->
+                        <div id="tab-kariyer" class="profile-subtab" style="display:none;">
+
+                            <!-- ONUR ROZETLERİ GALERİSİ -->
+                            <div class="glass-card" style="margin-bottom:1.5rem; padding:1.25rem;">
+                                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem;">
+                                    <i class="fa-solid fa-shield-heart" style="color:var(--neon-cyan);"></i>
+                                    <span style="font-size:0.75rem; font-weight:700; color:#888; letter-spacing:1px; text-transform:uppercase;">Onur Rozetleri</span>
+                                </div>
+                                <div id="honor-badges-grid" class="honor-badges-grid">
+                                    <!-- renderHonorBadges() tarafından doldurulur -->
+                                </div>
+                            </div>
+
+                            <!-- BAŞARIM GALERİSİ -->
+                            <div id="achievements-container">
+                                <!-- renderAchievements() tarafından doldurulur -->
+                            </div>
+
+                        </div>
+
+                        <!-- TAB 2: DETAYLI VERİLER (geriye dönük uyumluluk için boş, içerik tab-kariyer'e taşındı) -->
                         <div id="tab-detay" class="profile-subtab" style="display:none;">
 
                             <!-- SECTION 1: KİMLİK BİLGİLERİ -->
@@ -750,21 +776,8 @@
                         </div>
 
 
-                        <!-- TAB 3: YETENEKLER / BAŞARIMLAR -->
-
-                        <div id="tab-yetenekler" class="profile-subtab" style="display:none;">
-                            <div id="achievements-container">
-                                <!-- Dinamik olarak JS tarafından render edilir -->
-                            </div>
-                        </div>
-
-                        <!-- TAB 4: PUANLA (Community Rating Engine) -->
-                        <div id="tab-puanla" class="profile-subtab" style="display:none;">
-                            <!-- Rendered dynamically by JS -->
-                            <div class="glass-card" style="text-align:center; padding: 3rem;">
-                                <i class="fa-solid fa-spinner fa-spin" style="font-size:2rem; color:#444;"></i>
-                            </div>
-                        </div>
+                        <!-- TAB 3: YETENEKLER (geriye dönük uyumluluk, içerik tab-kariyer'de) -->
+                        <div id="tab-yetenekler" class="profile-subtab" style="display:none;"></div>
 
                         <!-- TAB 5: MAÇ GEÇMİŞİ -->
                         <div id="tab-maclar" class="profile-subtab" style="display:none;">

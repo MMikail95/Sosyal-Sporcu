@@ -1764,39 +1764,56 @@ window.initTeamSubTabContent = function(tabId) {
 };
 
 // ══════════════════════════════════════════════════════════════
-// POST-MAÇ 360 DERECELİK PUANLAMA MODALİ
+// MAÇ SONU MODALİ — Puan + Onur (birleşik, step-by-step)
 // ══════════════════════════════════════════════════════════════
 
+const HONOR_MAX = 5;
 let _pmrMatchId = null;
 let _pmrParticipants = [];
 let _pmrRatedSet = new Set();
 let _pmrCurrentIdx = 0;
 let _pmrCurrentUserSide = null;
+let _honorSelections = {}; // { [rated_id]: honor_type } — modal boyunca toplanır
+
+const _HONOR_BTNS = [
+    { key: 'calm',     icon: '🕊️', label: 'Sakin'   },
+    { key: 'maestro',  icon: '🎯', label: 'Maestro' },
+    { key: 'punctual', icon: '⏱️', label: 'Dakik'   },
+    { key: 'joker',    icon: '😄', label: 'Joker'   },
+    { key: 'dynamo',   icon: '⚡', label: 'Dinamo'  }
+];
+
+const _RATING_KEYS = [
+    { key: 'teknik',    label: 'Teknik'    },
+    { key: 'sut',       label: 'Şut'       },
+    { key: 'pas',       label: 'Pas'       },
+    { key: 'hiz',       label: 'Hız'       },
+    { key: 'fizik',     label: 'Fizik'     },
+    { key: 'kondisyon', label: 'Kondisyon' }
+];
+
+// Güvenli inline-onclick string escape (IIFE dışından erişilebilir)
+function _pmrEsc(str) {
+    return String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
 
 window.openPostMatchRatingModal = async function(matchId, currentUserSide) {
     const user = window.__AUTH_USER__;
     if (!user || !window.DB) return;
 
-    // ✅ Kullanıcının bu maçta oynayıp oynamadığını kontrol et
     try {
         const isParticipant = await window.DB.Ratings.isParticipantInMatch(user.id, matchId);
         if (!isParticipant) {
-            if (typeof showToast === 'function') {
-                showToast('⚠️ Bu maçta yer almadığın için puan veremezsin.');
-            }
+            if (typeof showToast === 'function') showToast('⚠️ Bu maçta yer almadığın için puan veremezsin.');
             return;
         }
-    } catch(e) {
-        console.warn('Participation check failed:', e);
-        // Hata durumunda devam et (izin ver)
-    }
+    } catch(e) { console.warn('Participation check failed:', e); }
 
     _pmrMatchId = matchId;
     _pmrCurrentUserSide = currentUserSide;
+    _honorSelections = {};
 
-    if (!document.getElementById('pmr-modal-overlay')) {
-        _pmrInjectModalDOM();
-    }
+    if (!document.getElementById('pmr-modal-overlay')) _pmrInjectModalDOM();
 
     const overlay = document.getElementById('pmr-modal-overlay');
     overlay.style.display = 'flex';
@@ -1836,7 +1853,7 @@ function _pmrInjectModalDOM() {
     el.style.display = 'none';
     el.onclick = function(e) { if (e.target === el) window.closePostMatchRatingModal(); };
     el.innerHTML = `
-        <div class="pmr-box">
+        <div class="pmr-box honor-modal-box">
             <div class="pmr-header">
                 <div class="pmr-header-title">
                     <i class="fa-solid fa-star" style="color:var(--neon-green);"></i>
@@ -1847,19 +1864,10 @@ function _pmrInjectModalDOM() {
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
-            <div id="pmr-body" class="pmr-body"></div>
+            <div id="pmr-body" class="pmr-body honor-modal-body"></div>
         </div>`;
     document.body.appendChild(el);
 }
-
-const _pmrTechKeys = [
-    { key: 'teknik',    label: 'Teknik' },
-    { key: 'sut',       label: 'Şut' },
-    { key: 'pas',       label: 'Pas' },
-    { key: 'hiz',       label: 'Hız' },
-    { key: 'fizik',     label: 'Fizik' },
-    { key: 'kondisyon', label: 'Kondisyon' }
-];
 
 function _pmrStepRow(key, label) {
     return `<div class="pmr-step-row">
@@ -1880,6 +1888,54 @@ window._pmrStep = function(key, delta) {
     el.className = 'pmr-step-val' + (next >= 8 ? ' pmr-val-high' : next <= 3 ? ' pmr-val-low' : '');
 };
 
+function _pmrHonorRow(playerId) {
+    const selected = _honorSelections[playerId];
+    const selCount = Object.keys(_honorSelections).length;
+    const atLimit = !selected && selCount >= HONOR_MAX;
+
+    const btns = _HONOR_BTNS.map(h => {
+        const isSel = selected === h.key;
+        return `<button class="honor-type-btn${isSel ? ' honor-type-selected' : ''}"
+                        ${atLimit ? 'disabled title="Onur limiti doldu"' : ''}
+                        onclick="_pmrHonorToggle('${_pmrEsc(playerId)}','${h.key}')">
+                    ${h.icon} ${h.label}
+                </button>`;
+    }).join('');
+
+    return `
+        <div class="pmr-honor-section">
+            <div class="pmr-honor-label">
+                <i class="fa-solid fa-shield-heart" style="color:var(--neon-cyan);font-size:0.75rem;"></i>
+                Onur Ver (opsiyonel)
+                <span class="honor-count-badge" style="font-size:0.65rem; padding:0.1rem 0.5rem;">${selCount}/${HONOR_MAX}</span>
+            </div>
+            <div class="honor-type-btns">${btns}</div>
+        </div>`;
+}
+
+window._pmrHonorToggle = function(playerId, honorKey) {
+    const current = _honorSelections[playerId];
+    const selCount = Object.keys(_honorSelections).length;
+
+    if (current === honorKey) {
+        delete _honorSelections[playerId];
+    } else if (current) {
+        _honorSelections[playerId] = honorKey;
+    } else {
+        if (selCount >= HONOR_MAX) {
+            if (typeof showToast === 'function') showToast(`En fazla ${HONOR_MAX} onur seçebilirsin.`);
+            return;
+        }
+        _honorSelections[playerId] = honorKey;
+    }
+    // Sadece onur butonlarını yeniden render et (stepper değerleri sıfırlanmasın)
+    const honorSection = document.querySelector('.pmr-honor-section');
+    if (honorSection) honorSection.outerHTML = _pmrHonorRow(playerId);
+    // outerHTML replace sonrası tekrar bul ve güncelle
+    const newSection = document.querySelector('.pmr-honor-section');
+    if (newSection) newSection.outerHTML = _pmrHonorRow(playerId);
+};
+
 function _pmrRenderCurrentPlayer() {
     const p = _pmrParticipants[_pmrCurrentIdx];
     if (!p) return;
@@ -1890,7 +1946,7 @@ function _pmrRenderCurrentPlayer() {
     const total = _pmrParticipants.length;
 
     document.getElementById('pmr-header-text').textContent =
-        `${_pmrCurrentIdx + 1} / ${total} — ${isOpponent ? 'Rakip' : 'Takım Arkadaşı'}`;
+        `${_pmrCurrentIdx + 1} / ${total}`;
 
     document.getElementById('pmr-pills').innerHTML = _pmrParticipants.map((pt, i) => {
         const rated = _pmrRatedSet.has(pt.player_id);
@@ -1912,8 +1968,9 @@ function _pmrRenderCurrentPlayer() {
             </div>
         </div>
         <div class="pmr-ratings-scroll">
-            ${_pmrTechKeys.map(r => _pmrStepRow(r.key, r.label)).join('')}
+            ${_RATING_KEYS.map(r => _pmrStepRow(r.key, r.label)).join('')}
         </div>
+        ${_pmrHonorRow(p.player_id)}
         <div class="pmr-footer">
             ${_pmrCurrentIdx > 0
                 ? `<button class="btn-sm btn-outline-sm" onclick="_pmrGoTo(${_pmrCurrentIdx - 1})">
@@ -1941,18 +1998,14 @@ window._pmrSubmitCurrent = async function() {
     const btn = document.getElementById('pmr-submit-btn');
     if (btn) { btn.disabled = true; btn.innerHTML = 'Kaydediliyor...'; }
 
-    const allKeys = _pmrTechKeys;
     const ratings = {};
-    allKeys.forEach(({ key }) => {
+    _RATING_KEYS.forEach(({ key }) => {
         const el = document.getElementById('pmr-val-' + key);
         ratings[key] = el ? parseInt(el.textContent) : 5;
     });
 
     try {
-        await window.DB.Ratings.upsertRating(
-            user.id, p.player_id, ratings, '', _pmrMatchId
-        );
-
+        await window.DB.Ratings.upsertRating(user.id, p.player_id, ratings, '', _pmrMatchId);
         _pmrRatedSet.add(p.player_id);
 
         if (window.DB.Notifications) {
@@ -1964,30 +2017,29 @@ window._pmrSubmitCurrent = async function() {
         }
 
         if (typeof updateChart === 'function' && typeof players !== 'undefined') {
-            const targetPlayer = players.find(pl =>
-                (pl.supabase_id || pl.id) === p.player_id
-            );
-            if (targetPlayer) {
-                if (!targetPlayer.communityRatings) targetPlayer.communityRatings = [];
-                const existIdx = targetPlayer.communityRatings
-                    .findIndex(r => r.supabase_from === user.id && r.match_id === _pmrMatchId);
-                const entry = { supabase_from: user.id, match_id: _pmrMatchId, ...ratings, comment };
-                if (existIdx >= 0) targetPlayer.communityRatings[existIdx] = entry;
-                else targetPlayer.communityRatings.push(entry);
-                setTimeout(() => updateChart(targetPlayer), 150);
+            const tp = players.find(pl => (pl.supabase_id || pl.id) === p.player_id);
+            if (tp) {
+                if (!tp.communityRatings) tp.communityRatings = [];
+                const entry = { supabase_from: user.id, match_id: _pmrMatchId, ...ratings };
+                const ei = tp.communityRatings.findIndex(r => r.supabase_from === user.id && r.match_id === _pmrMatchId);
+                if (ei >= 0) tp.communityRatings[ei] = entry; else tp.communityRatings.push(entry);
+                setTimeout(() => updateChart(tp), 150);
             }
         }
 
         if (typeof showToast === 'function') showToast('Puan kaydedildi!');
 
+        // Sonraki puanlanmamış oyuncuya geç
         const nextUnrated = _pmrParticipants.findIndex((pt, i) =>
             i > _pmrCurrentIdx && !_pmrRatedSet.has(pt.player_id)
         );
+
         if (nextUnrated !== -1) {
             _pmrCurrentIdx = nextUnrated;
             _pmrRenderCurrentPlayer();
         } else {
-            _pmrShowDoneScreen();
+            // Tüm oyuncular puanlandı — toplu onur gönder
+            await _pmrFlushHonors();
         }
 
     } catch(e) {
@@ -1997,12 +2049,39 @@ window._pmrSubmitCurrent = async function() {
     }
 };
 
+async function _pmrFlushHonors() {
+    const user = window.__AUTH_USER__;
+    const selections = Object.entries(_honorSelections).map(([rated_id, honor_type]) => ({ rated_id, honor_type }));
+
+    if (selections.length > 0 && user && window.DB.Honors) {
+        try {
+            await window.DB.Honors.submitMatchHonors(user.id, _pmrMatchId, selections);
+            selections.forEach(s => {
+                window.DB.Notifications?.send(
+                    s.rated_id, 'honor_received', 'Onur Aldın!',
+                    `${user.email?.split('@')[0] || 'Bir oyuncu'} seni onurlandırdı.`,
+                    user.id
+                ).catch(() => {});
+            });
+        } catch(e) {
+            console.warn('Honor flush error:', e);
+        }
+    }
+    _pmrShowDoneScreen();
+}
+
 function _pmrShowDoneScreen() {
+    const honorCount = Object.keys(_honorSelections).length;
     document.getElementById('pmr-body').innerHTML = `
         <div style="text-align:center;padding:3rem 1.5rem;">
             <i class="fa-solid fa-circle-check" style="font-size:3rem;color:var(--neon-green);margin-bottom:1rem;"></i>
             <h3 style="color:var(--neon-green);margin-bottom:0.5rem;">Tüm Oyuncular Puanlandı!</h3>
-            <p style="color:#666;font-size:0.9rem;margin-bottom:2rem;">Puanların topluluk ortalamasına eklendi.</p>
+            ${honorCount > 0
+                ? `<p style="color:var(--neon-cyan);font-size:0.9rem;margin-bottom:0.5rem;">
+                       <i class="fa-solid fa-shield-heart"></i> ${honorCount} onur verildi
+                   </p>`
+                : ''}
+            <p style="color:#666;font-size:0.85rem;margin-bottom:2rem;">Puanlar GEN ortalamasına yansıtıldı.</p>
             <button class="btn-sm btn-accent" onclick="closePostMatchRatingModal()" style="padding:0.7rem 2rem;">
                 Kapat
             </button>
@@ -2164,10 +2243,10 @@ function _mcMatchCard(row, ratingStatuses, userId, playerCounts) {
         const rs = ratingStatuses[mid];
         if (rs === 'pending') {
             actionHtml = `<button class="pmr-badge-pending" onclick="openPostMatchRatingModal('${_mcEsc(mid)}', '${_mcEsc(row.team_side || 'home')}')">
-                <i class="fa-solid fa-star"></i> Puan Ver
+                <i class="fa-solid fa-shield-heart"></i> Onur Ver
             </button>`;
         } else if (rs === 'done') {
-            actionHtml = `<span class="pmr-badge-done-sm"><i class="fa-solid fa-check"></i> Puanlandı</span>`;
+            actionHtml = `<span class="pmr-badge-done-sm"><i class="fa-solid fa-shield-heart"></i> Onurlandırıldı</span>`;
         }
     } else if (isCreator && isActive) {
         actionHtml = `<button class="btn-sm mc-score-entry-btn" onclick="mcOpenScoreEntry('${_mcEsc(mid)}')">

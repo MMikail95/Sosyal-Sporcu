@@ -1159,6 +1159,60 @@ const Ratings = {
 };
 
 // =====================================================
+// 🏆 ONUR SİSTEMİ
+// =====================================================
+
+const Honors = {
+
+  // Maç için onur gönder — selections: [{ rated_id, honor_type }], max 5
+  async submitMatchHonors(raterId, matchId, selections) {
+    if (!selections || selections.length === 0) return { inserted: 0 };
+    if (selections.length > 5) throw new Error('En fazla 5 onur seçilebilir.');
+    const rows = selections.map(s => ({
+      match_id:   matchId,
+      rater_id:   raterId,
+      rated_id:   s.rated_id,
+      honor_type: s.honor_type
+    }));
+    const { data, error } = await sb()
+      .from('match_honors')
+      .upsert(rows, { onConflict: 'match_id,rater_id,rated_id', ignoreDuplicates: true })
+      .select();
+    if (error) throw error;
+    return { inserted: (data || []).length };
+  },
+
+  // Bu kullanıcı bu maçta daha önce onur verdi mi?
+  async hasGivenHonors(matchId, userId) {
+    const { data } = await sb()
+      .from('match_honors')
+      .select('id')
+      .eq('match_id', matchId)
+      .eq('rater_id', userId)
+      .limit(1)
+      .maybeSingle();
+    return !!data;
+  },
+
+  // Birden fazla maç için onur durumu — getMatchRatingStatuses ile aynı shape döner
+  // returns: { [matchId]: 'done' | 'pending' }
+  async getMatchHonorStatuses(userId, matchIds) {
+    if (!matchIds || matchIds.length === 0) return {};
+    const { data } = await sb()
+      .from('match_honors')
+      .select('match_id')
+      .eq('rater_id', userId)
+      .in('match_id', matchIds);
+    const doneSet = new Set((data || []).map(r => r.match_id));
+    const result = {};
+    matchIds.forEach(id => {
+      result[id] = doneSet.has(id) ? 'done' : 'pending';
+    });
+    return result;
+  }
+};
+
+// =====================================================
 // 🏟️ SAHA İŞLEMLERİ
 // =====================================================
 
@@ -1385,6 +1439,7 @@ window.DB = {
   Feed,
   Notifications,
   Ratings,
+  Honors,
   Venues,
   Storage,
   error: dbError,

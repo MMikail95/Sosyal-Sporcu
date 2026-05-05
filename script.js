@@ -511,6 +511,7 @@ async function initSupabaseUser() {
 
         const userId = session.user.id;
         const profile = await window.DB.Profiles.get(userId);
+        if (profile) window.__SUPABASE_PROFILE__ = profile;
 
         if (profile) {
             // Supabase profilini localStorage mock sistemiyle köprüle:
@@ -1121,15 +1122,12 @@ function applyProfileViewMode() {
         davetBtn.style.display = viewingOther ? 'block' : 'none';
     }
 
-    // Puanla tab - hide/disable if viewing own profile
-    updatePuanlaTab();
-
     // Arkadaş değilse kısıtlı tab görünümü uygula
     applyFriendshipTabRestriction(viewingOther);
 }
 
 function applyFriendshipTabRestriction(viewingOther) {
-    const restrictedTabs = ['tab-detay', 'tab-yetenekler', 'tab-puanla', 'tab-maclar'];
+    const restrictedTabs = ['tab-kariyer', 'tab-maclar'];
     const allTabBtns = document.querySelectorAll('.tab-btn[data-tab]');
 
     // window.viewingAsFriend === false → kesinlikle arkadaş değil
@@ -1161,32 +1159,6 @@ function applyFriendshipTabRestriction(viewingOther) {
     }
 }
 
-function updatePuanlaTab() {
-    const acc = getActiveAccount();
-    const viewingOther = isViewingOtherProfile();
-
-    const puanlaTabBtn = document.querySelector('.tab-btn[data-tab="tab-puanla"]');
-    const puanlaContent = document.getElementById('tab-puanla');
-
-    if (!viewingOther) {
-        // Own profile: show "Puanla" but disable with message
-        if (puanlaContent) {
-            puanlaContent.innerHTML = `
-                <div class="glass-card" style="text-align:center; padding: 3rem;">
-                    <i class="fa-solid fa-ban" style="font-size:3rem; color:#555; margin-bottom:1rem;"></i>
-                    <h3 style="color:#888; margin-bottom:0.5rem;">Kendinizi Puanlayamazsınız</h3>
-                    <p style="color:#555; font-size:0.9rem;">Başka bir kullanıcı hesabına geçerek bu profili puanlayabilirsiniz.</p>
-                </div>
-            `;
-        }
-    } else {
-        // Viewing other: render rating form
-        if (puanlaContent) {
-            renderCommunityRatingForm(puanlaContent);
-        }
-    }
-}
-
 
 // ======================================================
 // 6. PROFILE LOGIC (RICH FEATURES)
@@ -1213,20 +1185,17 @@ window.switchProfileTab = function (tabId) {
         }, 50);
     }
 
-    if (tabId === 'tab-puanla') {
-        updatePuanlaTab();
-    }
-
     if (tabId === 'tab-maclar') {
         loadMatchHistory();
     }
-    if (tabId === 'tab-yetenekler') {
-        const player = players.find(p => p.id === activePlayerId);
+    if (tabId === 'tab-kariyer') {
+        const player = players.find(p => p.id === activePlayerId) || players[0];
         if (player) {
-            const vals = Object.values(player.ratings);
-            const avg = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+            const vals = Object.values(player.ratings).filter(v => v !== null);
+            const avg = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
             checkSkillUnlocks(player, avg);
         }
+        renderHonorBadges(window.__SUPABASE_PROFILE__ || {});
     }
 };
 
@@ -1397,6 +1366,13 @@ window.updateUI = function () {
         checkSkillUnlocks(player, avg || 0);
         // checkSkillUnlocks içinde renderBadgeStrip de çağrılıyor (SYNC-14)
     } catch (e) { console.error('Skill Unlock Check Failed:', e); }
+
+    // --- Honor Showcase (Genel Bakış) ---
+    try {
+        const sbProfile = window.__SUPABASE_PROFILE__ || {};
+        renderHonorShowcase(sbProfile);
+        if (document.getElementById('honor-badges-grid')) renderHonorBadges(sbProfile);
+    } catch (e) { console.error('Honor Render Failed:', e); }
 
     // Reset Save Button
     const btnSave = document.getElementById('btn-save-ratings');
@@ -2080,6 +2056,85 @@ function getPlayerStats(player) {
     }
     // Henüz veri girilmemiş
     return { totalMatches: 0, totalGoals: 0, totalAssists: 0 };
+}
+
+// =====================================================
+// 🏆 ONUR SİSTEMİ — Tanımlar ve Render
+// =====================================================
+
+const HONOR_DEFS = [
+    { key: 'calm',     label: 'Sakin',   icon: '🕊️', faIcon: 'fa-dove',          description: 'Baskı altında soğukkanlılığını koruyan oyuncu' },
+    { key: 'maestro',  label: 'Maestro', icon: '🎯', faIcon: 'fa-bullseye',       description: 'Maçta fark yaratan, oyunu yönlendiren isim' },
+    { key: 'punctual', label: 'Dakik',   icon: '⏱️', faIcon: 'fa-clock',          description: 'Her zaman zamanında, güvenilir takım arkadaşı' },
+    { key: 'joker',    label: 'Joker',   icon: '😄', faIcon: 'fa-face-grin-wide', description: 'Takım ruhunu yükselten, eğlenceli karakter' },
+    { key: 'dynamo',   label: 'Dinamo',  icon: '⚡', faIcon: 'fa-bolt',           description: 'Yorulmak bilmeyen, sürekli koşan enerji deposu' }
+];
+
+const HONOR_TIERS = [
+    { min: 50, name: 'Elmas',  color: 'var(--neon-cyan)' },
+    { min: 30, name: 'Altın',  color: 'gold' },
+    { min: 15, name: 'Gümüş',  color: '#aaa' },
+    { min: 5,  name: 'Bronz',  color: '#cd7f32' }
+];
+
+function getHonorTier(count) {
+    return HONOR_TIERS.find(t => count >= t.min) || null;
+}
+
+// Genel Bakış sekmesindeki #honor-strip'e kazanılan onurları yansıt
+function renderHonorShowcase(profileData) {
+    const strip = document.getElementById('honor-strip');
+    if (!strip) return;
+
+    const earned = HONOR_DEFS.filter(def => {
+        const count = profileData[`honor_${def.key}`] || 0;
+        return getHonorTier(count) !== null;
+    });
+
+    if (earned.length === 0) {
+        strip.innerHTML = '<span style="color:#444; font-size:0.82rem;">— henüz onur yok —</span>';
+        return;
+    }
+
+    strip.innerHTML = earned.map(def => {
+        const count = profileData[`honor_${def.key}`] || 0;
+        const tier = getHonorTier(count);
+        const color = tier.color.startsWith('var') ? tier.color : tier.color;
+        return `<span title="${def.description}: ${count} oy (${tier.name})"
+                      style="display:inline-flex; align-items:center; gap:4px;
+                             padding:4px 10px; border-radius:20px;
+                             border:1px solid ${color};
+                             color:${color};
+                             font-size:0.78rem; font-weight:700;
+                             background:${color === 'var(--neon-cyan)' ? 'rgba(0,229,255,0.1)' : color + '18'};
+                             cursor:default; white-space:nowrap;">
+                  ${def.icon} ${def.label}
+                </span>`;
+    }).join('');
+}
+
+// tab-kariyer içindeki #honor-badges-grid'e 5 onur rozeti kartını render et
+function renderHonorBadges(profileData) {
+    const container = document.getElementById('honor-badges-grid');
+    if (!container) return;
+
+    container.innerHTML = HONOR_DEFS.map(def => {
+        const count = profileData[`honor_${def.key}`] || 0;
+        const tier = getHonorTier(count);
+        const earned = tier !== null;
+        const color = earned ? tier.color : '#333';
+        const bg = earned
+            ? (tier.color === 'var(--neon-cyan)' ? 'rgba(0,229,255,0.07)' : tier.color + '12')
+            : 'rgba(255,255,255,0.02)';
+        return `
+            <div class="honor-badge-card ${earned ? 'honor-earned' : 'honor-locked'}"
+                 title="${def.description}">
+                <div class="honor-badge-icon" style="color:${color}; font-size:1.8rem;">${def.icon}</div>
+                <div class="honor-badge-label" style="color:${color};">${def.label}</div>
+                <div class="honor-badge-count" style="color:${color};">${count} oy</div>
+                ${earned ? `<div class="honor-badge-tier" style="color:${color};">${tier.name}</div>` : ''}
+            </div>`;
+    }).join('');
 }
 
 /**
@@ -2769,11 +2824,11 @@ async function loadMatchHistory(targetPlayerId) {
             if (m.status === 'finished') {
                 const status = ratingStatuses[m.id];
                 if (status === 'done') {
-                    ratingBadge = `<span class="pmr-badge-done-sm">Puanland\u0131</span>`;
+                    ratingBadge = `<span class="pmr-badge-done-sm"><i class="fa-solid fa-shield-heart"></i> Onurland\u0131r\u0131ld\u0131</span>`;
                 } else if (status === 'pending') {
                     ratingBadge = `<button class="pmr-badge-pending"
                         onclick="openPostMatchRatingModal('${m.id}','${mp.team_side}')">
-                        Puan Ver
+                        <i class="fa-solid fa-shield-heart"></i> Onur Ver
                     </button>`;
                 } else {
                     ratingBadge = `<span style="color:#444;font-size:0.75rem;">\u2014</span>`;
