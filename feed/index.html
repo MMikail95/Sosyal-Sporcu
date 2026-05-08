@@ -137,9 +137,10 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     setTimeout(function () {
-        if (typeof window.renderFeed === 'function') window.renderFeed();
+        // initRealFeed: Supabase'den gerçek postları yükler (faz2-social.js)
+        if (typeof window.initRealFeed === 'function') window.initRealFeed();
         if (typeof initRealNotifications === 'function') initRealNotifications();
-    }, 300);
+    }, 500);
 });
 </script>
 </body>

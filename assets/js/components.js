@@ -10,15 +10,16 @@
     // çalışır çünkü mutlak yol yerine görece yol kullanır.
     function _computeNavMap() {
         var path = location.pathname;
-        // Alt dizinde mi? (/character/, /team/, /feed/, /explore/, /matches/)
-        var inSub = /\/(character|team|feed|explore|matches)(\/|$)/i.test(path);
+        // Alt dizinde mi? (/character/, /team/, /team-profile/, /feed/, /explore/, /matches/)
+        var inSub = /\/(character|team|team-profile|feed|explore|matches)(\/|$)/i.test(path);
         var prefix = inSub ? '../' : '';
         return {
-            profile:  prefix + 'character/',
-            takimim:  prefix + 'team/',
-            matches:  prefix + 'matches/',
-            feed:     prefix + 'feed/',
-            explore:  prefix + 'explore/'
+            profile:     prefix + 'character/',
+            takimim:     prefix + 'team/',
+            matches:     prefix + 'matches/',
+            feed:        prefix + 'feed/',
+            explore:     prefix + 'explore/',
+            teamProfile: prefix + 'team-profile/'
         };
     }
     var NAV_MAP = _computeNavMap();

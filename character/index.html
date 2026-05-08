@@ -422,18 +422,34 @@
 
 <script>
 // Karakter sayfasına özgü init
-document.addEventListener('DOMContentLoaded', function () {
-    setTimeout(function () {
-        if (typeof updateUI === 'function') updateUI();
-        if (typeof updateChart === 'function' && typeof players !== 'undefined' && players.length) {
-            var p = players.find(function(pl){ return pl.id === activePlayerId; }) || players[0];
-            updateChart(p);
-        }
-        if (typeof initRealNotifications === 'function') initRealNotifications();
-        // Maç geçmişini yükle (bakılan oyuncunun ID'si ile)
-        const viewedId = sessionStorage.getItem('ss_view_player_id') || (window.__AUTH_USER__ && window.__AUTH_USER__.id);
-        if (typeof loadMatchHistory === 'function' && viewedId) loadMatchHistory(viewedId);
-    }, 400);
+// supabaseUserReady: script.js'deki initSupabaseUser() tamamlanınca ateşlenir.
+// Bu sayede race condition olmadan bakılan oyuncunun profili __SUPABASE_PROFILE__'a yazılır.
+document.addEventListener('supabaseUserReady', async function onSupabaseReady() {
+    document.removeEventListener('supabaseUserReady', onSupabaseReady); // tek tetik
+
+    const viewedId   = sessionStorage.getItem('ss_view_player_id');
+    const loggedInId = window.__AUTH_USER__ && window.__AUTH_USER__.id;
+
+    // Başkasının profiline bakıyorsak o oyuncunun profilini yükle
+    if (viewedId && viewedId !== loggedInId && window.DB) {
+        try {
+            const viewedProfile = await window.DB.Profiles.get(viewedId);
+            if (viewedProfile) {
+                window.__SUPABASE_PROFILE__ = viewedProfile;
+                console.log('👁️ Bakılan oyuncu profili yüklendi:', viewedProfile.username);
+            }
+        } catch(e) { console.warn('Viewed profile load error:', e); }
+    }
+
+    if (typeof updateUI === 'function') updateUI();
+    if (typeof updateChart === 'function' && typeof players !== 'undefined' && players.length) {
+        var p = players.find(function(pl){ return pl.id === activePlayerId; }) || players[0];
+        updateChart(p);
+    }
+    if (typeof initRealNotifications === 'function') initRealNotifications();
+
+    const finalId = viewedId || loggedInId;
+    if (typeof loadMatchHistory === 'function' && finalId) loadMatchHistory(finalId);
 });
 </script>
 </body>

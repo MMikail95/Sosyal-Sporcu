@@ -626,8 +626,12 @@ async function initSupabaseUser() {
             console.log(`✅ Supabase kullanıcısı yüklendi: ${profile.username}`);
         }
 
+        // Karakter sayfasının "bakılan oyuncu" profilini yüklemesi için sinyal ver
+        document.dispatchEvent(new CustomEvent('supabaseUserReady'));
+
     } catch (err) {
         console.warn('Supabase user init failed (offline mode):', err.message);
+        document.dispatchEvent(new CustomEvent('supabaseUserReady')); // hata durumunda da tetikle
     }
 }
 

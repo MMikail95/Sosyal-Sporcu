@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MANAGER++ | Takım Profili</title>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="../team-fix.css">
+    <link rel="stylesheet" href="../faz2-7.css">
+    <link rel="stylesheet" href="../fixes.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../supabase.js"></script>
+    <script>
+    (async function guardSession() {
+        if (!window.sbClient) return;
+        try {
+            const { data: { session } } = await window.sbClient.auth.getSession();
+            if (!session) { window.location.replace('../auth.html'); return; }
+            window.__AUTH_USER__ = session.user;
+            window.sbClient.auth.onAuthStateChange((ev, _s) => {
+                if (_s && _s.user) window.__AUTH_USER__ = _s.user;
+            });
+        } catch(e) { console.warn('Session guard failed:', e.message); }
+    })();
+    </script>
+
+    <style>
+    /* ── Takım Profil Sayfası ── */
+    .tp-back-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+        color: #888; padding: 8px 16px; border-radius: 10px;
+        font-size: 0.83rem; cursor: pointer; margin-bottom: 1.2rem;
+        transition: all 0.2s; text-decoration: none;
+    }
+    .tp-back-btn:hover { color: #ccc; background: rgba(255,255,255,0.07); }
+
+    .tp-header-card {
+        background: var(--glass-bg);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 20px;
+        padding: 1.8rem 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .tp-logo {
+        width: 88px; height: 88px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2rem; flex-shrink: 0;
+        border: 3px solid currentColor;
+    }
+    .tp-header-info { flex: 1; min-width: 180px; }
+    .tp-name {
+        font-size: 1.9rem; font-weight: 800;
+        color: var(--text-primary); margin-bottom: 0.35rem; line-height: 1.1;
+    }
+    .tp-meta {
+        display: flex; gap: 1rem; flex-wrap: wrap;
+        color: #777; font-size: 0.83rem; margin-bottom: 0.8rem;
+    }
+    .tp-meta span { display: flex; align-items: center; gap: 4px; }
+    .tp-stats-row {
+        display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.2rem;
+    }
+    .tp-stat-box {
+        text-align: center; padding: 0.5rem 1rem;
+        background: rgba(255,255,255,0.04);
+        border-radius: 10px; min-width: 60px;
+    }
+    .tp-stat-box .sv { font-size: 1.5rem; font-weight: 800; display: block; }
+    .tp-stat-box .sl { font-size: 0.65rem; color: #555; text-transform: uppercase; letter-spacing: 1px; }
+
+    /* GEN badge sağ üst */
+    .tp-gen-badge {
+        padding: 0.7rem 1.2rem;
+        border-radius: 14px;
+        text-align: center;
+        font-weight: 900;
+        font-size: 1.8rem;
+        line-height: 1;
+        flex-shrink: 0;
+    }
+    .tp-gen-badge small { font-size: 0.7rem; display: block; letter-spacing: 2px; opacity: 0.7; }
+
+    /* Tabs */
+    .tp-tabs {
+        display: flex; gap: 0.4rem;
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        padding-bottom: 0.5rem;
+    }
+    .tp-tab {
+        background: none; border: none; color: #555;
+        padding: 0.55rem 1.2rem; border-radius: 8px;
+        cursor: pointer; font-size: 0.88rem; font-weight: 600;
+        transition: all 0.2s;
+    }
+    .tp-tab:hover { color: #aaa; background: rgba(255,255,255,0.04); }
+    .tp-tab.active { color: var(--neon-green); background: rgba(173,255,47,0.09); }
+
+    .tp-panel { display: none; }
+    .tp-panel.active { display: block; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+
+    /* Kadro */
+    .roster-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+        gap: 0.7rem;
+    }
+    .roster-card {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 12px; padding: 0.9rem 1rem;
+        display: flex; align-items: center; gap: 0.75rem;
+        cursor: pointer; transition: all 0.2s;
+    }
+    .roster-card:hover {
+        border-color: rgba(173,255,47,0.3);
+        background: rgba(173,255,47,0.04);
+        transform: translateY(-1px);
+    }
+    .roster-card.captain-card { border-color: rgba(255,200,0,0.25); }
+    .rc-avatar {
+        width: 46px; height: 46px; border-radius: 50%;
+        object-fit: cover; border: 2px solid rgba(255,255,255,0.1);
+        flex-shrink: 0;
+    }
+    .rc-name { font-weight: 700; font-size: 0.88rem; color: #ddd; }
+    .rc-role { font-size: 0.72rem; color: #666; margin-top: 1px; }
+    .rc-gen {
+        margin-left: auto; font-weight: 900; font-size: 0.95rem;
+        padding: 4px 9px; border-radius: 8px; flex-shrink: 0;
+    }
+    .rc-gen.gen-green { color: #adff2f; background: rgba(173,255,47,0.12); }
+    .rc-gen.gen-cyan  { color: #00e5ff; background: rgba(0,229,255,0.12); }
+    .rc-gen.gen-orange{ color: #ff9800; background: rgba(255,152,0,0.12); }
+
+    /* İstatistikler */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 0.75rem; margin-bottom: 1.5rem;
+    }
+    .stat-card {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 12px; padding: 1rem;
+        text-align: center;
+    }
+    .stat-card .sc-val { font-size: 2rem; font-weight: 900; display: block; }
+    .stat-card .sc-lbl { font-size: 0.72rem; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+    .wdl-bar {
+        height: 10px; border-radius: 5px; overflow: hidden;
+        display: flex; margin: 0.5rem 0 0.3rem;
+    }
+    .wdl-bar .seg { transition: width 0.6s ease; }
+    .wdl-bar .seg-w { background: var(--neon-green); }
+    .wdl-bar .seg-d { background: #ffc800; }
+    .wdl-bar .seg-l { background: #ff4d4d; }
+    .wdl-legend { display: flex; gap: 1rem; font-size: 0.75rem; color: #777; }
+    .wdl-legend span::before {
+        content: '●'; margin-right: 4px;
+    }
+    .wdl-legend .lw::before { color: var(--neon-green); }
+    .wdl-legend .ld::before { color: #ffc800; }
+    .wdl-legend .ll::before { color: #ff4d4d; }
+
+    /* Maçlar */
+    .match-row {
+        display: flex; align-items: center; gap: 0.75rem;
+        padding: 0.8rem 1rem;
+        background: rgba(255,255,255,0.02);
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 10px; margin-bottom: 0.5rem;
+        transition: background 0.2s;
+    }
+    .match-row:hover { background: rgba(255,255,255,0.04); }
+    .match-result-badge {
+        width: 36px; height: 36px; border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 900; font-size: 0.75rem; flex-shrink: 0;
+    }
+    .badge-w { background: rgba(173,255,47,0.15); color: var(--neon-green); }
+    .badge-d { background: rgba(255,200,0,0.15); color: #ffc800; }
+    .badge-l { background: rgba(255,77,77,0.15); color: #ff4d4d; }
+    .match-teams { flex: 1; font-size: 0.85rem; color: #bbb; }
+    .match-teams strong { color: #eee; }
+    .match-score {
+        font-weight: 900; font-size: 1.1rem;
+        min-width: 55px; text-align: center; color: #fff;
+    }
+    .match-date { font-size: 0.75rem; color: #555; white-space: nowrap; }
+
+    .tp-empty {
+        text-align: center; padding: 3rem; color: #444;
+        font-size: 0.9rem;
+    }
+    .tp-empty i { font-size: 2rem; display: block; margin-bottom: 0.75rem; }
+
+    @media (max-width: 600px) {
+        .tp-header-card { padding: 1.2rem; gap: 1rem; }
+        .tp-logo { width: 66px; height: 66px; font-size: 1.5rem; }
+        .tp-name { font-size: 1.4rem; }
+        .roster-grid { grid-template-columns: 1fr 1fr; }
+    }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <button class="sidebar-toggle" id="sidebar-toggle-btn" onclick="toggleSidebar()">
+        <i class="fa-solid fa-bars" id="sidebar-toggle-icon"></i>
+    </button>
+    <div id="sidebar-placeholder"></div>
+
+    <!-- Bildirim -->
+    <div class="notif-wrapper" id="notif-wrapper">
+        <button class="notif-bell" id="notif-bell-btn" onclick="toggleNotifPanel()">
+            <i class="fa-solid fa-bell"></i>
+            <span class="notif-count" id="notif-count" style="display:none;">0</span>
+        </button>
+        <div class="notif-panel" id="notif-panel">
+            <div class="notif-panel-header">
+                <i class="fa-solid fa-bell"></i> Bildirimler
+                <button onclick="markAllRead()" class="notif-clear-btn">Tümünü Oku</button>
+            </div>
+            <div class="notif-list" id="notif-list">
+                <div class="notif-empty"><i class="fa-regular fa-bell-slash"></i><br>Yeni bildirim yok</div>
+            </div>
+        </div>
+    </div>
+
+    <main class="main-content">
+        <section id="team-profile-section" class="section active">
+
+            <button class="tp-back-btn" onclick="history.back()">
+                <i class="fa-solid fa-arrow-left"></i> Geri
+            </button>
+
+            <!-- Header (JS tarafından doldurulur) -->
+            <div id="tp-header-placeholder">
+                <div style="text-align:center;padding:3rem;color:#444;">
+                    <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tp-tabs" id="tp-tabs" style="display:none;">
+                <button class="tp-tab active" onclick="switchTeamTab('roster', this)">
+                    <i class="fa-solid fa-users"></i> Kadro
+                </button>
+                <button class="tp-tab" onclick="switchTeamTab('stats', this)">
+                    <i class="fa-solid fa-chart-bar"></i> İstatistikler
+                </button>
+                <button class="tp-tab" onclick="switchTeamTab('matches', this)">
+                    <i class="fa-solid fa-futbol"></i> Son Maçlar
+                </button>
+            </div>
+
+            <!-- Kadro -->
+            <div class="tp-panel active" id="tp-panel-roster">
+                <div class="tp-empty" id="roster-loading">
+                    <i class="fa-solid fa-spinner fa-spin"></i> Kadro yükleniyor...
+                </div>
+                <div class="roster-grid" id="roster-grid" style="display:none;"></div>
+            </div>
+
+            <!-- İstatistikler -->
+            <div class="tp-panel" id="tp-panel-stats">
+                <div id="stats-content">
+                    <div class="tp-empty"><i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor...</div>
+                </div>
+            </div>
+
+            <!-- Son Maçlar -->
+            <div class="tp-panel" id="tp-panel-matches">
+                <div id="matches-content">
+                    <div class="tp-empty"><i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor...</div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+</div>
+
+<script src="../db.js"></script>
+<script src="../assets/js/components.js"></script>
+<script src="../script.js"></script>
+<script src="../faz1.js"></script>
+<script src="../faz2-social.js"></script>
+
+<script>
+// ── Takım Profil Sayfası Init ──────────────────────────────────
+
+function switchTeamTab(name, btn) {
+    document.querySelectorAll('.tp-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tp-panel').forEach(p => p.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    document.getElementById('tp-panel-' + name)?.classList.add('active');
+}
+
+function genClass(score) {
+    if (!score) return 'gen-orange';
+    if (score >= 85) return 'gen-green';
+    if (score >= 75) return 'gen-cyan';
+    return 'gen-orange';
+}
+
+function genColor(score) {
+    if (!score) return '#ff9800';
+    if (score >= 85) return '#adff2f';
+    if (score >= 75) return '#00e5ff';
+    return '#ff9800';
+}
+
+function renderHeader(team) {
+    const color  = team.color || '#00ff88';
+    const icon   = team.icon  || 'fa-shield-cat';
+    const gen    = team.gen_score ? Math.round(team.gen_score) : null;
+    const genBg  = gen ? (gen >= 85 ? 'rgba(173,255,47,0.12)' : gen >= 75 ? 'rgba(0,229,255,0.12)' : 'rgba(255,152,0,0.12)') : 'rgba(255,255,255,0.05)';
+    const genClr = gen ? genColor(gen) : '#888';
+    const founded = team.created_at ? new Date(team.created_at).toLocaleDateString('tr-TR', {month:'long', year:'numeric'}) : '—';
+    const totalGames = (team.total_wins||0) + (team.total_losses||0) + (team.total_draws||0);
+
+    document.getElementById('tp-header-placeholder').innerHTML = `
+    <div class="tp-header-card">
+        <div class="tp-logo" style="color:${color}; border-color:${color}; background:${color}18;">
+            <i class="fa-solid ${icon}"></i>
+        </div>
+        <div class="tp-header-info">
+            <div class="tp-name">${team.name}</div>
+            <div class="tp-meta">
+                <span><i class="fa-solid fa-location-dot"></i> ${team.city || 'İstanbul'}</span>
+                <span><i class="fa-solid fa-calendar"></i> Kuruluş: ${founded}</span>
+                <span><i class="fa-solid fa-diagram-project"></i> ${team.formation || '2-3-1'}</span>
+                ${team.slug ? `<span><i class="fa-solid fa-key"></i> ${team.slug}</span>` : ''}
+            </div>
+            <div class="tp-stats-row">
+                <div class="tp-stat-box">
+                    <span class="sv" style="color:var(--neon-green);">${team.total_wins||0}</span>
+                    <span class="sl">Galibiyet</span>
+                </div>
+                <div class="tp-stat-box">
+                    <span class="sv" style="color:#ffc800;">${team.total_draws||0}</span>
+                    <span class="sl">Beraberlik</span>
+                </div>
+                <div class="tp-stat-box">
+                    <span class="sv" style="color:#ff4d4d;">${team.total_losses||0}</span>
+                    <span class="sl">Mağlubiyet</span>
+                </div>
+                <div class="tp-stat-box">
+                    <span class="sv" style="color:#aaa;">${totalGames}</span>
+                    <span class="sl">Maç</span>
+                </div>
+            </div>
+        </div>
+        ${gen ? `
+        <div class="tp-gen-badge" style="background:${genBg}; color:${genClr}; border:2px solid ${genClr}30;">
+            ${gen}
+            <small>GEN</small>
+        </div>` : ''}
+    </div>`;
+}
+
+function renderRoster(members, captainId) {
+    const grid = document.getElementById('roster-grid');
+    document.getElementById('roster-loading').style.display = 'none';
+    grid.style.display = 'grid';
+
+    if (!members || members.length === 0) {
+        grid.innerHTML = '<div class="tp-empty" style="grid-column:1/-1;"><i class="fa-solid fa-users-slash"></i> Kadro boş</div>';
+        return;
+    }
+
+    // Kaptanı öne al
+    const sorted = [...members].sort((a, b) => {
+        if (a.player_id === captainId) return -1;
+        if (b.player_id === captainId) return 1;
+        return (b.player?.gen_score || 0) - (a.player?.gen_score || 0);
+    });
+
+    grid.innerHTML = sorted.map(m => {
+        const p    = m.player || {};
+        const name = p.username || p.full_name || 'Oyuncu';
+        const gen  = p.gen_score ? Math.round(p.gen_score) : null;
+        const pos  = p.ana_mevki || p.position || '—';
+        const role = m.player_id === captainId ? '👑 Kaptan' : (m.role === 'substitute' ? 'Yedek' : 'Oyuncu');
+        const avatar = p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
+        const isCap = m.player_id === captainId;
+        const jerseyNo = m.jersey_number ? `#${m.jersey_number}` : '';
+
+        return `
+        <div class="roster-card ${isCap ? 'captain-card' : ''}"
+             onclick="window.openUserProfile && openUserProfile('${p.id}', '${name}')">
+            <img class="rc-avatar" src="${avatar}" alt="${name}" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}'">
+            <div>
+                <div class="rc-name">${isCap ? '👑 ' : ''}${name} <span style="color:#555;font-size:0.75rem;">${jerseyNo}</span></div>
+                <div class="rc-role">${pos} · ${role}</div>
+            </div>
+            ${gen ? `<div class="rc-gen ${genClass(gen)}">${gen}</div>` : ''}
+        </div>`;
+    }).join('');
+}
+
+function renderStats(team, matchCount) {
+    const w = team.total_wins   || 0;
+    const d = team.total_draws  || 0;
+    const l = team.total_losses || 0;
+    const total = w + d + l || 1;
+    const gs = team.total_goals_scored    || 0;
+    const gc = team.total_goals_conceded  || 0;
+    const diff = gs - gc;
+
+    const container = document.getElementById('stats-content');
+    container.innerHTML = `
+    <div class="glass-card" style="padding:1.5rem; margin-bottom:1.2rem;">
+        <h4 style="color:#888; font-size:0.78rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:1rem;">
+            <i class="fa-solid fa-chart-line"></i> Maç İstatistikleri
+        </h4>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="sc-val" style="color:var(--neon-green);">${w}</span>
+                <div class="sc-lbl">Galibiyet</div>
+            </div>
+            <div class="stat-card">
+                <span class="sc-val" style="color:#ffc800;">${d}</span>
+                <div class="sc-lbl">Beraberlik</div>
+            </div>
+            <div class="stat-card">
+                <span class="sc-val" style="color:#ff4d4d;">${l}</span>
+                <div class="sc-lbl">Mağlubiyet</div>
+            </div>
+            <div class="stat-card">
+                <span class="sc-val" style="color:#aaa;">${gs}</span>
+                <div class="sc-lbl">Atılan Gol</div>
+            </div>
+            <div class="stat-card">
+                <span class="sc-val" style="color:#aaa;">${gc}</span>
+                <div class="sc-lbl">Yenilen Gol</div>
+            </div>
+            <div class="stat-card">
+                <span class="sc-val" style="color:${diff >= 0 ? 'var(--neon-green)' : '#ff4d4d'};">${diff >= 0 ? '+' : ''}${diff}</span>
+                <div class="sc-lbl">Averaj</div>
+            </div>
+        </div>
+
+        <div style="margin-top:0.5rem;">
+            <div style="font-size:0.78rem; color:#666; margin-bottom:0.3rem;">G / B / M Dağılımı</div>
+            <div class="wdl-bar">
+                <div class="seg seg-w" style="width:${(w/total*100).toFixed(1)}%"></div>
+                <div class="seg seg-d" style="width:${(d/total*100).toFixed(1)}%"></div>
+                <div class="seg seg-l" style="width:${(l/total*100).toFixed(1)}%"></div>
+            </div>
+            <div class="wdl-legend">
+                <span class="lw">Galibiyet ${(w/total*100).toFixed(0)}%</span>
+                <span class="ld">Beraberlik ${(d/total*100).toFixed(0)}%</span>
+                <span class="ll">Mağlubiyet ${(l/total*100).toFixed(0)}%</span>
+            </div>
+        </div>
+    </div>`;
+}
+
+function renderMatches(matches, teamId, teamName) {
+    const container = document.getElementById('matches-content');
+    if (!matches || matches.length === 0) {
+        container.innerHTML = '<div class="tp-empty"><i class="fa-regular fa-calendar-xmark"></i>Henüz tamamlanmış maç yok.</div>';
+        return;
+    }
+
+    container.innerHTML = matches.map(m => {
+        const isHome  = m.home_team_id === teamId || m.home_team?.id === teamId;
+        const myScore = isHome ? m.home_score : m.away_score;
+        const opScore = isHome ? m.away_score : m.home_score;
+        const opponent = isHome ? (m.away_team?.name || 'Deplasman') : (m.home_team?.name || 'Ev Sahibi');
+        const side    = isHome ? 'Ev' : 'Dep.';
+
+        let result = 'draw', label = 'B';
+        if (myScore > opScore)  { result = 'win';  label = 'G'; }
+        if (myScore < opScore)  { result = 'loss'; label = 'M'; }
+
+        const date = m.scheduled_at
+            ? new Date(m.scheduled_at).toLocaleDateString('tr-TR', {day:'2-digit', month:'short', year:'numeric'})
+            : '—';
+
+        return `
+        <div class="match-row">
+            <div class="match-result-badge badge-${result}">${label}</div>
+            <div class="match-teams">
+                <strong>${isHome ? teamName : opponent}</strong>
+                <span style="color:#555;"> vs </span>
+                <strong>${isHome ? opponent : teamName}</strong>
+                <span style="color:#555; font-size:0.75rem;margin-left:6px;">(${side})</span>
+            </div>
+            <div class="match-score">${m.home_score} - ${m.away_score}</div>
+            <div class="match-date">${date}</div>
+        </div>`;
+    }).join('');
+}
+
+// ── Ana Init ──────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async function () {
+    const teamId = sessionStorage.getItem('ss_view_team_id');
+    if (!teamId) {
+        document.getElementById('tp-header-placeholder').innerHTML =
+            '<div class="tp-empty"><i class="fa-solid fa-triangle-exclamation"></i> Takım bulunamadı. Lütfen Keşfet sayfasından bir takım seçin.</div>';
+        return;
+    }
+
+    // Supabase hazır olana kadar bekle
+    let attempts = 0;
+    while (!window.DB && attempts < 20) { await new Promise(r => setTimeout(r, 150)); attempts++; }
+
+    if (!window.DB) {
+        document.getElementById('tp-header-placeholder').innerHTML =
+            '<div class="tp-empty"><i class="fa-solid fa-triangle-exclamation"></i> Veritabanı bağlantısı kurulamadı.</div>';
+        return;
+    }
+
+    try {
+        // Takım + üyeler + maçlar paralel çek
+        const [team, matches] = await Promise.all([
+            window.DB.Teams.get(teamId),
+            window.DB.Teams.getMatches(teamId, 10)
+        ]);
+
+        if (!team) {
+            document.getElementById('tp-header-placeholder').innerHTML =
+                '<div class="tp-empty"><i class="fa-solid fa-triangle-exclamation"></i> Takım bulunamadı.</div>';
+            return;
+        }
+
+        // Header
+        renderHeader(team);
+
+        // Kadro
+        renderRoster(team.team_members || [], team.captain_id);
+
+        // İstatistikler
+        renderStats(team, matches.length);
+
+        // Son Maçlar
+        renderMatches(matches, teamId, team.name);
+
+        // Tabs göster
+        document.getElementById('tp-tabs').style.display = 'flex';
+
+        // Sayfa başlığını güncelle
+        document.title = `${team.name} — MANAGER++`;
+
+    } catch(err) {
+        console.error('Team profile load error:', err);
+        document.getElementById('tp-header-placeholder').innerHTML =
+            `<div class="tp-empty"><i class="fa-solid fa-triangle-exclamation"></i> Veri yüklenirken hata oluştu: ${err.message}</div>`;
+    }
+});
+</script>
+</body>
+</html>

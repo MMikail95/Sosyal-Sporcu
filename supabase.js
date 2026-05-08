@@ -4,10 +4,12 @@
 // RLS politikaları veri erişimini korur.
 // =====================================================
 
-const SUPABASE_URL = 'https://lgfhtzxmwrabrsqbccty.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_q16aFPkzLQAV72e1Fx3Mmw_4sJ9an-J';
+// ⚠️  STAGING ORTAMI — Production'a dokunma!
+// Production → https://lgfhtzxmwrabrsqbccty.supabase.co
+const SUPABASE_URL = 'https://rpwbmvpapfouhpyvoeol.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_Xun6Vf1wYi1QvoamW2EtjQ_NuknsLok';
 
 // Global supabase client — diğer tüm dosyalar window.sbClient kullanır
 window.sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-console.log('✅ Supabase client hazır:', SUPABASE_URL);
+console.log('🔶 Supabase client hazır [STAGING]:', SUPABASE_URL);

@@ -497,6 +497,23 @@ const Teams = {
     }
   },
 
+  // Takımın oynanan maçlarını getir
+  async getMatches(teamId, limit = 10) {
+    const { data, error } = await sb()
+      .from('matches')
+      .select(`
+        id, home_score, away_score, status, scheduled_at,
+        home_team:home_team_id(id, name, color, icon),
+        away_team:away_team_id(id, name, color, icon)
+      `)
+      .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+      .eq('status', 'finished')
+      .order('scheduled_at', { ascending: false })
+      .limit(limit);
+    if (error) { console.error('Teams.getMatches error:', error); return []; }
+    return data || [];
+  },
+
   // Realtime: takım değişikliklerini dinle
   subscribeToTeam(teamId, callback) {
     return sb()

@@ -117,9 +117,14 @@ function renderExploreTeams(teams) {
                     ? `<span class="etc-badge-own"><i class="fa-solid fa-crown"></i> Kendi Takımın</span>`
                     : `<button class="epc-btn epc-btn-friend"
                                onclick="_openTeamDetail(this.closest('[data-team-id]'))">
-                           <i class="fa-solid fa-eye"></i> Görüntüle
+                           <i class="fa-solid fa-eye"></i> Önizle
                        </button>`
                 }
+                <button class="epc-btn epc-btn-profile"
+                        style="background:linear-gradient(135deg,var(--neon-cyan),#00b8d9); color:#0a0a0f; font-weight:700;"
+                        onclick="openTeamProfile('${t.id}')">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Tam Profil
+                </button>
                 <button class="epc-btn epc-btn-profile" onclick="_copyTeamCode(this)" data-slug="${safeSlug}">
                     <i class="fa-solid fa-copy"></i> Kodu Kopyala
                 </button>
@@ -283,6 +288,11 @@ window._openTeamDetail = async function(cardEl) {
             <!-- Aksiyon -->
             <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
                 ${joinBtnHtml}
+                <button class="epc-btn epc-btn-profile"
+                        onclick="document.getElementById('team-detail-modal')?.remove(); openTeamProfile('${teamId}');"
+                        style="background:linear-gradient(135deg,var(--neon-cyan),#00b8d9); color:#0a0a0f; font-weight:700;">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Tam Profil
+                </button>
                 <button class="epc-btn epc-btn-profile" onclick="navigator.clipboard?.writeText('${team.slug||''}').then(()=>showToast('📋 Kod kopyalandı: ${team.slug||''}')).catch(()=>showToast('Kod: ${team.slug||''}'))">
                     <i class="fa-solid fa-copy"></i> Kodu Kopyala
                 </button>
@@ -293,6 +303,15 @@ window._openTeamDetail = async function(cardEl) {
         document.getElementById('tdm-body').innerHTML =
             `<p style="color:#f55;">Yüklenirken hata: ${e.message}</p>`;
     }
+};
+
+// ── Takım Profil Sayfasına Git ──────────────────────────
+window.openTeamProfile = function(teamId) {
+    if (!teamId) return;
+    sessionStorage.setItem('ss_view_team_id', teamId);
+    var navMap = window._MPA_NAV_MAP;
+    var url = (navMap && navMap.teamProfile) ? navMap.teamProfile : '../team-profile/';
+    window.location.href = url;
 };
 
 // Katılma isteği gönder
@@ -1974,6 +1993,13 @@ window.openUserProfile = window.__openUserProfileCore = async function(supabaseI
     // window.activePlayerId değiştir
     window.activePlayerId = tempId;
 
+    // Honor/rozet render için __SUPABASE_PROFILE__'ı görüntülenen oyuncuyla güncelle
+    // (kendi profiline dönerken __MY_SUPABASE_PROFILE__ ile geri yüklenecek)
+    if (!window.__MY_SUPABASE_PROFILE__) {
+        window.__MY_SUPABASE_PROFILE__ = window.__SUPABASE_PROFILE__;
+    }
+    window.__SUPABASE_PROFILE__ = profile;
+
     // Modal kapat
     document.getElementById('user-profile-modal')?.remove();
 
@@ -2011,6 +2037,11 @@ window.returnToMyProfile = function() {
         window.activePlayerId = _savedMyPlayerId;
         activePlayerId = _savedMyPlayerId;
         _savedMyPlayerId = null;
+    }
+    // Kendi profilinin __SUPABASE_PROFILE__'ını geri yükle
+    if (window.__MY_SUPABASE_PROFILE__) {
+        window.__SUPABASE_PROFILE__ = window.__MY_SUPABASE_PROFILE__;
+        window.__MY_SUPABASE_PROFILE__ = null;
     }
     // Mevcut geri dönüş sistemini kullan
     if (typeof window.goBackFromProfile === 'function') {
