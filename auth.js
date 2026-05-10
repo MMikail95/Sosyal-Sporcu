@@ -123,15 +123,15 @@ window.handleRegister = async function(e) {
   clearMessage();
 
   try {
+    const signUpOptions = { data: { username, full_name: fullName } };
+    // TEST_MODE'da e-posta onayı beklenmez; Supabase proje ayarında da kapatılmalı
+    if (window.TEST_MODE) {
+      signUpOptions.emailRedirectTo = undefined;
+    }
     const { data, error } = await sbClient.auth.signUp({
       email,
       password,
-      options: {
-        data: {
-          username,
-          full_name: fullName
-        }
-      }
+      options: signUpOptions
     });
 
     if (error) throw error;

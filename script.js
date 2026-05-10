@@ -1,5 +1,10 @@
 
 // ======================================================
+// TEST MODE — Production'da kaldır
+// ======================================================
+window.TEST_MODE = true;
+
+// ======================================================
 // SIDEBAR TOGGLE
 // ======================================================
 let sidebarOpen = true;
@@ -624,6 +629,24 @@ async function initSupabaseUser() {
             savePlayers();
             saveAccounts();
             console.log(`✅ Supabase kullanıcısı yüklendi: ${profile.username}`);
+        }
+
+        // Honor Realtime — profiles tablosundaki onur sayaçlarını anlık izle
+        if (userId && window.sbClient && !window._honorRealtimeChannel) {
+            window._honorRealtimeChannel = window.sbClient
+                .channel(`honor-profile-${userId}`)
+                .on('postgres_changes', {
+                    event:  'UPDATE',
+                    schema: 'public',
+                    table:  'profiles',
+                    filter: `id=eq.${userId}`
+                }, payload => {
+                    if (payload.new) {
+                        window.__SUPABASE_PROFILE__ = { ...(window.__SUPABASE_PROFILE__ || {}), ...payload.new };
+                        if (typeof window.updateUI === 'function') window.updateUI();
+                    }
+                })
+                .subscribe();
         }
 
         // Karakter sayfasının "bakılan oyuncu" profilini yüklemesi için sinyal ver
@@ -2779,6 +2802,7 @@ async function loadMatchHistory(targetPlayerId) {
     const playerId = targetPlayerId
         || sessionStorage.getItem('ss_view_player_id')
         || user.id;
+    const isOwnProfile = playerId === user.id;
 
     if (loadingEl) loadingEl.style.display = 'block';
     tbody.innerHTML = '';
@@ -2826,16 +2850,29 @@ async function loadMatchHistory(targetPlayerId) {
             // Puan ver / Puanland\u0131 rozeti \u2014 sadece biten ma\u00e7lar i\u00e7in
             let ratingBadge = '';
             if (m.status === 'finished') {
-                const status = ratingStatuses[m.id];
-                if (status === 'done') {
-                    ratingBadge = `<span class="pmr-badge-done-sm"><i class="fa-solid fa-shield-heart"></i> Onurland\u0131r\u0131ld\u0131</span>`;
-                } else if (status === 'pending') {
-                    ratingBadge = `<button class="pmr-badge-pending"
-                        onclick="openPostMatchRatingModal('${m.id}','${mp.team_side}')">
-                        <i class="fa-solid fa-shield-heart"></i> Onur Ver
-                    </button>`;
+                if (!isOwnProfile && window.TEST_MODE) {
+                    // Ba\u015fkas\u0131n\u0131n profilini admin olarak g\u00f6r\u00fcnt\u00fcl\u00fcyoruz
+                    ratingBadge = `
+                        <button class="pmr-badge-pending" style="margin-right:4px;"
+                            onclick="openUserProfile('${playerId}','')">
+                            <i class="fa-solid fa-star"></i> Puan Ver
+                        </button>
+                        <button class="pmr-badge-pending" style="background:rgba(255,0,127,0.15); border-color:var(--neon-pink);"
+                            onclick="openSingleHonorModal('${playerId}','${m.id}')">
+                            <i class="fa-solid fa-shield-heart"></i> Onur Ver
+                        </button>`;
                 } else {
-                    ratingBadge = `<span style="color:#444;font-size:0.75rem;">\u2014</span>`;
+                    const status = ratingStatuses[m.id];
+                    if (status === 'done') {
+                        ratingBadge = `<span class="pmr-badge-done-sm"><i class="fa-solid fa-shield-heart"></i> Onurland\u0131r\u0131ld\u0131</span>`;
+                    } else if (status === 'pending') {
+                        ratingBadge = `<button class="pmr-badge-pending"
+                            onclick="openPostMatchRatingModal('${m.id}','${mp.team_side}')">
+                            <i class="fa-solid fa-shield-heart"></i> Onur Ver
+                        </button>`;
+                    } else {
+                        ratingBadge = `<span style="color:#444;font-size:0.75rem;">\u2014</span>`;
+                    }
                 }
             }
 
@@ -2851,6 +2888,11 @@ async function loadMatchHistory(targetPlayerId) {
             </tr>`;
         }).join('');
 
+        // Form grafi\u011fi \u2014 sadece kendi profili ve biten ma\u00e7lar
+        if (isOwnProfile) {
+            renderFormGraph(playerId).catch(() => {});
+        }
+
     } catch(e) {
         console.error('Match history error:', e);
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#555; padding:2rem;">\u274c Y\u00fcklenemedi</td></tr>';
@@ -2858,4 +2900,103 @@ async function loadMatchHistory(targetPlayerId) {
         if (loadingEl) loadingEl.style.display = 'none';
     }
 }
+
+async function renderFormGraph(userId) {
+    const card    = document.getElementById('form-graph-card');
+    const arrows  = document.getElementById('form-graph-arrows');
+    if (!card || !arrows || !window.DB) return;
+
+    const entries = await window.DB.Matches.getLastFive(userId);
+    const finished = entries.filter(e => e.match?.status === 'finished');
+    if (finished.length === 0) { card.style.display = 'none'; return; }
+
+    // Performans notuna g\u00f6re ok y\u00f6n\u00fc belirle (\u00f6nceki ma\u00e7a k\u0131yasla)
+    const ratings = finished.map(e => parseFloat(e.performance_rating) || null);
+
+    const arrowHtml = ratings.map((r, i) => {
+        const prev = ratings[i + 1];
+        let icon, color, title;
+        if (r === null) {
+            icon  = 'fa-minus';
+            color = '#555';
+            title = 'Puan yok';
+        } else if (prev === null || i === ratings.length - 1) {
+            icon  = 'fa-arrow-right';
+            color = '#777';
+            title = `${r.toFixed(1)}`;
+        } else if (r > prev) {
+            icon  = 'fa-arrow-trend-up';
+            color = 'var(--neon-green)';
+            title = `${r.toFixed(1)} \u2191`;
+        } else if (r < prev) {
+            icon  = 'fa-arrow-trend-down';
+            color = 'var(--neon-pink)';
+            title = `${r.toFixed(1)} \u2193`;
+        } else {
+            icon  = 'fa-arrow-right';
+            color = 'var(--neon-cyan)';
+            title = `${r.toFixed(1)} \u2192`;
+        }
+        const ratingLabel = r !== null ? `<span style="font-size:0.7rem;color:#666;">${r.toFixed(1)}</span>` : '';
+        return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+            <i class="fa-solid ${icon}" style="font-size:1.3rem;color:${color};" title="${title}"></i>
+            ${ratingLabel}
+        </div>`;
+    }).join('<span style="color:#333;font-size:0.8rem;padding:0 2px;">\u00b7</span>');
+
+    arrows.innerHTML = arrowHtml || '<span style="color:#555;font-size:0.85rem;">Yeterli ma\u00e7 yok</span>';
+    card.style.display = '';
+}
+
+// \u2500\u2500 Tek oyuncuya onur ver modal\u0131 (TEST_MODE admin) \u2500\u2500\u2500\u2500\u2500\u2500
+window.openSingleHonorModal = async function(ratedPlayerId, matchId) {
+    const user = window.__AUTH_USER__;
+    if (!user || !window.DB) return;
+
+    document.getElementById('sho-modal')?.remove();
+
+    const honorDefs = [
+        { key: 'calm',     label: 'Sakin',   icon: '\ud83d\udd4a\ufe0f' },
+        { key: 'maestro',  label: 'Maestro', icon: '\ud83c\udfaf' },
+        { key: 'punctual', label: 'Dakik',   icon: '\u23f1\ufe0f' },
+        { key: 'joker',    label: 'Joker',   icon: '\ud83d\ude04' },
+        { key: 'dynamo',   label: 'Dinamo',  icon: '\u26a1' },
+    ];
+
+    const modal = document.createElement('div');
+    modal.id = 'sho-modal';
+    modal.className = 'modal-backdrop';
+    modal.style.cssText = 'display:flex; z-index:10000;';
+    modal.innerHTML = `
+    <div class="modal-box" style="max-width:380px; width:95%;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-shield-heart" style="color:var(--neon-pink);"></i> Onur Ver</h3>
+            <button class="modal-close" onclick="document.getElementById('sho-modal').remove()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div style="padding:1.5rem; display:flex; flex-direction:column; gap:0.75rem;">
+            ${honorDefs.map(h => `
+            <button class="epc-btn" style="justify-content:flex-start; gap:0.75rem; padding:0.75rem 1rem;"
+                    onclick="window._submitSingleHonor('${ratedPlayerId}','${matchId}','${h.key}')">
+                <span style="font-size:1.3rem;">${h.icon}</span>
+                <strong>${h.label}</strong>
+            </button>`).join('')}
+        </div>
+    </div>`;
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+    document.body.appendChild(modal);
+};
+
+window._submitSingleHonor = async function(ratedPlayerId, matchId, honorType) {
+    const user = window.__AUTH_USER__;
+    if (!user || !window.DB) return;
+    try {
+        await window.DB.Honors.submitMatchHonors(user.id, matchId, [{ rated_id: ratedPlayerId, honor_type: honorType }]);
+        document.getElementById('sho-modal')?.remove();
+        window.showToast?.('\u2705 Onur verildi!', 'success');
+    } catch(e) {
+        window.showToast?.('\u274c ' + (e.message || 'Onur verilemedi'), 'error');
+    }
+};
 

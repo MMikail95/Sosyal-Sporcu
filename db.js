@@ -212,6 +212,7 @@ const Teams = {
       .from('teams')
       .select('*, captain:captain_id(id, username, avatar_url), team_members(count)')
       .eq('is_active', true)
+      .order('total_wins', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(limit);
     if (error) { console.error('Teams.getAll error:', error); return []; }
@@ -277,8 +278,22 @@ const Teams = {
     return data;
   },
 
-  // Takıma üye ekle
+  // Takımdaki üye sayısını getir
+  async getMemberCount(teamId) {
+    const { count } = await sb()
+      .from('team_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('team_id', teamId);
+    return count ?? 0;
+  },
+
+  // Takıma üye ekle (maks 7 oyuncu)
   async addMember(teamId, playerId, role = 'player') {
+    const { count } = await sb()
+      .from('team_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('team_id', teamId);
+    if ((count ?? 0) >= 7) throw new Error('Takım dolu (maksimum 7 oyuncu)');
     const { data, error } = await sb()
       .from('team_members')
       .insert({ team_id: teamId, player_id: playerId, role })
@@ -673,6 +688,23 @@ const Matches = {
     const all = [...personalEntries, ...teamEntries];
     all.sort((a, b) => new Date(b.match.scheduled_at) - new Date(a.match.scheduled_at));
     return all.slice(0, limit);
+  },
+
+  // Son 5 biten maç + performans notu (form grafiği için)
+  async getLastFive(userId) {
+    const { data, error } = await sb()
+      .from('match_players')
+      .select(`
+        team_side, goals, assists, performance_rating,
+        match:match_id(id, scheduled_at, status, home_score, away_score,
+          home_team:home_team_id(name), away_team:away_team_id(name))
+      `)
+      .eq('player_id', userId)
+      .eq('match.status', 'finished')
+      .order('match(scheduled_at)', { ascending: false })
+      .limit(5);
+    if (error) { console.error('getLastFive error:', error); return []; }
+    return (data || []).filter(d => d.match !== null);
   },
 
   // Maça oyuncu olarak katıl

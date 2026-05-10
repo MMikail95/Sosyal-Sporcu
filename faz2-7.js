@@ -1803,7 +1803,7 @@ window.openPostMatchRatingModal = async function(matchId, currentUserSide) {
 
     try {
         const isParticipant = await window.DB.Ratings.isParticipantInMatch(user.id, matchId);
-        if (!isParticipant) {
+        if (!isParticipant && !window.TEST_MODE) {
             if (typeof showToast === 'function') showToast('⚠️ Bu maçta yer almadığın için puan veremezsin.');
             return;
         }
@@ -2217,8 +2217,8 @@ function _mcMatchCard(row, ratingStatuses, userId, playerCounts) {
     const date = m.scheduled_at
         ? new Date(m.scheduled_at).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })
         : '—';
-    const isCreator  = userId && m.created_by === userId;
-    const isActive   = ['scheduled', 'confirmed'].includes(m.status);
+    const isCreator  = (userId && m.created_by === userId) || window.TEST_MODE;
+    const isActive   = ['scheduled', 'confirmed'].includes(m.status) || window.TEST_MODE;
     const pCount     = playerCounts[mid] || 0;
 
     const statusMap = {

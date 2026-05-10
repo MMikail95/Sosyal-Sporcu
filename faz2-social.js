@@ -96,7 +96,8 @@ function renderExploreTeams(teams) {
                     <h4 class="etc-name">${t.name || 'Takım'}</h4>
                     <div class="etc-meta">
                         <span><i class="fa-solid fa-users"></i> ${t.team_members?.[0]?.count ?? t.player_count ?? 0} oyuncu</span>
-                        ${t.city ? `<span><i class="fa-solid fa-location-dot"></i> ${t.city}</span>` : ''}
+                        ${(t.district || t.city) ? `<span><i class="fa-solid fa-location-dot"></i> ${t.district ? t.district + (t.city ? ', ' + t.city : '') : t.city}</span>` : ''}
+                        ${(t.total_wins || 0) > 0 ? `<span style="color:var(--neon-green);"><i class="fa-solid fa-trophy"></i> ${t.total_wins} galibiyet</span>` : ''}
                     </div>
                     <div class="etc-captain">
                         <img src="${capAv}" class="etc-cap-avatar" alt="${cap.username || 'Kaptan'}"
@@ -120,6 +121,13 @@ function renderExploreTeams(teams) {
                            <i class="fa-solid fa-eye"></i> Önizle
                        </button>`
                 }
+                ${window.TEST_MODE && !isOwn
+                    ? `<button class="epc-btn" style="background:var(--neon-pink);color:#0a0a0f;font-weight:700;"
+                               onclick="_adminJoinTeam('${t.id}','${safeName}')">
+                           <i class="fa-solid fa-bolt"></i> Direkt Katıl
+                       </button>`
+                    : ''
+                }
                 <button class="epc-btn epc-btn-profile"
                         style="background:linear-gradient(135deg,var(--neon-cyan),#00b8d9); color:#0a0a0f; font-weight:700;"
                         onclick="openTeamProfile('${t.id}')">
@@ -132,6 +140,22 @@ function renderExploreTeams(teams) {
         </div>`;
     }).join('');
 }
+
+// ── Admin: Direkt takıma katıl (TEST_MODE) ─────────────
+window._adminJoinTeam = async function(teamId, teamName) {
+    const user = window.__AUTH_USER__;
+    if (!user || !window.DB) return;
+    try {
+        await window.DB.Teams.addMember(teamId, user.id, 'player');
+        await window.sbClient.from('profiles')
+            .update({ current_team_id: teamId })
+            .eq('id', user.id);
+        window.showToast?.(`✅ "${teamName}" takımına katıldın!`, 'success');
+        initExploreTeams();
+    } catch(e) {
+        window.showToast?.('❌ ' + (e.message || 'Katılım hatası'), 'error');
+    }
+};
 
 // ── Takım Detay Modalı ──────────────────────────────────
 
@@ -379,16 +403,26 @@ window._copyTeamCode = function(btn) {
 };
 
 window.filterExploreTeams = function() {
-    const q = (document.getElementById('explore-team-search')?.value || '').toLowerCase().trim();
-    if (!q) {
-        renderExploreTeams(exploreTeams);
-        return;
+    const q        = (document.getElementById('explore-team-search')?.value   || '').toLowerCase().trim();
+    const district = (document.getElementById('explore-district-filter')?.value || '').toLowerCase().trim();
+
+    let filtered = exploreTeams;
+
+    if (q) {
+        filtered = filtered.filter(t =>
+            t.name?.toLowerCase().includes(q) ||
+            t.city?.toLowerCase().includes(q) ||
+            t.district?.toLowerCase().includes(q) ||
+            t.slug?.toLowerCase().includes(q)
+        );
     }
-    const filtered = exploreTeams.filter(t =>
-        t.name?.toLowerCase().includes(q) ||
-        t.city?.toLowerCase().includes(q) ||
-        t.slug?.toLowerCase().includes(q)
-    );
+    if (district) {
+        filtered = filtered.filter(t =>
+            t.district?.toLowerCase().includes(district) ||
+            t.city?.toLowerCase().includes(district)
+        );
+    }
+
     renderExploreTeams(filtered);
 };
 
@@ -1012,8 +1046,32 @@ window.initRealFeed = async function() {
 
     feedLoading = false;
     renderRealFeed();
+    renderGazette();
     subscribeToRealFeed();
 };
+
+function renderGazette() {
+    const section   = document.getElementById('gazette-section');
+    const container = document.getElementById('gazette-headlines');
+    if (!section || !container) return;
+
+    const matchPosts = feedPosts.filter(p => p.post_type === 'match_result').slice(0, 3);
+    if (matchPosts.length === 0) { section.style.display = 'none'; return; }
+
+    section.style.display = '';
+    container.innerHTML = matchPosts.map((p, i) => {
+        const time    = timeAgoSocial(p.created_at);
+        const content = (p.content || '').replace(/#\w+/g, s => `<span style="color:var(--neon-cyan);">${s}</span>`);
+        return `<div style="padding:0.6rem 0.9rem; margin-bottom:0.5rem;
+                            background:var(--glass-bg); border-radius:8px;
+                            border-left:3px solid var(--neon-green);
+                            font-size:0.82rem; line-height:1.5;">
+            <span style="font-weight:700; color:var(--neon-green); margin-right:0.4rem;">${i + 1}.</span>
+            ${content}
+            <span style="color:#444; font-size:0.72rem; margin-left:0.5rem;">${time}</span>
+        </div>`;
+    }).join('');
+}
 
 function renderFeedLoading() {
     const c = document.getElementById('feed-stream');

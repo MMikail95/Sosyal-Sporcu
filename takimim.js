@@ -471,6 +471,12 @@ window._tmSubmitJoin = async function() {
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Katılıyor…'; }
 
   try {
+    const currentCount = await DB.Teams.getMemberCount(_ntcFoundTeam.id);
+    if (currentCount >= 7) {
+      window.showToast?.('Bu takım dolu (maksimum 7 oyuncu)', 'error');
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Takıma Katıl'; }
+      return;
+    }
     // Kaptan kendi takımına geri katılıyorsa 'captain' rolü ver
     const joinRole = _ntcFoundTeam.captain_id === _tmState.userId ? 'captain' : 'player';
     await DB.Teams.addMember(_ntcFoundTeam.id, _tmState.userId, joinRole);
@@ -689,7 +695,7 @@ function _tmRenderHeader() {
             <span id="team-gen-number">${gen ?? '—'}</span> GEN
           </span>
           <span class="team-member-count">
-            <i class="fa-solid fa-users"></i> ${_tmState.members.length} Oyuncu
+            <i class="fa-solid fa-users"></i> ${_tmState.members.length}/7 Oyuncu
           </span>
           <span class="team-captain-badge" title="Kaptan">
             <i class="fa-solid fa-crown" style="color:#ffd700;"></i>
@@ -718,6 +724,8 @@ function _tmRenderHeader() {
         <button class="btn-edit-team" onclick="openTeamEditModal()">
           <i class="fa-solid fa-pen-to-square"></i> Düzenle
         </button>
+        ` : ''}
+        ${_tmState.myRole === 'captain' ? `
         <button class="btn-dissolve-team" onclick="_tmLeaveOrDissolve()">
           <i class="fa-solid fa-trash-can"></i> Takımı Sil
         </button>
@@ -977,7 +985,7 @@ window._tmLeaveOrDissolve = async function() {
   const t = _tmState.team;
   if (!t) return;
 
-  if (_tmIsCapOrAdmin()) {
+  if (_tmState.myRole === 'captain') {
     if (!confirm(`"${t.name}" takımını tamamen silmek istediğinden emin misin?\n\nBu işlem geri alınamaz. Tüm üyeler takımdan çıkarılır.`)) return;
     try {
       // Önce realtime'ı durdur — dissolve sırasında gelen event UI'ı restore etmesin

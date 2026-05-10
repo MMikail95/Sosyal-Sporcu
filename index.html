@@ -781,6 +781,11 @@
 
                         <!-- TAB 5: MAÇ GEÇMİŞİ -->
                         <div id="tab-maclar" class="profile-subtab" style="display:none;">
+                            <!-- Son 5 Maç Form Grafiği -->
+                            <div class="glass-card" id="form-graph-card" style="margin-bottom:1rem; display:none;">
+                                <h4 class="attr-header">SON 5 MAÇ FORM GRAFİĞİ</h4>
+                                <div id="form-graph-arrows" style="display:flex; gap:0.5rem; align-items:center; padding:0.5rem 0;"></div>
+                            </div>
                             <div class="glass-card">
                                 <h4 class="attr-header">SON MAÇLAR</h4>
                                 <div id="match-history-loading" style="text-align:center; padding:2rem; display:none;">
@@ -1283,11 +1288,24 @@
 
                 <!-- TAB: Takımlar -->
                 <div id="etab-teams" class="explore-tab-content" style="display:none;">
-                    <div style="display:flex; gap:0.75rem; margin-bottom:1.25rem;">
+                    <div style="display:flex; gap:0.75rem; margin-bottom:0.75rem; flex-wrap:wrap;">
                         <input type="text" id="explore-team-search" class="profile-input"
-                               placeholder="Takım adı ara..." style="flex:1;"
+                               placeholder="Takım adı ara..." style="flex:1; min-width:140px;"
                                oninput="filterExploreTeams()"
                                onkeydown="if(event.key==='Enter') filterExploreTeams()">
+                        <select id="explore-district-filter" class="profile-input"
+                                style="flex:0 0 auto; min-width:130px;"
+                                onchange="filterExploreTeams()">
+                            <option value="">Tüm Bölgeler</option>
+                            <option value="Kadıköy">Kadıköy</option>
+                            <option value="Üsküdar">Üsküdar</option>
+                            <option value="Beşiktaş">Beşiktaş</option>
+                            <option value="Şişli">Şişli</option>
+                            <option value="Ataşehir">Ataşehir</option>
+                            <option value="Maltepe">Maltepe</option>
+                            <option value="Bakırköy">Bakırköy</option>
+                            <option value="Fatih">Fatih</option>
+                        </select>
                         <button class="btn-outline" onclick="filterExploreTeams()">
                             <i class="fa-solid fa-magnifying-glass"></i>
                         </button>
@@ -1329,6 +1347,16 @@
                             <i class="fa-solid fa-paper-plane"></i> Davet Et
                         </button>
                     </div>
+                </div>
+
+                <!-- Spor Gazetesi -->
+                <div id="gazette-section" style="margin-bottom:1.25rem; display:none;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem;">
+                        <i class="fa-solid fa-newspaper" style="color:var(--neon-green);"></i>
+                        <span style="font-weight:700; font-size:0.95rem; letter-spacing:0.05em;">SPOR GAZETESİ</span>
+                        <span style="font-size:0.7rem; color:#555; margin-left:auto;">Son maç sonuçları</span>
+                    </div>
+                    <div id="gazette-headlines"></div>
                 </div>
 
                 <!-- Feed Filter Tabs -->

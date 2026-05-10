@@ -103,11 +103,24 @@
 
             <!-- TAB: Takımlar -->
             <div id="etab-teams" class="explore-tab-content" style="display:none;">
-                <div style="display:flex; gap:0.75rem; margin-bottom:1.25rem;">
+                <div style="display:flex; gap:0.75rem; margin-bottom:0.75rem; flex-wrap:wrap;">
                     <input type="text" id="explore-team-search" class="profile-input"
-                           placeholder="Takım adı ara..." style="flex:1;"
+                           placeholder="Takım adı ara..." style="flex:1; min-width:140px;"
                            oninput="filterExploreTeams()"
                            onkeydown="if(event.key==='Enter') filterExploreTeams()">
+                    <select id="explore-district-filter" class="profile-input"
+                            style="flex:0 0 auto; min-width:130px;"
+                            onchange="filterExploreTeams()">
+                        <option value="">Tüm Bölgeler</option>
+                        <option value="Kadıköy">Kadıköy</option>
+                        <option value="Üsküdar">Üsküdar</option>
+                        <option value="Beşiktaş">Beşiktaş</option>
+                        <option value="Şişli">Şişli</option>
+                        <option value="Ataşehir">Ataşehir</option>
+                        <option value="Maltepe">Maltepe</option>
+                        <option value="Bakırköy">Bakırköy</option>
+                        <option value="Fatih">Fatih</option>
+                    </select>
                     <button class="btn-outline" onclick="filterExploreTeams()">
                         <i class="fa-solid fa-magnifying-glass"></i>
                     </button>
