@@ -1,0 +1,23 @@
+{
+  "name": "sosyal-sporcu",
+  "version": "1.0.0",
+  "description": "Web Site",
+  "main": "auth.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MMikail95/Sosyal-Sporcu.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MMikail95/Sosyal-Sporcu/issues"
+  },
+  "homepage": "https://github.com/MMikail95/Sosyal-Sporcu#readme",
+  "devDependencies": {
+    "playwright": "^1.59.1"
+  }
+}

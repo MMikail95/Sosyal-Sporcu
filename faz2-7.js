@@ -199,7 +199,7 @@ window.renderKadroTab = function () {
                 </div>
             </div>` : ''}
 
-            <!-- SECTION: Bekleyen Davetler -->
+            <!-- SECTION: Gönderilen Davetler -->
             <div class="kadro-section glass-card" id="pending-invites-card">
                 <div class="kadro-section-header">
                     <div class="section-label-pill">
@@ -208,40 +208,13 @@ window.renderKadroTab = function () {
                     </div>
                 </div>
                 <div id="team-invites-list">
-                    ${renderTeamInvitesList()}
+                    <div class="empty-state-sm" style="color:#666; font-size:0.82rem; padding:1rem 0;">
+                        <i class="fa-solid fa-bell" style="color:var(--neon-cyan); margin-right:6px;"></i>
+                        Davetler bildirim olarak gönderilir. Yukarıdan <b>Oyuncu Davet Et</b>'e tıkla.
+                    </div>
                 </div>
             </div>
 
-        </div>
-
-        <!-- Davet Modal (inline) -->
-        <div id="team-davet-modal" class="modal-backdrop" onclick="closeDavetModal()" style="display:none;">
-            <div class="modal-box" onclick="event.stopPropagation()" style="max-width:480px;">
-                <div class="modal-header">
-                    <h3><i class="fa-solid fa-user-plus" style="color:var(--neon-cyan);"></i> Oyuncu Davet Et</h3>
-                    <button class="modal-close" onclick="closeDavetModal()"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-                <div class="modal-body">
-                    <div class="modal-field">
-                        <label>Davet Edilecek Oyuncu</label>
-                        <select id="davet-player-select" class="profile-select">
-                            <option value="">(Geçersiz. Yeni 'Oyuncu Davet Et' sekmesini kullanın)</option>
-                        </select>
-                    </div>
-                    <div class="modal-field">
-                        <label>Mesaj (opsiyonel)</label>
-                        <textarea id="davet-message" class="profile-input" rows="2" 
-                                  placeholder="Takımımıza katılmaya davet ediyoruz..." style="resize:vertical;"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn-outline" onclick="closeDavetModal()">İptal</button>
-                    <button class="btn-primary" onclick="sendTeamInvite()" 
-                            style="background:var(--neon-cyan); color:black;">
-                        <i class="fa-solid fa-paper-plane"></i> Daveti Gönder
-                    </button>
-                </div>
-            </div>
         </div>
     `;
     // Kaptan ise join requests'i async yükle

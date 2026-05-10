@@ -87,23 +87,26 @@ function renderExploreTeams(teams) {
              data-team-name="${safeName}"
              data-team-slug="${safeSlug}"
              style="cursor:pointer;"
-             onclick="_openTeamDetail(this)">
+             role="button" tabindex="0"
+             aria-label="${safeName} takım kartı — detay için tıkla"
+             onclick="_openTeamDetail(this)"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();_openTeamDetail(this);}">
             <div class="etc-header">
-                <div class="etc-crest" style="color:${color};">
+                <div class="etc-crest" style="color:${color};" aria-hidden="true">
                     <i class="fa-solid fa-shield-cat"></i>
                 </div>
                 <div class="etc-info">
                     <h4 class="etc-name">${t.name || 'Takım'}</h4>
                     <div class="etc-meta">
-                        <span><i class="fa-solid fa-users"></i> ${t.team_members?.[0]?.count ?? t.player_count ?? 0} oyuncu</span>
-                        ${(t.district || t.city) ? `<span><i class="fa-solid fa-location-dot"></i> ${t.district ? t.district + (t.city ? ', ' + t.city : '') : t.city}</span>` : ''}
-                        ${(t.total_wins || 0) > 0 ? `<span style="color:var(--neon-green);"><i class="fa-solid fa-trophy"></i> ${t.total_wins} galibiyet</span>` : ''}
+                        <span><i class="fa-solid fa-users" aria-hidden="true"></i> ${t.team_members?.[0]?.count ?? t.player_count ?? 0} oyuncu</span>
+                        ${(t.district || t.city) ? `<span><i class="fa-solid fa-location-dot" aria-hidden="true"></i> ${t.district ? t.district + (t.city ? ', ' + t.city : '') : t.city}</span>` : ''}
+                        ${(t.total_wins || 0) > 0 ? `<span style="color:var(--neon-green);"><i class="fa-solid fa-trophy" aria-hidden="true"></i> ${t.total_wins} galibiyet</span>` : ''}
                     </div>
                     <div class="etc-captain">
-                        <img src="${capAv}" class="etc-cap-avatar" alt="${cap.username || 'Kaptan'}"
+                        <img src="${capAv}" class="etc-cap-avatar" alt="${cap.username || 'Kaptan'} avatarı"
                              onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=cap'">
                         <span style="font-size:0.75rem; color:#666;">
-                            <i class="fa-solid fa-crown" style="color:#ffd700;"></i> ${cap.username || 'Kaptan'}
+                            <i class="fa-solid fa-crown" style="color:#ffd700;" aria-hidden="true"></i> ${cap.username || 'Kaptan'}
                         </span>
                     </div>
                 </div>
@@ -115,10 +118,10 @@ function renderExploreTeams(teams) {
             ${t.description ? `<p class="etc-desc">${t.description}</p>` : ''}
             <div class="etc-actions" onclick="event.stopPropagation()">
                 ${isOwn
-                    ? `<span class="etc-badge-own"><i class="fa-solid fa-crown"></i> Kendi Takımın</span>`
+                    ? `<span class="etc-badge-own"><i class="fa-solid fa-crown" aria-hidden="true"></i> Kendi Takımın</span>`
                     : `<button class="epc-btn epc-btn-friend"
                                onclick="_openTeamDetail(this.closest('[data-team-id]'))">
-                           <i class="fa-solid fa-eye"></i> Önizle
+                           <i class="fa-solid fa-eye" aria-hidden="true"></i> Önizle
                        </button>`
                 }
                 ${window.TEST_MODE && !isOwn
@@ -173,11 +176,12 @@ window._openTeamDetail = async function(cardEl) {
     modal.className = 'modal-backdrop';
     modal.style.cssText = 'display:flex; z-index:9999;';
     modal.innerHTML = `
-    <div class="modal-box" style="max-width:520px; width:95%;" onclick="event.stopPropagation()">
+    <div class="modal-box" style="max-width:520px; width:95%;" onclick="event.stopPropagation()"
+         role="dialog" aria-modal="true" aria-labelledby="tdm-title">
         <div class="modal-header">
-            <h3><i class="fa-solid fa-shield-cat" style="color:var(--neon-green);"></i> Takım Detayı</h3>
-            <button class="modal-close" onclick="document.getElementById('team-detail-modal').remove()">
-                <i class="fa-solid fa-xmark"></i>
+            <h3 id="tdm-title"><i class="fa-solid fa-shield-cat" style="color:var(--neon-green);" aria-hidden="true"></i> Takım Detayı</h3>
+            <button class="modal-close" onclick="document.getElementById('team-detail-modal').remove()" aria-label="Kapat">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
             </button>
         </div>
         <div id="tdm-body" style="padding:1.5rem; text-align:center;">
@@ -256,12 +260,12 @@ window._openTeamDetail = async function(cardEl) {
                 const isCap = m.player_id === team.captain_id;
                 return `
                 <div style="display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0; border-bottom:1px solid #1a1a1a;">
-                    <img src="${av}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid #333;"
+                    <img src="${av}" alt="${p.username || 'Oyuncu'} avatarı" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid #333;"
                          onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=u'">
                     <div style="flex:1; min-width:0;">
                         <span style="font-size:0.85rem; font-weight:600; color:#ddd;">
                             ${p.username || 'Oyuncu'}
-                            ${isCap ? '<i class="fa-solid fa-crown" style="color:#ffd700; font-size:0.65rem; margin-left:4px;"></i>' : ''}
+                            ${isCap ? '<i class="fa-solid fa-crown" style="color:#ffd700; font-size:0.65rem; margin-left:4px;" aria-label="Kaptan" role="img"></i>' : ''}
                         </span>
                         <div style="font-size:0.7rem; color:#555;">
                             ${p.ana_mevki || p.position || 'Oyuncu'}
@@ -275,12 +279,12 @@ window._openTeamDetail = async function(cardEl) {
         <div style="text-align:left;">
             <!-- Başlık -->
             <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.2rem;">
-                <div style="font-size:2.5rem; color:${color};"><i class="fa-solid fa-shield-cat"></i></div>
+                <div style="font-size:2.5rem; color:${color};" aria-hidden="true"><i class="fa-solid fa-shield-cat"></i></div>
                 <div>
                     <h2 style="margin:0; color:#fff; font-size:1.3rem;">${team.name || 'Takım'}</h2>
                     <div style="font-size:0.75rem; color:#555; margin-top:2px;">
-                        ${team.city ? `<span><i class="fa-solid fa-location-dot"></i> ${team.city}</span>` : ''}
-                        <span style="margin-left:8px;"><i class="fa-solid fa-users"></i> ${members.length} oyuncu</span>
+                        ${team.city ? `<span><i class="fa-solid fa-location-dot" aria-hidden="true"></i> ${team.city}</span>` : ''}
+                        <span style="margin-left:8px;"><i class="fa-solid fa-users" aria-hidden="true"></i> ${members.length} oyuncu</span>
                         <span style="margin-left:8px; color:var(--neon-cyan); font-weight:700;">${team.slug || ''}</span>
                     </div>
                 </div>
@@ -288,12 +292,12 @@ window._openTeamDetail = async function(cardEl) {
 
             <!-- Kaptan -->
             <div style="display:flex; align-items:center; gap:0.6rem; padding:0.7rem; background:#0d0d0d; border-radius:8px; margin-bottom:1rem;">
-                <img src="${capAv}" style="width:36px; height:36px; border-radius:50%; border:2px solid #ffd700;"
+                <img src="${capAv}" alt="${cap.username || 'Kaptan'} avatarı" style="width:36px; height:36px; border-radius:50%; border:2px solid #ffd700;"
                      onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=cap'">
                 <div>
                     <div style="font-size:0.7rem; color:#666;">Kaptan</div>
                     <div style="font-size:0.9rem; font-weight:700; color:#ffd700;">
-                        <i class="fa-solid fa-crown"></i> ${cap.username || 'Kaptan'}
+                        <i class="fa-solid fa-crown" aria-hidden="true"></i> ${cap.username || 'Kaptan'}
                     </div>
                 </div>
             </div>
@@ -304,7 +308,7 @@ window._openTeamDetail = async function(cardEl) {
             <!-- Üyeler -->
             <div style="margin-bottom:1.2rem;">
                 <div style="font-size:0.7rem; color:#555; text-transform:uppercase; letter-spacing:1px; margin-bottom:0.5rem;">
-                    <i class="fa-solid fa-users" style="color:var(--neon-green);"></i> Kadro
+                    <i class="fa-solid fa-users" style="color:var(--neon-green);" aria-hidden="true"></i> Kadro
                 </div>
                 <div style="max-height:240px; overflow-y:auto;">${membersHtml}</div>
             </div>
@@ -315,7 +319,7 @@ window._openTeamDetail = async function(cardEl) {
                 <button class="epc-btn epc-btn-profile"
                         onclick="document.getElementById('team-detail-modal')?.remove(); openTeamProfile('${teamId}');"
                         style="background:linear-gradient(135deg,var(--neon-cyan),#00b8d9); color:#0a0a0f; font-weight:700;">
-                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Tam Profil
+                    <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> Tam Profil
                 </button>
                 <button class="epc-btn epc-btn-profile" onclick="navigator.clipboard?.writeText('${team.slug||''}').then(()=>showToast('📋 Kod kopyalandı: ${team.slug||''}')).catch(()=>showToast('Kod: ${team.slug||''}'))">
                     <i class="fa-solid fa-copy"></i> Kodu Kopyala

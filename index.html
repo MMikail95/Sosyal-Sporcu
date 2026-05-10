@@ -875,45 +875,54 @@
                 </div>
 
                 <!-- ══ SUB-TAB NAVIGATION ══ -->
-                <div class="team-sub-tabs" id="team-sub-tabs">
+                <div class="team-sub-tabs" id="team-sub-tabs"
+                     role="tablist" aria-label="Takım sekmeleri">
                     <button class="team-tab-btn active" data-tab="ttab-genel"
+                            role="tab" aria-selected="true" aria-controls="ttab-genel"
                             onclick="switchTeamTab('ttab-genel')">
-                        <i class="fa-solid fa-chart-pie"></i>
+                        <i class="fa-solid fa-chart-pie" aria-hidden="true"></i>
                         <span>Genel Bakış</span>
                     </button>
                     <button class="team-tab-btn" data-tab="ttab-kadro"
+                            role="tab" aria-selected="false" aria-controls="ttab-kadro"
                             onclick="switchTeamTab('ttab-kadro')">
-                        <i class="fa-solid fa-users"></i>
+                        <i class="fa-solid fa-users" aria-hidden="true"></i>
                         <span>Kadro & Davet</span>
                     </button>
                     <button class="team-tab-btn" data-tab="ttab-saha"
+                            role="tab" aria-selected="false" aria-controls="ttab-saha"
                             onclick="switchTeamTab('ttab-saha')">
-                        <i class="fa-solid fa-futbol"></i>
+                        <i class="fa-solid fa-futbol" aria-hidden="true"></i>
                         <span>Saha Düzeni</span>
                     </button>
                     <button class="team-tab-btn" data-tab="ttab-olustur"
+                            role="tab" aria-selected="false" aria-controls="ttab-olustur"
                             onclick="switchTeamTab('ttab-olustur')">
-                        <i class="fa-solid fa-shuffle"></i>
+                        <i class="fa-solid fa-shuffle" aria-hidden="true"></i>
                         <span>Takım Oluştur</span>
                     </button>
                     <button class="team-tab-btn" data-tab="ttab-basarimlar"
+                            role="tab" aria-selected="false" aria-controls="ttab-basarimlar"
                             onclick="switchTeamTab('ttab-basarimlar')">
-                        <i class="fa-solid fa-trophy"></i>
+                        <i class="fa-solid fa-trophy" aria-hidden="true"></i>
                         <span>Başarımlar</span>
                     </button>
                     <button class="team-tab-btn" data-tab="ttab-rakipler"
+                            role="tab" aria-selected="false" aria-controls="ttab-rakipler"
                             onclick="switchTeamTab('ttab-rakipler')">
-                        <i class="fa-solid fa-swords"></i>
+                        <i class="fa-solid fa-swords" aria-hidden="true"></i>
                         <span>Rakipler</span>
                     </button>
                     <button class="team-tab-btn" data-tab="ttab-odemeler"
+                            role="tab" aria-selected="false" aria-controls="ttab-odemeler"
                             onclick="switchTeamTab('ttab-odemeler')">
-                        <i class="fa-solid fa-money-bill-wave"></i>
+                        <i class="fa-solid fa-money-bill-wave" aria-hidden="true"></i>
                         <span>Ödemeler</span>
                     </button>
                     <button class="team-tab-btn" data-tab="ttab-sinerji"
+                            role="tab" aria-selected="false" aria-controls="ttab-sinerji"
                             onclick="switchTeamTab('ttab-sinerji')">
-                        <i class="fa-solid fa-link"></i>
+                        <i class="fa-solid fa-link" aria-hidden="true"></i>
                         <span>Sinerji</span>
                     </button>
                 </div>
@@ -921,7 +930,8 @@
                 <!-- ══════════════════════════════════════
                      SEKME 1: GENEL BAKIŞ
                 ══════════════════════════════════════ -->
-                <div id="ttab-genel" class="team-subtab" style="display:block;">
+                <div id="ttab-genel" class="team-subtab" style="display:block;"
+     role="tabpanel" aria-labelledby="" aria-label="Genel Bakış">
                     <div class="team-overview-grid">
 
                         <!-- LEFT: Radar Chart Card -->
@@ -968,7 +978,8 @@
                 <!-- ══════════════════════════════════════
                      SEKME 2: KADRO & DAVET
                 ══════════════════════════════════════ -->
-                <div id="ttab-kadro" class="team-subtab" style="display:none;">
+                <div id="ttab-kadro" class="team-subtab" style="display:none;"
+     role="tabpanel" aria-label="Kadro ve Davet" aria-hidden="true">
                     <div id="ttab-kadro-content">
                         <!-- Rendered by renderKadroTab() — Faz 2 -->
                     </div>
@@ -977,7 +988,8 @@
                 <!-- ══════════════════════════════════════
                      SEKME 3: SAHA DÜZENİ
                 ══════════════════════════════════════ -->
-                <div id="ttab-saha" class="team-subtab" style="display:none;">
+                <div id="ttab-saha" class="team-subtab" style="display:none;"
+     role="tabpanel" aria-label="Saha Düzeni" aria-hidden="true">
                     <div id="ttab-saha-content">
                         <!-- Rendered by renderSahaTab() — Faz 3 -->
                     </div>
@@ -986,7 +998,8 @@
                 <!-- ══════════════════════════════════════
                      SEKME 4: TAKIM OLUŞTUR
                 ══════════════════════════════════════ -->
-                <div id="ttab-olustur" class="team-subtab" style="display:none;">
+                <div id="ttab-olustur" class="team-subtab" style="display:none;"
+     role="tabpanel" aria-label="Takım Oluştur" aria-hidden="true">
                     <div id="ttab-olustur-content">
                         <!-- Rendered by renderTakimOlusturTab() — Faz 4 -->
                     </div>
@@ -995,7 +1008,8 @@
                 <!-- ══════════════════════════════════════
                      SEKME 5: BAŞARIMLAR
                 ══════════════════════════════════════ -->
-                <div id="ttab-basarimlar" class="team-subtab" style="display:none;">
+                <div id="ttab-basarimlar" class="team-subtab" style="display:none;"
+     role="tabpanel" aria-label="Başarımlar" aria-hidden="true">
                     <div id="team-achievements-content">
                         <!-- Rendered by renderTeamAchievements() -->
                     </div>
@@ -1004,7 +1018,8 @@
                 <!-- ══════════════════════════════════════
                      SEKME 6: RAKİPLER
                 ══════════════════════════════════════ -->
-                <div id="ttab-rakipler" class="team-subtab" style="display:none;">
+                <div id="ttab-rakipler" class="team-subtab" style="display:none;"
+     role="tabpanel" aria-label="Rakipler" aria-hidden="true">
                     <div id="ttab-rakipler-content">
                         <!-- Rendered by renderRakiplerTab() — Faz 6 -->
                     </div>
@@ -1013,7 +1028,8 @@
                 <!-- ══════════════════════════════════════
                      SEKME 7: ÖDEMELER
                 ══════════════════════════════════════ -->
-                <div id="ttab-odemeler" class="team-subtab" style="display:none;">
+                <div id="ttab-odemeler" class="team-subtab" style="display:none;"
+     role="tabpanel" aria-label="Ödemeler" aria-hidden="true">
                     <div id="ttab-odemeler-content">
                         <!-- Rendered by renderOdemelerTab() — Faz 7 -->
                     </div>
@@ -1022,7 +1038,8 @@
                 <!-- ══════════════════════════════════════
                      SEKME 8: SİNERJİ
                 ══════════════════════════════════════ -->
-                <div id="ttab-sinerji" class="team-subtab" style="display:none;">
+                <div id="ttab-sinerji" class="team-subtab" style="display:none;"
+     role="tabpanel" aria-label="Sinerji" aria-hidden="true">
                     <div id="ttab-sinerji-content">
                         <!-- Rendered by renderSinerjiTab() — Faz 5 -->
                     </div>

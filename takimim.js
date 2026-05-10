@@ -548,8 +548,9 @@ function _tmRenderTeamSelector() {
       ${isCaptain ? '<i class="fa-solid fa-crown ts-captain-crown"></i>' : ''}
     </button>`;
   }).join('') + `
-    <button class="ts-chip ts-chip-add" onclick="_tmNewTeamModal()" title="Yeni Takım Ekle">
-      <i class="fa-solid fa-plus"></i>
+    <button class="ts-chip ts-chip-add" onclick="_tmNewTeamModal()"
+            title="Yeni Takım Ekle" aria-label="Yeni takım ekle">
+      <i class="fa-solid fa-plus" aria-hidden="true"></i>
     </button>
   `;
 }
@@ -701,8 +702,12 @@ function _tmRenderHeader() {
             <i class="fa-solid fa-crown" style="color:#ffd700;"></i>
             ${cap.username || 'Kaptan'}
           </span>
-          <span class="team-invite-code" title="Davet Kodu" onclick="_tmCopyCode('${t.slug || ''}')">
-            <i class="fa-solid fa-key" style="color:var(--neon-cyan);"></i>
+          <span class="team-invite-code" title="Davet Kodu"
+                role="button" tabindex="0"
+                aria-label="Davet kodunu kopyala: ${t.slug || 'kod yok'}"
+                onclick="_tmCopyCode('${t.slug || ''}')"
+                onkeydown="if(event.key==='Enter'||event.key===' ')_tmCopyCode('${t.slug || ''}')">
+            <i class="fa-solid fa-key" style="color:var(--neon-cyan);" aria-hidden="true"></i>
             ${t.slug || '—'}
           </span>
         </div>
@@ -711,10 +716,10 @@ function _tmRenderHeader() {
     </div>
     <div class="team-header-actions">
       <div class="team-season-counters">
-        <div class="ts-counter"><span class="ts-val">${(t.total_wins||0)+(t.total_draws||0)+(t.total_losses||0)}</span><span class="ts-lbl">Maç</span></div>
-        <div class="ts-counter win"><span class="ts-val">${t.total_wins||0}</span><span class="ts-lbl">Galibiyet</span></div>
-        <div class="ts-counter draw"><span class="ts-val">${t.total_draws||0}</span><span class="ts-lbl">Beraberlik</span></div>
-        <div class="ts-counter loss"><span class="ts-val">${t.total_losses||0}</span><span class="ts-lbl">Mağlubiyet</span></div>
+        <div class="ts-counter" aria-label="${(t.total_wins||0)+(t.total_draws||0)+(t.total_losses||0)} maç oynandı"><span class="ts-val" aria-hidden="true">${(t.total_wins||0)+(t.total_draws||0)+(t.total_losses||0)}</span><span class="ts-lbl" aria-hidden="true">Maç</span></div>
+        <div class="ts-counter win" aria-label="${t.total_wins||0} galibiyet"><span class="ts-val" aria-hidden="true">${t.total_wins||0}</span><span class="ts-lbl" aria-hidden="true">Galibiyet</span></div>
+        <div class="ts-counter draw" aria-label="${t.total_draws||0} beraberlik"><span class="ts-val" aria-hidden="true">${t.total_draws||0}</span><span class="ts-lbl" aria-hidden="true">Beraberlik</span></div>
+        <div class="ts-counter loss" aria-label="${t.total_losses||0} mağlubiyet"><span class="ts-val" aria-hidden="true">${t.total_losses||0}</span><span class="ts-lbl" aria-hidden="true">Mağlubiyet</span></div>
       </div>
       <div class="team-header-btns">
         ${isCA ? `
@@ -1217,19 +1222,26 @@ function renderTeamMemberGrid() {
             const gen    = _tmPlayerGEN(p);
             const isCap  = m.role === 'captain';
             return `
-            <div class="member-chip" onclick="viewPlayerFromTeam('${p.id}')" title="${p.username||'—'} — GEN ${gen}">
-              <img src="${p.avatar_url || _tmAvatar(p.username)}" class="member-chip-avatar">
+            <div class="member-chip"
+                 role="button" tabindex="0"
+                 aria-label="${p.username||'Oyuncu'} profiline git${isCap ? ', kaptan' : ''}, GEN ${gen ?? 'bilinmiyor'}"
+                 onclick="viewPlayerFromTeam('${p.id}')"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();viewPlayerFromTeam('${p.id}')}"
+                 title="${p.username||'—'} — GEN ${gen}">
+              <img src="${p.avatar_url || _tmAvatar(p.username)}" class="member-chip-avatar"
+                   alt="${p.username || 'Oyuncu'} avatarı">
               <div class="member-chip-info">
                 <span class="member-chip-name">
                   ${p.username || '—'}
-                  ${isCap ? '<i class="fa-solid fa-crown" style="color:#ffd700;font-size:0.7rem;"></i>' : ''}
+                  ${isCap ? '<i class="fa-solid fa-crown" style="color:#ffd700;font-size:0.7rem;" aria-label="Kaptan" role="img"></i>' : ''}
                   ${roleBadge(m.role)}
                 </span>
                 <span class="member-chip-gen" style="color:${gen!=null&&gen>=8?'var(--neon-green)':gen!=null&&gen>=7?'var(--neon-cyan)':gen!=null?'orange':'#555'};">${gen ?? '—'} GEN</span>
               </div>
-              ${isCA && !isCap ? `<button class="member-chip-remove" title="Takımdan Çıkar"
+              ${isCA && !isCap ? `<button class="member-chip-remove"
+                  aria-label="${p.username||'Oyuncu'} oyuncusunu takımdan çıkar"
                   onclick="event.stopPropagation();_tmRemoveMemberPrompt('${p.id}','${p.username||'Oyuncu'}')">
-                <i class="fa-solid fa-user-minus"></i>
+                <i class="fa-solid fa-user-minus" aria-hidden="true"></i>
               </button>` : ''}
             </div>`;
           }).join('')}
@@ -1267,16 +1279,24 @@ window.switchTeamTab = function(tabId) {
   document.querySelectorAll('.team-subtab').forEach(el => {
     el.style.display = 'none';
     el.classList.remove('active');
+    el.setAttribute('aria-hidden', 'true');
   });
-  document.querySelectorAll('.team-tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.team-tab-btn').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected', 'false');
+  });
 
   const target = document.getElementById(tabId);
   if (target) {
     target.style.display = 'block';
+    target.setAttribute('aria-hidden', 'false');
     setTimeout(() => target.classList.add('active'), 10);
   }
   const activeBtn = document.querySelector(`.team-tab-btn[data-tab="${tabId}"]`);
-  if (activeBtn) activeBtn.classList.add('active');
+  if (activeBtn) {
+    activeBtn.classList.add('active');
+    activeBtn.setAttribute('aria-selected', 'true');
+  }
 
   if (tabId === 'ttab-genel')      renderTeamOverview();
   if (tabId === 'ttab-basarimlar') renderTeamAchievements();
