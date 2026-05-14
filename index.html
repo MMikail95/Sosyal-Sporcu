@@ -78,7 +78,11 @@
                 <span>MANAGER++</span>
             </div>
             <ul class="nav-menu">
-                <li class="nav-item active" data-target="profile" id="nav-profile">
+                <li class="nav-item active" data-target="dashboard" id="nav-dashboard">
+                    <i class="fa-solid fa-house"></i>
+                    <span>Ana Sayfa</span>
+                </li>
+                <li class="nav-item" data-target="profile" id="nav-profile">
                     <i class="fa-solid fa-id-card"></i>
                     <span>Karakterim</span>
                     <span class="nav-badge" id="profile-notif-badge" style="display:none; background:var(--neon-red); color:#fff;"></span>
@@ -153,8 +157,86 @@
         <!-- Main Content -->
         <main class="main-content">
 
+            <!-- Section: Ana Sayfa (Dashboard) -->
+            <section id="dashboard" class="section active">
+
+                <!-- AI Gazette -->
+                <div class="dashboard-gazette glass-card" id="dash-gazette">
+                    <div class="dash-gazette-header">
+                        <i class="fa-solid fa-newspaper" style="color:var(--gold)"></i>
+                        <span class="dash-gazette-title">Spor Gazetesi</span>
+                        <span class="dash-gazette-sub">Bölgenizdeki son gelişmeler</span>
+                    </div>
+                    <div id="dash-gazette-ticker">
+                        <div class="skeleton-text" style="width:80%;height:14px;margin-bottom:8px;border-radius:6px;"></div>
+                        <div class="skeleton-text" style="width:60%;height:14px;border-radius:6px;"></div>
+                    </div>
+                </div>
+
+                <!-- 2-kolon ızgara -->
+                <div class="dashboard-grid">
+
+                    <!-- Sol: Sosyal Duvar -->
+                    <div class="dashboard-main">
+                        <div class="dash-section-label">
+                            <i class="fa-solid fa-fire" style="color:var(--neon-green)"></i>
+                            <span>Sosyal Duvar</span>
+                            <button class="dash-post-btn" onclick="if(typeof openPostModal==='function')openPostModal()">
+                                <i class="fa-solid fa-pen-to-square"></i> Paylaş
+                            </button>
+                        </div>
+                        <div id="dash-feed-stream">
+                            <div class="skeleton-feed-card"><div class="skeleton-avatar-sm"></div><div style="flex:1"><div class="skeleton-text" style="width:55%;height:12px;margin-bottom:8px;border-radius:5px;"></div><div class="skeleton-text" style="width:85%;height:10px;border-radius:5px;"></div></div></div>
+                            <div class="skeleton-feed-card"><div class="skeleton-avatar-sm"></div><div style="flex:1"><div class="skeleton-text" style="width:45%;height:12px;margin-bottom:8px;border-radius:5px;"></div><div class="skeleton-text" style="width:70%;height:10px;border-radius:5px;"></div></div></div>
+                            <div class="skeleton-feed-card"><div class="skeleton-avatar-sm"></div><div style="flex:1"><div class="skeleton-text" style="width:60%;height:12px;margin-bottom:8px;border-radius:5px;"></div><div class="skeleton-text" style="width:80%;height:10px;border-radius:5px;"></div></div></div>
+                        </div>
+                    </div>
+
+                    <!-- Sağ: Bölgesel Hub -->
+                    <aside class="dashboard-sidebar">
+
+                        <!-- Kullanıcı mini kartı -->
+                        <div class="glass-card dash-mini-card" id="dash-mini-card">
+                            <div class="dash-mini-avatar-wrap">
+                                <img id="dash-mini-avatar" src="" alt="Avatar"
+                                     onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=player'">
+                                <div class="dash-mini-ovr" id="dash-mini-ovr">—</div>
+                            </div>
+                            <div class="dash-mini-info">
+                                <div class="dash-mini-name" id="dash-mini-name">—</div>
+                                <div class="dash-mini-pos" id="dash-mini-pos">—</div>
+                            </div>
+                            <div class="dash-form-strip" id="dash-form-strip">
+                                <span class="form-pill form-none">?</span>
+                                <span class="form-pill form-none">?</span>
+                                <span class="form-pill form-none">?</span>
+                                <span class="form-pill form-none">?</span>
+                                <span class="form-pill form-none">?</span>
+                            </div>
+                        </div>
+
+                        <!-- Bölge sıralaması -->
+                        <div class="glass-card dash-standings" id="dash-standings">
+                            <div class="dash-standings-header">
+                                <i class="fa-solid fa-ranking-star" style="color:var(--gold)"></i>
+                                <span>Bölge Sıralaması</span>
+                                <span class="dash-standings-city" id="dash-standings-city"></span>
+                            </div>
+                            <ol class="dash-standings-list" id="dash-standings-list">
+                                <li class="skeleton-text" style="height:36px;margin-bottom:6px;border-radius:8px;list-style:none;"></li>
+                                <li class="skeleton-text" style="height:36px;margin-bottom:6px;border-radius:8px;list-style:none;"></li>
+                                <li class="skeleton-text" style="height:36px;margin-bottom:6px;border-radius:8px;list-style:none;"></li>
+                                <li class="skeleton-text" style="height:36px;border-radius:8px;list-style:none;"></li>
+                            </ol>
+                        </div>
+
+                    </aside>
+                </div>
+
+            </section>
+
             <!-- Section: Karakterim -->
-            <section id="profile" class="section active">
+            <section id="profile" class="section">
 
                 <!-- View-Only Banner -->
                 <div id="view-only-banner" class="view-only-banner" style="display:none;">
@@ -167,23 +249,25 @@
 
                 <!-- Profile Header Summary -->
                 <div class="glass-card profile-header-card"
-                    style="display: flex; gap: 2rem; align-items: center; padding: 1.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
-                    <div class="avatar-container" style="width: 100px; height: 100px; margin-bottom: 0;">
-                        <img src="" class="avatar-img" id="profile-avatar"
-                             style="background:#1a1a1a;">
+                    style="display:flex; gap:2rem; align-items:center; padding:2rem 2rem; margin-bottom:1rem; flex-wrap:wrap;">
+                    <div class="avatar-container" style="width:120px; height:120px; margin-bottom:0; flex-shrink:0;">
+                        <img src="" class="avatar-img" id="profile-avatar" style="background:#1a1a1a;">
                         <div class="camera-overlay" onclick="document.getElementById('avatar-upload').click()">
                             <i class="fa-solid fa-camera"></i>
                         </div>
                         <input type="file" id="avatar-upload" class="avatar-upload-input" accept="image/*"
                                onchange="handleAvatarUpload(this)">
                     </div>
-                    <div>
-                        <h1 class="player-name" id="player-name" style="font-size: 2.2rem; margin-bottom: 0.2rem;">—</h1>
-                        <div style="display: flex; gap: 1rem; color: var(--text-muted); flex-wrap:wrap;">
-                            <span id="disp-team-header" style="display:none;"><i class="fa-solid fa-shirt"></i> <span id="disp-team-header-name"></span></span>
-                            <span id="disp-city-header" style="display:none;"><i class="fa-solid fa-building"></i> <span id="disp-city-header-val"></span></span>
-                            <span id="disp-age-header" style="display:none;"><i class="fa-solid fa-cake-candles"></i> <span id="disp-age-header-val"></span> Yaş</span>
+                    <div style="flex:1; min-width:0;">
+                        <h1 class="player-name" id="player-name" style="font-size:2.6rem; margin-bottom:0.15rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">—</h1>
+                        <div id="player-username-row" style="font-size:0.9rem; color:var(--neon-green); font-weight:700; display:none; margin-bottom:0.1rem;">
+                            <span id="player-username-disp"></span>
                         </div>
+                        <div id="player-fullname-row" style="display:none;"></div>
+                        <!-- Gizli compat spanlar -->
+                        <span id="disp-team-header" style="display:none;"><span id="disp-team-header-name"></span></span>
+                        <span id="disp-city-header" style="display:none;"><span id="disp-city-header-val"></span></span>
+                        <span id="disp-age-header" style="display:none;"><span id="disp-age-header-val"></span></span>
                     </div>
                     <div style="margin-left: auto; text-align: right;">
                         <div id="overall-rating-display"
@@ -191,6 +275,28 @@
                                     text-shadow: 0 0 20px rgba(173,255,47,0.6);
                                     line-height:1;" title="GEN Skoru">—</div>
                         <div style="font-size: 0.75rem; font-weight:700; color: #888; letter-spacing:2px;">GEN</div>
+                    </div>
+                </div>
+
+                <!-- Rozetler & Onurlar — her zaman görünür -->
+                <div id="badge-strip-container" class="glass-card"
+                     style="margin-bottom:0.75rem; padding:0.75rem 1.25rem;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+                        <i class="fa-solid fa-medal" style="color:gold; font-size:0.9rem;"></i>
+                        <span style="font-size:0.72rem; font-weight:700; color:#888; letter-spacing:1px; text-transform:uppercase;">Kazanılan Rozetler</span>
+                    </div>
+                    <div id="badge-strip" style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center;">
+                        <span style="color:#444; font-size:0.82rem;">— henüz rozet yok —</span>
+                    </div>
+                </div>
+                <div id="honor-showcase-container" class="glass-card"
+                     style="margin-bottom:1.5rem; padding:0.75rem 1.25rem;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+                        <i class="fa-solid fa-shield-heart" style="color:var(--neon-cyan); font-size:0.9rem;"></i>
+                        <span style="font-size:0.72rem; font-weight:700; color:#888; letter-spacing:1px; text-transform:uppercase;">Kazanılan Onurlar</span>
+                    </div>
+                    <div id="honor-strip" style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center;">
+                        <span style="color:#444; font-size:0.82rem;">— henüz onur yok —</span>
                     </div>
                 </div>
 
@@ -203,11 +309,17 @@
                         <button class="tab-btn active" onclick="switchProfileTab('tab-genel')" data-tab="tab-genel">
                             <i class="fa-solid fa-house"></i> Genel Bakış
                         </button>
+                        <button class="tab-btn" onclick="switchProfileTab('tab-hakkimda')" data-tab="tab-hakkimda">
+                            <i class="fa-solid fa-user-circle"></i> Hakkımda
+                        </button>
                         <button class="tab-btn" onclick="switchProfileTab('tab-kariyer')" data-tab="tab-kariyer">
                             <i class="fa-solid fa-trophy"></i> Kariyer ve Rozetler
                         </button>
                         <button class="tab-btn" onclick="switchProfileTab('tab-maclar')" data-tab="tab-maclar">
                             <i class="fa-solid fa-calendar-days"></i> Maç Geçmişi
+                        </button>
+                        <button class="tab-btn" onclick="switchProfileTab('tab-arkadaslarim')" data-tab="tab-arkadaslarim">
+                            <i class="fa-solid fa-user-group"></i> Arkadaşlarım
                         </button>
                     </div>
 
@@ -216,148 +328,55 @@
 
                         <!-- TAB 1: GENEL BAKIS -->
                         <div id="tab-genel" class="profile-subtab" style="display:block;">
+                            <!-- Gizli compat span'lar — script.js uyumluluğu için -->
+                            <span id="disp-mevki-gb" style="display:none;"></span>
+                            <span id="disp-ayak-gb" style="display:none;"></span>
+                            <span id="disp-age-gb" style="display:none;"></span>
+                            <span id="disp-city-gb" style="display:none;"></span>
+                            <span id="disp-height-weight-gb" style="display:none;"></span>
+                            <span id="disp-team-gb" style="display:none;"></span>
+                            <span id="disp-height-gb" style="display:none;"></span>
+                            <span id="disp-weight-gb" style="display:none;"></span>
                             <div class="genel-bakis-grid">
-                                <!-- LEFT: ID CARD -->
-                                <div class="gb-left-col">
-                                    <div class="glass-card info-card">
-                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-                                            <h4 class="attr-header" style="margin:0;">KİMLİK BİLGİLERİ</h4>
-                                            <button id="btn-edit-profile-toggle"
-                                                onclick="toggleProfileEditPanel()"
-                                                style="background:rgba(173,255,47,0.1); border:1px solid rgba(173,255,47,0.3); color:var(--neon-green); border-radius:8px; padding:0.3rem 0.7rem; font-size:0.75rem; font-weight:700; cursor:pointer; font-family:inherit; display:none;">
-                                                <i class="fa-solid fa-pen-to-square"></i> Düzenle
-                                            </button>
-                                        </div>
 
-                                        <!-- Görüntüleme modu -->
-                                        <div id="profile-view-mode">
-                                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                                                <span class="info-label">Mevki</span>
-                                                <span class="info-val" id="disp-mevki-gb" style="color:var(--neon-green)">—</span>
-                                            </div>
-                                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                                                <span class="info-label">Ayak</span>
-                                                <span class="info-val" id="disp-ayak-gb">—</span>
-                                            </div>
-                                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                                                <span class="info-label">Yaş</span>
-                                                <span class="info-val" id="disp-age-gb">—</span>
-                                            </div>
-                                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                                                <span class="info-label">Şehir</span>
-                                                <span class="info-val" id="disp-city-gb">—</span>
-                                            </div>
-                                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                                                <span class="info-label">Boy / Kilo</span>
-                                                <span class="info-val" id="disp-height-weight-gb">—</span>
-                                            </div>
-                                            <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-                                                <span class="info-label">Takım</span>
-                                                <span class="info-val" id="disp-team-gb" style="color:var(--neon-cyan)">—</span>
-                                            </div>
-                                            <!-- Gizli — script.js uyumluluğu için -->
-                                            <span id="disp-height-gb" style="display:none;"></span>
-                                            <span id="disp-weight-gb" style="display:none;"></span>
-                                        </div>
-
-                                        <!-- Düzenleme modu (gizli) -->
-                                        <div id="profile-edit-panel" style="display:none;">
-                                            <div style="display:flex; flex-direction:column; gap:0.6rem;">
-                                                <div>
-                                                    <label style="font-size:0.72rem; color:#888; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; display:block;">
-                                                        <i class="fa-solid fa-user" style="color:var(--neon-green);"></i> Kullanıcı Adı
-                                                    </label>
-                                                    <input type="text" id="inp-username" class="profile-input"
-                                                           placeholder="Kullanıcı adı..." maxlength="30"
-                                                           style="width:100%; padding:0.5rem 0.7rem; border-radius:8px;">
-                                                </div>
-                                                <div>
-                                                    <label style="font-size:0.72rem; color:#888; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; display:block;">
-                                                        <i class="fa-solid fa-id-badge" style="color:var(--neon-green);"></i> Ad Soyad
-                                                    </label>
-                                                    <input type="text" id="inp-full-name" class="profile-input"
-                                                           placeholder="Adınız Soyadınız..." maxlength="60"
-                                                           style="width:100%; padding:0.5rem 0.7rem; border-radius:8px;">
-                                                </div>
-                                                <div>
-                                                    <label style="font-size:0.72rem; color:#888; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; display:block;">
-                                                        <i class="fa-solid fa-location-dot" style="color:var(--neon-cyan);"></i> Şehir
-                                                    </label>
-                                                    <input type="text" id="inp-city" class="profile-input"
-                                                           placeholder="İstanbul, Ankara..." maxlength="50"
-                                                           style="width:100%; padding:0.5rem 0.7rem; border-radius:8px;">
-                                                </div>
-                                                <div>
-                                                    <label style="font-size:0.72rem; color:#888; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; display:block;">
-                                                        <i class="fa-solid fa-futbol" style="color:var(--neon-green);"></i> Ana Mevki
-                                                    </label>
-                                                    <select id="sel-ana-mevki-gb" class="profile-select"
-                                                            style="width:100%; padding:0.5rem 0.7rem; border-radius:8px;">
-                                                        <option value="Kaleci">🧤 Kaleci</option>
-                                                        <option value="Stoper">🛡️ Stoper</option>
-                                                        <option value="Libero">🛡️ Libero</option>
-                                                        <option value="Sol Bek">⬅️ Sol Bek</option>
-                                                        <option value="Sağ Bek">➡️ Sağ Bek</option>
-                                                        <option value="Defansif OS">⚓ Defansif OS</option>
-                                                        <option value="Ofansif OS (10 Numara)">⚡ Ofansif OS (10)</option>
-                                                        <option value="Sol Kanat">🌪️ Sol Kanat</option>
-                                                        <option value="Sağ Kanat">🌪️ Sağ Kanat</option>
-                                                        <option value="Forvet">⚽ Forvet</option>
-                                                        <option value="Santrafor">🎯 Santrafor</option>
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label style="font-size:0.72rem; color:#888; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; display:block;">
-                                                        <i class="fa-solid fa-shoe-prints" style="color:var(--neon-pink);"></i> Kullandığı Ayak
-                                                    </label>
-                                                    <select id="sel-ayak" class="profile-select"
-                                                            style="width:100%; padding:0.5rem 0.7rem; border-radius:8px;">
-                                                        <option value="Sağ">👟 Sağ Ayak</option>
-                                                        <option value="Sol">👟 Sol Ayak</option>
-                                                        <option value="Her İkisi">✨ Her İkisi</option>
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label style="font-size:0.72rem; color:#888; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; display:block;">
-                                                        <i class="fa-solid fa-shield-halved" style="color:var(--neon-cyan);"></i> Takım Seçimi
-                                                    </label>
-                                                    <select id="sel-team-gb" class="profile-select"
-                                                            style="width:100%; padding:0.5rem 0.7rem; border-radius:8px;">
-                                                        <option value="">— Takım Seçilmedi —</option>
-                                                    </select>
-                                                </div>
-                                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
-                                                    <div>
-                                                        <label style="font-size:0.72rem; color:#888; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; display:block;">
-                                                            <i class="fa-solid fa-cake-candles"></i> Yaş
-                                                        </label>
-                                                        <input type="number" id="inp-age-gb" class="profile-input"
-                                                               placeholder="24" min="10" max="60"
-                                                               style="width:100%; padding:0.5rem 0.7rem; border-radius:8px;">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
-                                                <button onclick="saveQuickProfile()" class="btn-primary"
-                                                        style="flex:1; padding:0.6rem; background:linear-gradient(135deg,var(--neon-green),#6fff00); color:#0a0a0f; font-weight:800; border:none; border-radius:8px; cursor:pointer; font-size:0.85rem; font-family:inherit;">
-                                                    <i class="fa-solid fa-floppy-disk"></i> Kaydet
-                                                </button>
-                                                <button onclick="toggleProfileEditPanel()" class="btn-outline"
-                                                        style="padding:0.6rem 0.8rem; border-radius:8px; cursor:pointer; font-size:0.85rem;">
-                                                    İptal
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <button id="btn-mac-davet" class="btn-primary"
-                                            style="width: 100%; margin-top: 1.5rem; background: var(--neon-pink); color: white; border:none; padding:1rem; border-radius:8px; font-weight:800; cursor:pointer; display:none;">
-                                            <i class="fa-solid fa-envelope-open-text"></i> MAÇA DAVET ET
+                                <!-- SOL: FUT OYUNCU KARTI -->
+                                <div class="gb-card-col">
+                                    <div class="fut-card" id="player-fut-card">
+                                        <!-- Ayarlar butonu -->
+                                        <button class="fut-settings-btn" onclick="toggleFutSettings(event)" title="Alanları özelleştir">
+                                            <i class="fa-solid fa-gear"></i>
                                         </button>
+                                        <!-- Ayarlar paneli -->
+                                        <div class="fut-settings-panel" id="fut-settings-panel">
+                                            <div style="font-size:0.7rem; font-weight:700; color:#aaa; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:8px;">Görünecek Alanlar (max 6)</div>
+                                            <div id="fut-field-options" style="display:flex; flex-direction:column; gap:5px;"></div>
+                                        </div>
+                                        <!-- Kart üst kısmı -->
+                                        <div class="fut-card-top">
+                                            <div>
+                                                <div class="fut-card-gen" id="fut-gen" style="display:inline-flex; align-items:center; gap:4px;">—<span id="fut-condition-arrow" style="font-size:1.1rem;"></span></div>
+                                                <div class="fut-card-pos" id="fut-pos">OS</div>
+                                            </div>
+                                            <div class="fut-card-emblem">
+                                                <i class="fa-solid fa-futbol"></i>
+                                            </div>
+                                        </div>
+                                        <!-- Avatar -->
+                                        <div class="fut-card-avatar-wrap">
+                                            <img id="fut-avatar" src="" class="fut-card-avatar"
+                                                 onerror="this.style.opacity='0.3'">
+                                        </div>
+                                        <!-- Alt kısım -->
+                                        <div class="fut-card-bottom">
+                                            <div class="fut-card-name" id="fut-name">OYUNCU</div>
+                                            <div class="fut-card-username" id="fut-username">@kullanici</div>
+                                            <div class="fut-card-divider"></div>
+                                            <div class="fut-card-stats" id="fut-stats"></div>
+                                        </div>
                                     </div>
                                 </div>
 
-
-                                <!-- RIGHT: CHART -->
+                                <!-- SAĞ: RADAR GRAFİĞİ -->
                                 <div class="gb-right-col">
                                     <div class="glass-card chart-card"
                                         style="position:relative; min-height:400px; display:flex; flex-direction:column;">
@@ -381,32 +400,282 @@
                                 </div>
                             </div>
 
-                            <!-- BOTTOM: STATS — KALDIRILDI (#10) -->
-
-                            <!-- UI-07: ROZET ŞERİDİ — kazanılan başarımlar -->
-                            <div id="badge-strip-container" class="glass-card"
-                                 style="margin-top:1.5rem; padding:1rem 1.25rem; min-height:60px;">
-                                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem;">
-                                    <i class="fa-solid fa-medal" style="color:gold; font-size:0.9rem;"></i>
-                                    <span style="font-size:0.75rem; font-weight:700; color:#888; letter-spacing:1px; text-transform:uppercase;">Kazanılan Rozetler</span>
+                            <!-- ÖNE ÇIKAN HAREKETLER (Highlights) -->
+                            <div class="glass-card" style="margin-top:1.25rem; padding:1rem 1.25rem;">
+                                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem;">
+                                    <i class="fa-solid fa-clapperboard" style="color:var(--neon-pink); font-size:0.9rem;"></i>
+                                    <span style="font-size:0.72rem; font-weight:700; color:#888; letter-spacing:1px; text-transform:uppercase;">Öne Çıkan Hareketler</span>
                                 </div>
-                                <div id="badge-strip" style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center;">
-                                    <span style="color:#444; font-size:0.82rem;">— henüz rozet yok —</span>
-                                </div>
-                            </div>
-
-                            <!-- ONUR SHOWCASE -->
-                            <div id="honor-showcase-container" class="glass-card"
-                                 style="margin-top:1rem; padding:1rem 1.25rem; min-height:60px;">
-                                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem;">
-                                    <i class="fa-solid fa-shield-heart" style="color:var(--neon-cyan); font-size:0.9rem;"></i>
-                                    <span style="font-size:0.75rem; font-weight:700; color:#888; letter-spacing:1px; text-transform:uppercase;">Kazanılan Onurlar</span>
-                                </div>
-                                <div id="honor-strip" style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center;">
-                                    <span style="color:#444; font-size:0.82rem;">— henüz onur yok —</span>
+                                <div id="highlights-container">
+                                    <div style="text-align:center; color:#444; padding:1.5rem 0; font-size:0.85rem;">
+                                        <i class="fa-solid fa-video" style="font-size:1.6rem; display:block; margin-bottom:0.5rem; opacity:0.3;"></i>
+                                        Henüz video eklenmedi.
+                                    </div>
                                 </div>
                             </div>
+
                         </div>
+
+                        <!-- TAB 2: HAKKIMDA -->
+                        <div id="tab-hakkimda" class="profile-subtab" style="display:none;">
+
+                            <!-- FORM OKU BANNER -->
+                            <div class="glass-card" style="padding:0.6rem 1.25rem; margin-bottom:1rem; display:flex; align-items:center; gap:0.75rem;">
+                                <i class="fa-solid fa-chart-line" style="color:var(--neon-cyan); font-size:0.9rem;"></i>
+                                <span style="font-size:0.75rem; color:#888; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Canlı Form</span>
+                                <span id="hkm-condition-arrow" style="margin-left:0.25rem;"></span>
+                                <span id="hkm-condition-label" style="font-size:0.78rem; color:#aaa; font-weight:700;"></span>
+                            </div>
+
+                            <!-- BÖLÜM A: TEMEL BİLGİLER -->
+                            <div class="detail-section glass-card" id="hakkimda-temel">
+                                <div class="detail-section-header">
+                                    <i class="fa-solid fa-id-card" style="color:var(--neon-green)"></i>
+                                    <h4>TEMEL BİLGİLER</h4>
+                                    <button class="hakkimda-edit-trigger" id="btn-hkm-edit-temel"
+                                            onclick="toggleHakkimdaEdit('temel')"
+                                            style="margin-left:auto; display:none;">
+                                        <i class="fa-solid fa-pen-to-square"></i> Düzenle
+                                    </button>
+                                </div>
+
+                                <!-- Görünüm modu -->
+                                <div id="hakkimda-temel-view">
+                                    <div class="hakkimda-row">
+                                        <i class="fa-solid fa-user hakkimda-icon"></i>
+                                        <span class="hakkimda-label">Kullanıcı Adı</span>
+                                        <span class="hakkimda-value" id="hkm-username">—</span>
+                                    </div>
+                                    <div class="hakkimda-row">
+                                        <i class="fa-solid fa-id-badge hakkimda-icon"></i>
+                                        <span class="hakkimda-label">Ad Soyad</span>
+                                        <span class="hakkimda-value" id="hkm-fullname">—</span>
+                                    </div>
+                                    <div class="hakkimda-row">
+                                        <i class="fa-solid fa-cake-candles hakkimda-icon"></i>
+                                        <span class="hakkimda-label">Yaş</span>
+                                        <span class="hakkimda-value" id="hkm-age">—</span>
+                                    </div>
+                                    <div class="hakkimda-row">
+                                        <i class="fa-solid fa-location-dot hakkimda-icon" style="color:var(--neon-cyan)"></i>
+                                        <span class="hakkimda-label">Şehir</span>
+                                        <span class="hakkimda-value" id="hkm-city">—</span>
+                                    </div>
+                                    <div class="hakkimda-row">
+                                        <i class="fa-solid fa-ruler-vertical hakkimda-icon"></i>
+                                        <span class="hakkimda-label">Boy / Kilo</span>
+                                        <span class="hakkimda-value" id="hkm-height-weight">—</span>
+                                    </div>
+                                    <div class="hakkimda-row">
+                                        <i class="fa-solid fa-shield-halved hakkimda-icon" style="color:var(--neon-cyan)"></i>
+                                        <span class="hakkimda-label">Takım</span>
+                                        <span class="hakkimda-value" id="hkm-team">—</span>
+                                    </div>
+                                    <div class="hakkimda-row hakkimda-bio-row">
+                                        <i class="fa-solid fa-comment-dots hakkimda-icon" style="color:var(--neon-pink)"></i>
+                                        <span class="hakkimda-label">Hakkımda</span>
+                                        <span class="hakkimda-value hakkimda-bio-text" id="hkm-bio">—</span>
+                                    </div>
+                                </div>
+
+                                <!-- Düzenleme modu -->
+                                <div id="hakkimda-temel-edit" style="display:none;">
+                                    <div class="hakkimda-edit-grid">
+                                        <div class="detail-field">
+                                            <label class="detail-label"><i class="fa-solid fa-user" style="color:var(--neon-green)"></i> Kullanıcı Adı</label>
+                                            <input type="text" id="hkm-inp-username" class="profile-input" maxlength="30">
+                                        </div>
+                                        <div class="detail-field">
+                                            <label class="detail-label"><i class="fa-solid fa-id-badge" style="color:var(--neon-green)"></i> Ad Soyad</label>
+                                            <input type="text" id="hkm-inp-fullname" class="profile-input" maxlength="60">
+                                        </div>
+                                        <div class="detail-field">
+                                            <label class="detail-label"><i class="fa-solid fa-cake-candles"></i> Yaş</label>
+                                            <input type="number" id="hkm-inp-age" class="profile-input" min="10" max="50">
+                                        </div>
+                                        <div class="detail-field">
+                                            <label class="detail-label"><i class="fa-solid fa-location-dot" style="color:var(--neon-cyan)"></i> Şehir</label>
+                                            <input type="text" id="hkm-inp-city" class="profile-input" maxlength="50">
+                                        </div>
+                                        <div class="detail-field">
+                                            <label class="detail-label"><i class="fa-solid fa-ruler-vertical"></i> Boy (cm)</label>
+                                            <input type="number" id="hkm-inp-height" class="profile-input" min="140" max="220">
+                                        </div>
+                                        <div class="detail-field">
+                                            <label class="detail-label"><i class="fa-solid fa-weight-scale"></i> Kilo (kg)</label>
+                                            <input type="number" id="hkm-inp-weight" class="profile-input" min="40" max="120">
+                                        </div>
+                                        <div class="detail-field">
+                                            <label class="detail-label"><i class="fa-solid fa-shield-halved" style="color:var(--neon-cyan)"></i> Takım</label>
+                                            <select id="hkm-sel-team" class="profile-select">
+                                                <option value="">— Takım Seçilmedi —</option>
+                                            </select>
+                                        </div>
+                                        <div class="detail-field" style="grid-column:1/-1;">
+                                            <label class="detail-label"><i class="fa-solid fa-comment-dots" style="color:var(--neon-pink)"></i> Hakkımda</label>
+                                            <textarea id="hkm-inp-bio" class="profile-input bio-textarea"
+                                                      placeholder="Kendinizi kısaca tanıtın..." maxlength="500" rows="4"></textarea>
+                                            <span style="font-size:0.7rem; color:#555; display:block; text-align:right; margin-top:2px;" id="hkm-bio-counter">0/500</span>
+                                        </div>
+                                        <div class="detail-field" style="grid-column:1/-1;">
+                                            <label class="detail-label"><i class="fa-brands fa-youtube" style="color:#ff3d3d"></i> Maç Video Linki 1 (YouTube)</label>
+                                            <input type="url" id="hkm-inp-highlight-1" class="profile-input"
+                                                   placeholder="https://youtube.com/watch?v=...">
+                                        </div>
+                                        <div class="detail-field" style="grid-column:1/-1;">
+                                            <label class="detail-label"><i class="fa-brands fa-youtube" style="color:#ff3d3d"></i> Maç Video Linki 2 (YouTube)</label>
+                                            <input type="url" id="hkm-inp-highlight-2" class="profile-input"
+                                                   placeholder="https://youtube.com/watch?v=...">
+                                        </div>
+                                    </div>
+                                    <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
+                                        <button onclick="saveHakkimdaSection('temel')"
+                                                style="flex:1; padding:0.6rem; background:linear-gradient(135deg,var(--neon-green),#6fff00); color:#0a0a0f; font-weight:800; border:none; border-radius:8px; cursor:pointer; font-size:0.85rem; font-family:inherit;">
+                                            <i class="fa-solid fa-floppy-disk"></i> Kaydet
+                                        </button>
+                                        <button onclick="toggleHakkimdaEdit('temel')"
+                                                style="padding:0.6rem 0.8rem; border-radius:8px; cursor:pointer; font-size:0.85rem; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:#ccc; font-family:inherit;">
+                                            İptal
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- BÖLÜM B: FUTBOL PROFİLİ -->
+                            <div class="detail-section glass-card" id="hakkimda-futbol" style="margin-top:1rem;">
+                                <div class="detail-section-header">
+                                    <i class="fa-solid fa-futbol" style="color:var(--neon-green)"></i>
+                                    <h4>FUTBOL PROFİLİ</h4>
+                                    <button class="hakkimda-edit-trigger" id="btn-hkm-edit-futbol"
+                                            onclick="toggleHakkimdaEdit('futbol')"
+                                            style="margin-left:auto; display:none;">
+                                        <i class="fa-solid fa-pen-to-square"></i> Düzenle
+                                    </button>
+                                </div>
+
+                                <!-- Görünüm modu -->
+                                <div id="hakkimda-futbol-view">
+                                    <div class="hakkimda-row">
+                                        <i class="fa-solid fa-map-pin hakkimda-icon" style="color:var(--neon-green)"></i>
+                                        <span class="hakkimda-label">Ana Mevki</span>
+                                        <span class="hakkimda-value" id="hkm-ana-mevki">—</span>
+                                    </div>
+                                    <div class="hakkimda-row">
+                                        <i class="fa-solid fa-shuffle hakkimda-icon"></i>
+                                        <span class="hakkimda-label">Alt Mevkiler</span>
+                                        <span class="hakkimda-value" id="hkm-alt-pos">—</span>
+                                    </div>
+                                    <div class="hakkimda-row">
+                                        <i class="fa-solid fa-shoe-prints hakkimda-icon" style="color:var(--neon-pink)"></i>
+                                        <span class="hakkimda-label">Tercih Edilen Ayak</span>
+                                        <span class="hakkimda-value" id="hkm-ayak">—</span>
+                                    </div>
+                                    <div class="hakkimda-row">
+                                        <i class="fa-solid fa-chess-knight hakkimda-icon" style="color:var(--neon-cyan)"></i>
+                                        <span class="hakkimda-label">Oyun Tarzı</span>
+                                        <span class="hakkimda-value" id="hkm-oyun-tarzi">—</span>
+                                    </div>
+                                    <div class="hakkimda-row">
+                                        <i class="fa-solid fa-graduation-cap hakkimda-icon"></i>
+                                        <span class="hakkimda-label">Ekol / Deneyim</span>
+                                        <span class="hakkimda-value" id="hkm-ekol">—</span>
+                                    </div>
+                                </div>
+
+                                <!-- Düzenleme modu -->
+                                <div id="hakkimda-futbol-edit" style="display:none;">
+                                    <div class="hakkimda-edit-grid">
+                                        <div class="detail-field">
+                                            <label class="detail-label"><i class="fa-solid fa-map-pin"></i> Ana Mevki</label>
+                                            <select id="hkm-sel-ana-mevki" class="profile-select">
+                                                <optgroup label="Kale">
+                                                    <option value="Kaleci">🧤 Kaleci (KL)</option>
+                                                </optgroup>
+                                                <optgroup label="Defans">
+                                                    <option value="Sol Bek">⬅️ Sol Bek</option>
+                                                    <option value="Sağ Bek">➡️ Sağ Bek</option>
+                                                    <option value="Stoper">🛡️ Stoper</option>
+                                                    <option value="Libero">🔄 Libero</option>
+                                                </optgroup>
+                                                <optgroup label="Orta Saha">
+                                                    <option value="Defansif OS">🔒 Defansif OS</option>
+                                                    <option value="Box-to-Box OS">⚡ Box-to-Box OS</option>
+                                                    <option value="Ofansif OS (10 Numara)">🎨 Ofansif OS (10 Numara)</option>
+                                                    <option value="Sol Kanat">🏃 Sol Kanat</option>
+                                                    <option value="Sağ Kanat">🏃 Sağ Kanat</option>
+                                                </optgroup>
+                                                <optgroup label="Forvet">
+                                                    <option value="İkinci Forvet">🔗 İkinci Forvet</option>
+                                                    <option value="Santrafor (9 Numara)">⚽ Santrafor (9 Numara)</option>
+                                                </optgroup>
+                                            </select>
+                                        </div>
+                                        <div class="detail-field">
+                                            <label class="detail-label"><i class="fa-solid fa-shuffle"></i> Alt Mevkiler</label>
+                                            <input type="text" id="hkm-inp-alt-pos" class="profile-input" placeholder="Örn: FV, Sol Kanat">
+                                        </div>
+                                        <div class="detail-field">
+                                            <label class="detail-label"><i class="fa-solid fa-shoe-prints" style="color:var(--neon-pink)"></i> Tercih Edilen Ayak</label>
+                                            <select id="hkm-sel-ayak" class="profile-select">
+                                                <option value="Sağ">👟 Sağ Ayak</option>
+                                                <option value="Sol">👟 Sol Ayak</option>
+                                                <option value="Her İkisi">✨ Her İkisi</option>
+                                            </select>
+                                        </div>
+                                        <div class="detail-field">
+                                            <label class="detail-label"><i class="fa-solid fa-chess-knight" style="color:var(--neon-cyan)"></i> Oyun Tarzı</label>
+                                            <select id="hkm-sel-oyun-tarzi" class="profile-select">
+                                                <option value="Klasik 10 Numara">🎩 Klasik 10 Numara</option>
+                                                <option value="Box-to-Box">⚡ Box-to-Box</option>
+                                                <option value="İkinci Forvet">🔗 İkinci Forvet</option>
+                                                <option value="Kanat Oyuncusu">💨 Kanat Oyuncusu</option>
+                                                <option value="Goalgetter">🎯 Goalgetter</option>
+                                                <option value="Organizatör">🧠 Organizatör</option>
+                                                <option value="Sweeper">🧹 Sweeper</option>
+                                                <option value="Sweeper Keeper">🧤 Sweeper Keeper</option>
+                                                <option value="Libero">🔓 Libero</option>
+                                            </select>
+                                        </div>
+                                        <div class="detail-field">
+                                            <label class="detail-label"><i class="fa-solid fa-graduation-cap"></i> Ekol / Deneyim</label>
+                                            <select id="hkm-sel-ekol" class="profile-select">
+                                                <option value="Eski Lisanslı">🏅 Eski Lisanslı</option>
+                                                <option value="Halısaha Gazisi">⚡ Halısaha Gazisi</option>
+                                                <option value="Sokak Futbolu">🛣️ Sokak Futbolu</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
+                                        <button onclick="saveHakkimdaSection('futbol')"
+                                                style="flex:1; padding:0.6rem; background:linear-gradient(135deg,var(--neon-green),#6fff00); color:#0a0a0f; font-weight:800; border:none; border-radius:8px; cursor:pointer; font-size:0.85rem; font-family:inherit;">
+                                            <i class="fa-solid fa-floppy-disk"></i> Kaydet
+                                        </button>
+                                        <button onclick="toggleHakkimdaEdit('futbol')"
+                                                style="padding:0.6rem 0.8rem; border-radius:8px; cursor:pointer; font-size:0.85rem; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:#ccc; font-family:inherit;">
+                                            İptal
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- PARTNER KİMYASI (Dynamic Duos) -->
+                            <div class="glass-card" id="dynamic-duos-section" style="margin-top:1rem; padding:1rem 1.25rem;">
+                                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.85rem;">
+                                    <i class="fa-solid fa-handshake-simple" style="color:var(--neon-cyan); font-size:0.9rem;"></i>
+                                    <span style="font-size:0.72rem; font-weight:700; color:#888; letter-spacing:1px; text-transform:uppercase;">Saha İçinde En İyi Anlaştıkları</span>
+                                </div>
+                                <div id="dynamic-duos-container" style="display:flex; flex-wrap:wrap; gap:0.75rem;">
+                                    <div style="color:#555; font-size:0.82rem;">Yükleniyor...</div>
+                                </div>
+                            </div>
+
+                            <!-- Maça Davet Et (sadece başkasının profilinde gösterilir) -->
+                            <button id="btn-mac-davet"
+                                style="width:100%; margin-top:1.5rem; background:var(--neon-pink); color:white; border:none; padding:1rem; border-radius:8px; font-weight:800; cursor:pointer; display:none; font-family:inherit; font-size:0.95rem;">
+                                <i class="fa-solid fa-envelope-open-text"></i> MAÇA DAVET ET
+                            </button>
+
+                        </div><!-- /tab-hakkimda -->
 
                         <!-- TAB KARİYER VE ROZETLER (Detaylı Veriler + Yetenekler birleşimi) -->
                         <div id="tab-kariyer" class="profile-subtab" style="display:none;">
@@ -811,6 +1080,24 @@
                             </div>
                         </div>
 
+                        <!-- TAB: ARKADAŞLARIM -->
+                        <div id="tab-arkadaslarim" class="profile-subtab" style="display:none;">
+                            <div class="glass-card" style="padding:0.75rem 1.25rem; margin-bottom:1.25rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
+                                <span style="font-weight:700; color:#888; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px;">
+                                    <i class="fa-solid fa-user-group"></i> Arkadaş Listem
+                                </span>
+                                <button class="btn-outline" onclick="loadFriendsList()" style="padding:0.4rem 0.9rem; font-size:0.8rem;">
+                                    <i class="fa-solid fa-rotate"></i> Yenile
+                                </button>
+                            </div>
+                            <div class="explore-player-grid" id="friends-list-grid">
+                                <div style="text-align:center; padding:3rem; color:#555; grid-column:1/-1;">
+                                    <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
+                                    <p style="margin-top:1rem;">Arkadaşlar yükleniyor...</p>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- TAB 6: KENDİ RATING (Kendi puanını düzenle - sadece kendi profili) -->
                         <div id="tab-self-rating" class="profile-subtab" style="display:none;">
                             <div class="glass-card" style="max-width: 600px; margin: 0 auto;">
@@ -1130,7 +1417,7 @@
             <section id="explore" class="section">
                 <div class="section-header">
                     <h1 class="section-title"><i class="fa-solid fa-compass" style="color:var(--neon-cyan);"></i> Keşfet</h1>
-                    <p class="section-subtitle">Oyuncuları keşfet, arkadaş ekle, toplulukla bağlan</p>
+                    <p class="section-subtitle">Oyuncuları ve takımları keşfet, toplulukla bağlan</p>
                 </div>
 
                 <!-- Sekmeler -->
@@ -1140,9 +1427,6 @@
                     </button>
                     <button class="explore-tab-btn" onclick="switchExploreTab('teams', this)">
                         <i class="fa-solid fa-shield"></i> Takımlar
-                    </button>
-                    <button class="explore-tab-btn" onclick="switchExploreTab('friends', this)">
-                        <i class="fa-solid fa-user-group"></i> Arkadaşlarım
                     </button>
                     <button class="explore-tab-btn" onclick="switchExploreTab('invite', this)">
                         <i class="fa-solid fa-share-nodes"></i> Davet Et
@@ -1206,24 +1490,6 @@
                     </div>
                 </div>
 
-                <!-- ── ARKAŞLARIM SEKMESİ ── -->
-                <div id="explore-friends-section" style="display:none;">
-                    <div class="glass-card" style="padding:0.75rem 1.25rem; margin-bottom:1.25rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
-                        <span style="font-weight:700; color:#888; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px;">
-                            <i class="fa-solid fa-user-group"></i> Arkadaş Listem
-                        </span>
-                        <button class="btn-outline" onclick="loadFriendsList()" style="padding:0.4rem 0.9rem; font-size:0.8rem;">
-                            <i class="fa-solid fa-rotate"></i> Yenile
-                        </button>
-                    </div>
-                    <div class="explore-player-grid" id="friends-list-grid">
-                        <div style="text-align:center; padding:3rem; color:#555; grid-column:1/-1;">
-                            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
-                            <p style="margin-top:1rem;">Arkadaşlar yükleniyor...</p>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- ── DAVET ET SEKMESİ ── -->
                 <div id="explore-invite-section" style="display:none;">
                     <div class="glass-card" style="padding:2rem; text-align:center;">
@@ -1276,9 +1542,6 @@
                     </button>
                     <button class="explore-tab-btn" id="etab-btn-teams" onclick="switchExploreTab('teams')">
                         <i class="fa-solid fa-shield-halved"></i> Takımlar
-                    </button>
-                    <button class="explore-tab-btn" id="etab-btn-friends" onclick="switchExploreTab('friends')">
-                        <i class="fa-solid fa-user-group"></i> Arkadaşlarım
                     </button>
                 </div>
 
@@ -1452,6 +1715,69 @@
 
     <!-- DB Adaptör Katmanı (Supabase) -->
     <script src="db.js"></script>
+    <!-- ╔══════════════════════════════════════════════════╗ -->
+    <!-- ║  TANRI MODU — Sadece admin kullanıcılara görünür ║ -->
+    <!-- ╚══════════════════════════════════════════════════╝ -->
+    <div id="god-mode-fab" style="display:none; position:fixed; bottom:1.75rem; right:1.75rem; z-index:8500;">
+        <button class="god-mode-trigger" onclick="window.toggleGodMode()" title="Tanrı Modu — Admin Paneli">
+            <i class="fa-solid fa-bolt-lightning"></i>
+        </button>
+    </div>
+
+    <!-- God Mode Modal -->
+    <div id="god-mode-modal" class="modal-backdrop" style="display:none;" onclick="if(event.target===this)window.toggleGodMode()">
+        <div class="modal-box god-mode-box" onclick="event.stopPropagation()">
+            <div class="modal-header" style="border-bottom:1px solid rgba(0,229,255,0.15);">
+                <h3 style="color:var(--neon-cyan); display:flex; align-items:center; gap:0.5rem;">
+                    <i class="fa-solid fa-bolt-lightning"></i> Tanrı Modu
+                    <span style="font-size:0.7rem; color:#555; font-weight:400; margin-left:0.25rem;">admin only</span>
+                </h3>
+                <button class="modal-close" onclick="window.toggleGodMode()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <!-- Sekme Başlıkları -->
+            <div class="gm-tabs">
+                <button class="gm-tab active" onclick="window.switchGmTab('beceriler',this)">⚽ Beceriler</button>
+                <button class="gm-tab" onclick="window.switchGmTab('stats',this)">📊 İstatistik</button>
+                <button class="gm-tab" onclick="window.switchGmTab('onurlar',this)">🏅 Onurlar</button>
+            </div>
+
+            <!-- TAB: Beceriler -->
+            <div id="gm-tab-beceriler" class="gm-tab-content">
+                <div class="gm-note">Kendi öz-puanlarını (<code>rating_*</code>) doğrudan günceller.</div>
+                <div id="gm-skills-grid" class="gm-skills-grid"></div>
+                <button class="epc-btn" style="width:100%; margin-top:1rem;" onclick="window.godModeSaveSkills()">
+                    <i class="fa-solid fa-floppy-disk"></i> Kaydet
+                </button>
+            </div>
+
+            <!-- TAB: İstatistik -->
+            <div id="gm-tab-stats" class="gm-tab-content" style="display:none;">
+                <div class="gm-note">Rozet kilit açmak için maç / gol / asist sayısını ayarla.</div>
+                <div class="gm-stat-row">
+                    <label>Toplam Maç</label>
+                    <input type="number" id="gm-inp-matches" class="profile-input" min="0" max="9999" style="width:90px; text-align:center;">
+                </div>
+                <div class="gm-stat-row">
+                    <label>Toplam Gol</label>
+                    <input type="number" id="gm-inp-goals" class="profile-input" min="0" max="9999" style="width:90px; text-align:center;">
+                </div>
+                <div class="gm-stat-row">
+                    <label>Toplam Asist</label>
+                    <input type="number" id="gm-inp-assists" class="profile-input" min="0" max="9999" style="width:90px; text-align:center;">
+                </div>
+                <button class="epc-btn" style="width:100%; margin-top:1rem;" onclick="window.godModeSaveStats()">
+                    <i class="fa-solid fa-floppy-disk"></i> Kaydet
+                </button>
+            </div>
+
+            <!-- TAB: Onurlar -->
+            <div id="gm-tab-onurlar" class="gm-tab-content" style="display:none;">
+                <div class="gm-note">Onur sayısını doğrudan ayarla. Eşik: Bronz=5, Gümüş=15, Altın=30, Elmas=50.</div>
+                <div id="gm-honors-list"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- MPA Ortak Bileşenler — script.js'ten ÖNCE yüklenmeli (stopImmediatePropagation) -->
     <script src="assets/js/components.js"></script>
     <!-- Uygulama Mantığı -->
@@ -1460,6 +1786,7 @@
     <script src="takimim.js"></script>
     <script src="faz2-7.js"></script>
     <script src="faz2-social.js"></script>
+    <script src="dashboard.js"></script>
 </body>
 
 </html>

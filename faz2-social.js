@@ -2608,3 +2608,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => initAvatarUpload(), 1200);
 });
 
+// Dashboard'un feed kartlarını oluşturabilmesi için export
+window.buildRealFeedCard = buildRealFeedCard;
+

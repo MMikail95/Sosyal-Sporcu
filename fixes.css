@@ -106,6 +106,8 @@
     --select-opt-fg: #ffffff;
     --scrollbar-c:   rgba(255,255,255,0.12);
     --overlay-bg:    rgba(0, 0, 0, 0.6);
+    --bg-navy:       #0a0f1e;
+    --gold:          #FFD700;
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -133,6 +135,8 @@
     --bg-panel:      #e8eaed;
     --text-main:     #1a1a1a;
     --text-muted:    #666666;
+    --bg-navy:       #e8eef8;
+    --gold:          #c8a000;
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -1440,5 +1444,403 @@ body {
         left: 0.5rem !important;
         width: auto !important;
     }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   PARTNER KİMYASI — Duo Kartları
+   ────────────────────────────────────────────────────────────── */
+.duo-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 0.75rem 0.9rem;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s;
+    min-width: 100px;
+    flex: 1;
+    max-width: 150px;
+}
+.duo-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--neon-cyan);
+}
+.duo-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 2px solid var(--neon-cyan);
+    object-fit: cover;
+    display: block;
+    margin: 0 auto 0.5rem;
+    background: #1a1a1a;
+}
+.duo-name {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--neon-cyan);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.duo-stat {
+    font-size: 0.7rem;
+    margin-top: 0.25rem;
+}
+.duo-matches {
+    font-size: 0.62rem;
+    color: #555;
+    margin-top: 0.15rem;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   HIGHLIGHTS — Video Çerçevesi
+   ────────────────────────────────────────────────────────────── */
+.highlights-grid {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.highlight-frame-wrap {
+    flex: 1;
+    min-width: 240px;
+    position: relative;
+    padding-top: 56.25%; /* 16:9 */
+    border-radius: 10px;
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 0 20px rgba(0,229,255,0.15);
+}
+.highlight-iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 10px;
+}
+.highlight-insta-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);
+    color: #fff;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 0.88rem;
+    flex: 1;
+    justify-content: center;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   ROZET / ONUR ŞERİDİ — Kompakt Görünüm
+   (Profil üstü her zaman görünür alan — oyuncu kartı görünsün)
+   ────────────────────────────────────────────────────────────── */
+#badge-strip-container,
+#honor-showcase-container {
+    padding: 0.45rem 1rem !important;
+    margin-bottom: 0.4rem !important;
+}
+#honor-showcase-container {
+    margin-bottom: 0.9rem !important;
+}
+#badge-strip-container .achievement-icon-grid,
+#honor-showcase-container .achievement-icon-grid {
+    gap: 0.45rem !important;
+    padding: 0 !important;
+}
+#badge-strip-container .ach-icon-card,
+#honor-showcase-container .ach-icon-card {
+    width: 46px !important;
+    gap: 2px !important;
+}
+#badge-strip-container .ach-icon-wrap,
+#honor-showcase-container .ach-icon-wrap {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 0.95rem !important;
+    border-radius: 9px !important;
+}
+#badge-strip-container .ach-icon-label,
+#honor-showcase-container .ach-icon-label {
+    font-size: 0.5rem !important;
+    max-width: 46px !important;
+}
+#badge-strip-container .ach-icon-tier,
+#honor-showcase-container .ach-icon-tier {
+    font-size: 0.48rem !important;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   RADAR GRAFİĞİ — Kendi kolonunda ortalı
+   ────────────────────────────────────────────────────────────── */
+.gb-right-col {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+}
+.gb-right-col .chart-card {
+    width: 100% !important;
+    align-items: center !important;
+}
+.gb-right-col .chart-card canvas {
+    display: block !important;
+    margin: 0 auto !important;
+}
+
+/* ================================================================
+   8. DASHBOARD — Ana Sayfa
+   ================================================================ */
+
+#dashboard {
+    background: var(--bg-navy);
+    min-height: 100vh;
+    padding: 1.5rem;
+}
+
+/* Gazette */
+.dashboard-gazette {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.5rem;
+    border-left: 3px solid var(--gold);
+    background: rgba(255, 215, 0, 0.04);
+}
+.dash-gazette-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.75rem;
+}
+.dash-gazette-title {
+    font-weight: 800;
+    font-size: 0.9rem;
+    letter-spacing: 0.1em;
+    color: var(--gold);
+    text-transform: uppercase;
+}
+.dash-gazette-sub {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-left: auto;
+}
+.dash-headline-pill {
+    padding: 0.5rem 0.9rem;
+    margin-bottom: 0.5rem;
+    background: var(--glass-bg);
+    border-radius: 8px;
+    border-left: 3px solid var(--neon-green);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: var(--text-main);
+}
+.dash-headline-pill:last-child { margin-bottom: 0; }
+
+/* İki kolon ızgara */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+@media (max-width: 900px) {
+    .dashboard-grid { grid-template-columns: 1fr; }
+    .dashboard-sidebar { order: -1; }
+    #dashboard { padding: 1rem; }
+}
+
+/* Bölüm başlık satırı */
+.dash-section-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: 0.04em;
+    color: var(--text-main);
+}
+.dash-post-btn {
+    margin-left: auto;
+    background: linear-gradient(135deg, var(--neon-green), #6fff00);
+    color: #0a0a0f;
+    border: none;
+    border-radius: 8px;
+    padding: 0.35rem 0.85rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.dash-post-btn:hover { opacity: 0.8; }
+
+/* Kullanıcı mini kartı */
+.dash-mini-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.25rem;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+.dash-mini-avatar-wrap {
+    position: relative;
+    width: 76px;
+    height: 76px;
+}
+.dash-mini-avatar-wrap img {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--neon-green);
+}
+.dash-mini-ovr {
+    position: absolute;
+    bottom: -4px;
+    right: -6px;
+    background: var(--neon-green);
+    color: #0a0a0f;
+    font-weight: 900;
+    font-size: 0.72rem;
+    border-radius: 6px;
+    padding: 2px 6px;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+.dash-mini-info { width: 100%; }
+.dash-mini-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dash-mini-pos {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+}
+
+/* Form şeridi */
+.dash-form-strip {
+    display: flex;
+    gap: 0.35rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    width: 100%;
+}
+.form-pill {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.form-w { background: rgba(173,255,47,0.18); color: var(--neon-green); border: 1px solid var(--neon-green); }
+.form-l { background: rgba(255,0,127,0.14); color: var(--neon-pink); border: 1px solid var(--neon-pink); }
+.form-d { background: rgba(255,255,255,0.06); color: #888; border: 1px solid rgba(255,255,255,0.15); }
+.form-none { background: transparent; color: #444; border: 1px solid #2a2a2a; }
+
+/* Bölge sıralaması */
+.dash-standings {
+    padding: 1.25rem;
+}
+.dash-standings-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: var(--text-main);
+}
+.dash-standings-city {
+    margin-left: auto;
+    font-size: 0.72rem;
+    color: var(--neon-cyan);
+    font-weight: 600;
+}
+.dash-standings-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.dash-standing-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 8px;
+    background: var(--glass-bg);
+    transition: background 0.15s;
+    cursor: pointer;
+}
+.dash-standing-row:hover { background: rgba(255,255,255,0.08); }
+.dash-standing-me {
+    background: rgba(173,255,47,0.08) !important;
+    border: 1px solid rgba(173,255,47,0.25);
+}
+.dash-rank {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    width: 22px;
+    flex-shrink: 0;
+    text-align: center;
+}
+.dash-rank-gold   { color: var(--gold); }
+.dash-rank-silver { color: #c0c0c0; }
+.dash-rank-bronze { color: #cd7f32; }
+.dash-standing-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.dash-standing-name {
+    flex: 1;
+    font-size: 0.82rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-main);
+}
+.dash-standing-score {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--neon-green);
+    flex-shrink: 0;
+}
+
+/* Aydınlık mod uyumu */
+[data-theme="light"] #dashboard { background: var(--bg-navy); }
+[data-theme="light"] .dash-headline-pill { color: var(--text-primary); background: rgba(0,0,0,0.04); }
+[data-theme="light"] .dash-standings-city { color: #0077aa; }
+[data-theme="light"] .dash-standing-name { color: #1a1a1a; }
+[data-theme="light"] .dash-standing-score { color: #3a8a00; }
+[data-theme="light"] .dash-mini-name { color: #1a1a1a; }
+
+/* Dashboard feed akışı boşluk */
+#dash-feed-stream .real-feed-card:first-child { margin-top: 0; }
+
+/* Oyuncu kartı ile radar grafiği arası boşluk */
+#profile .genel-bakis-grid {
+    gap: 3rem !important;
+}
+#profile .gb-right-col .chart-card {
+    margin-left: 2rem;
 }
 

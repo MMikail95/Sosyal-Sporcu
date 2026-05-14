@@ -14,6 +14,7 @@
         var inSub = /\/(character|team|team-profile|feed|explore|matches)(\/|$)/i.test(path);
         var prefix = inSub ? '../' : '';
         return {
+            dashboard:   prefix,  // kök dizin = index.html ('' ise falsy → MPA nav pas geçer)
             profile:     prefix + 'character/',
             takimim:     prefix + 'team/',
             matches:     prefix + 'matches/',
@@ -32,6 +33,10 @@
                 '<span>MANAGER++</span>' +
             '</div>' +
             '<ul class="nav-menu">' +
+                '<li class="nav-item" data-target="dashboard" id="nav-dashboard">' +
+                    '<i class="fa-solid fa-house"></i>' +
+                    '<span>Ana Sayfa</span>' +
+                '</li>' +
                 '<li class="nav-item" data-target="profile" id="nav-profile">' +
                     '<i class="fa-solid fa-id-card"></i>' +
                     '<span>Karakterim</span>' +

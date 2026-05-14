@@ -120,6 +120,23 @@ const Profiles = {
     return data;
   },
 
+  // Highlight URL'lerini RPC üzerinden OKU (schema-cache bypass)
+  async getHighlightUrls(userId) {
+    const { data, error } = await sb().rpc('get_highlight_urls', { p_user_id: userId });
+    if (error) { console.warn('getHighlightUrls error:', error); return {}; }
+    return data?.[0] || {};
+  },
+
+  // Highlight URL'lerini RPC üzerinden güncelle (schema-cache bypass)
+  async updateHighlightUrls(userId, url1, url2) {
+    const { error } = await sb().rpc('update_highlight_urls', {
+      p_user_id: userId,
+      p_url_1:   url1 || null,
+      p_url_2:   url2 || null
+    });
+    if (error) { console.error('updateHighlightUrls error:', error); throw error; }
+  },
+
   // Self-rating güncelle (kendi puanları)
   async updateRatings(userId, ratings) {
     return Profiles.update(userId, {
@@ -811,6 +828,89 @@ const Matches = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  // ── Form Oku: son N biten maçın galibiyet/mağlubiyet durumunu getir ──
+  async getLastResults(userId, limit = 3) {
+    const { data, error } = await sb()
+      .from('match_players')
+      .select(`
+        team_side,
+        match:match_id(id, status, home_score, away_score, scheduled_at)
+      `)
+      .eq('player_id', userId)
+      .order('match(scheduled_at)', { ascending: false })
+      .limit(limit * 3); // fazla çek, filtreleyeceğiz
+    if (error) { console.error('getLastResults error:', error); return []; }
+    const finished = (data || [])
+      .filter(r => r.match && r.match.status === 'finished')
+      .slice(0, limit);
+    return finished.map(r => {
+      const hs = r.match.home_score ?? 0;
+      const as = r.match.away_score ?? 0;
+      const isHome = r.team_side === 'home';
+      const myScore = isHome ? hs : as;
+      const oppScore = isHome ? as : hs;
+      return myScore > oppScore ? 'W' : myScore < oppScore ? 'L' : 'D';
+    });
+  },
+
+  // ── Partner Kimyası: aynı takımda en çok galibiyet alınan 3 oyuncu ──
+  async getTopPartners(userId, limit = 3) {
+    // 1. Kullanıcının son 40 biten maçını al
+    const { data: userRows, error: e1 } = await sb()
+      .from('match_players')
+      .select('match_id, team_side, match:match_id(id, status, home_score, away_score)')
+      .eq('player_id', userId)
+      .limit(60);
+    if (e1 || !userRows) return [];
+
+    const finished = userRows.filter(r => r.match && r.match.status === 'finished');
+    if (!finished.length) return [];
+
+    // Kazanılan maçlar ve takım bilgisi
+    const winSet  = new Set();
+    const sideMap = {};
+    finished.forEach(r => {
+      const hs = r.match.home_score ?? 0;
+      const as = r.match.away_score ?? 0;
+      const isHome = r.team_side === 'home';
+      const won = isHome ? hs > as : as > hs;
+      sideMap[r.match_id] = r.team_side;
+      if (won) winSet.add(r.match_id);
+    });
+
+    const matchIds = Object.keys(sideMap);
+    if (!matchIds.length) return [];
+
+    // 2. Bu maçlardaki tüm diğer oyuncuları çek
+    const { data: teammates, error: e2 } = await sb()
+      .from('match_players')
+      .select('match_id, player_id, team_side, player:player_id(id, username, avatar_url, ana_mevki)')
+      .in('match_id', matchIds)
+      .neq('player_id', userId);
+    if (e2 || !teammates) return [];
+
+    // 3. Aynı takımda oynamış + galibiyet say
+    const stats = {};
+    teammates.forEach(t => {
+      if (!t.player || t.team_side !== sideMap[t.match_id]) return;
+      const pid = t.player_id;
+      if (!stats[pid]) stats[pid] = { player: t.player, wins: 0, total: 0 };
+      stats[pid].total++;
+      if (winSet.has(t.match_id)) stats[pid].wins++;
+    });
+
+    return Object.values(stats)
+      .filter(s => s.total >= 1)
+      .sort((a, b) => b.wins - a.wins || b.total - a.total)
+      .slice(0, limit)
+      .map(s => ({
+        ...s.player,
+        wins:    s.wins,
+        total:   s.total,
+        winRate: s.total > 0 ? Math.round((s.wins / s.total) * 100) : 0
+      }));
   }
 };
 

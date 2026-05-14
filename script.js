@@ -527,10 +527,12 @@ async function initSupabaseUser() {
             if (!existingPlayer) {
                 // Yeni kullanıcı — geçici player objesi oluştur
                 const newPlayer = {
-                    id:   `sb_${userId}`,
-                    name: profile.username || profile.full_name || 'Oyuncu',
-                    supabase_id: userId,
-                    avatar_url: profile.avatar_url || null, // #4: boş avatar
+                    id:              `sb_${userId}`,
+                    name:            profile.username || profile.full_name || 'Oyuncu',
+                    supabase_id:     userId,
+                    supabase_username: profile.username || null,
+                    full_name:       profile.full_name || null,
+                    avatar_url:      profile.avatar_url || null, // #4: boş avatar
                     details: {
                         pos:           profile.position    || 'OS',
                         age:           profile.age         || null, // #6: boş başlar
@@ -552,8 +554,13 @@ async function initSupabaseUser() {
                         mevkiSadakat:  profile.mevki_sadakat  || 'Bazen Gezer',
                         presGucu:      profile.pres_gucu      || 'Yorgunsa Yavaş',
                         pasTercihi:    profile.pas_tercihi    || 'Dengeli',
-                        markaj:        profile.markaj         || 'Yakın Takip'
+                        markaj:        profile.markaj         || 'Yakın Takip',
+                        bio:           profile.bio            || '',
+                        highlight_url_1: null,
+                        highlight_url_2: null
                     },
+                    highlight_url_1: null,
+                    highlight_url_2: null,
                     ratings: {
                         teknik:    profile.rating_teknik    ?? null,
                         sut:       profile.rating_sut       ?? null,
@@ -584,6 +591,18 @@ async function initSupabaseUser() {
                 accounts.unshift(newAccount);
                 activeAccountId = newAccount.id;
                 activePlayerId  = newPlayer.id;
+
+                // Highlight URL'leri RPC ile oku (schema cache bypass)
+                try {
+                    const hlUrls = await window.DB.Profiles.getHighlightUrls(userId);
+                    const hl1 = hlUrls.highlight_url_1 || null;
+                    const hl2 = hlUrls.highlight_url_2 || null;
+                    newPlayer.highlight_url_1         = hl1;
+                    newPlayer.highlight_url_2         = hl2;
+                    newPlayer.details.highlight_url_1 = hl1;
+                    newPlayer.details.highlight_url_2 = hl2;
+                    renderHighlights(newPlayer);
+                } catch(e) { console.warn('highlight url load warn:', e); }
             } else {
                 // Mevcut mock oyuncu bulundu → aktif hesaba geç
                 const acc = accounts.find(a => a.playerId === existingPlayer.id);
@@ -593,16 +612,29 @@ async function initSupabaseUser() {
                 }
                 // Supabase'den gelen TÜM verileri override et (localStorage'da eski değerler kalıyor)
                 // İsim ve avatar her zaman Supabase'den gelsin
-                if (profile.username)   existingPlayer.name       = profile.username;
+                if (profile.username)   { existingPlayer.name = profile.username; existingPlayer.supabase_username = profile.username; }
+                if (profile.full_name)  { existingPlayer.full_name = profile.full_name; }
                 if (profile.avatar_url) existingPlayer.avatar_url = profile.avatar_url;
                 if (!existingPlayer.details) existingPlayer.details = {};
                 if (profile.form_status) existingPlayer.details.formStatus = profile.form_status;
                 if (profile.city)        { existingPlayer.city = profile.city; existingPlayer.details.city = profile.city; }
-                if (profile.age)         existingPlayer.details.age = profile.age;
+                if (profile.age)         existingPlayer.details.age    = profile.age;
                 if (profile.height)      existingPlayer.details.height = profile.height;
                 if (profile.weight)      existingPlayer.details.weight = profile.weight;
                 if (profile.ana_mevki)   existingPlayer.details.anaMevki = profile.ana_mevki;
-                if (profile.ayak)        existingPlayer.details.ayak = profile.ayak;
+                if (profile.ayak)        existingPlayer.details.ayak   = profile.ayak;
+                if (profile.bio !== undefined) existingPlayer.details.bio = profile.bio;
+                // Highlight URL'leri — schema cache bypass: RPC ile oku
+                try {
+                    const hlUrls = await window.DB.Profiles.getHighlightUrls(userId);
+                    const hl1 = hlUrls.highlight_url_1 || null;
+                    const hl2 = hlUrls.highlight_url_2 || null;
+                    existingPlayer.highlight_url_1         = hl1;
+                    existingPlayer.highlight_url_2         = hl2;
+                    existingPlayer.details.highlight_url_1 = hl1;
+                    existingPlayer.details.highlight_url_2 = hl2;
+                    renderHighlights(existingPlayer);
+                } catch(e) { console.warn('highlight url load warn:', e); }
                 // Rating'leri Supabase'den al — null ise null kalacak (artık 70 default yok)
                 existingPlayer.ratings = {
                     teknik:    profile.rating_teknik    ?? null,
@@ -880,6 +912,9 @@ function showSection(id) {
     if (id === 'matches') {
         if (typeof window.initMatchCenter === 'function') window.initMatchCenter();
     }
+    if (id === 'dashboard') {
+        if (typeof window.initDashboard === 'function') window.initDashboard();
+    }
     // Close panels on nav change
     closeAccountPanel();
     document.getElementById('notif-panel')?.classList.remove('open');
@@ -1064,6 +1099,556 @@ window.saveQuickProfile = async function() {
     toggleProfileEditPanel();
 };
 
+// ─── Hakkımda Sekmesi Fonksiyonları ────────────────────────────────────────
+
+function _hkmSetVal(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.value = val ?? '';
+}
+
+function _hkmSetText(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val || '—';
+}
+
+window.populateHakkimdaView = function() {
+    const player = players.find(p => p.id === activePlayerId) || players[0];
+    if (!player) return;
+    const d = player.details || {};
+    const teamName = player._sbTeamName || player.current_team_name || null;
+
+    _hkmSetText('hkm-username',      player.supabase_username || player.name);
+    _hkmSetText('hkm-fullname',      player.full_name || d.full_name);
+    _hkmSetText('hkm-age',           d.age ? `${d.age}` : null);
+    _hkmSetText('hkm-city',          d.city || player.city);
+    const h = d.height, w = d.weight;
+    _hkmSetText('hkm-height-weight', (h || w) ? `${h || '?'} cm / ${w || '?'} kg` : null);
+    _hkmSetText('hkm-team',          teamName);
+    const bioEl = document.getElementById('hkm-bio');
+    if (bioEl) {
+        if (d.bio) { bioEl.textContent = d.bio; bioEl.style.fontStyle = 'italic'; }
+        else { bioEl.textContent = '—'; bioEl.style.fontStyle = 'normal'; }
+    }
+    _hkmSetText('hkm-ana-mevki',    d.anaMevki);
+    _hkmSetText('hkm-alt-pos',      d.altPos || null);
+    _hkmSetText('hkm-ayak',         d.ayak);
+    _hkmSetText('hkm-oyun-tarzi',   d.oyunTarzi);
+    _hkmSetText('hkm-ekol',         d.ekol);
+
+    // Renk vurguları
+    const mevkiEl = document.getElementById('hkm-ana-mevki');
+    if (mevkiEl) mevkiEl.style.color = 'var(--neon-green)';
+    const takimEl = document.getElementById('hkm-team');
+    if (takimEl) takimEl.style.color = 'var(--neon-cyan)';
+};
+
+// ══════════════════════════════════════════════════════════════════════════
+// FORM OKU (Live Condition) — PES/FIFA tarzı canlı performans göstergesi
+// ══════════════════════════════════════════════════════════════════════════
+
+const CONDITION_MAP = {
+    // [ minWins, results içinde beraberlik de var mı?, label, ok, renk, glow-renk ]
+    FIRE:   { label: 'Yanıyor',   arrow: '⬆',  color: '#adff2f', glow: 'rgba(173,255,47,0.7)',  minWins: 3, exact: r => r.filter(x=>x==='W').length === 3 },
+    GOOD:   { label: 'Formda',    arrow: '↗',  color: '#00e5ff', glow: 'rgba(0,229,255,0.6)',   minWins: 2, exact: r => r.filter(x=>x==='W').length === 2 },
+    NORMAL: { label: 'Normal',    arrow: '→',  color: '#ffd700', glow: 'rgba(255,215,0,0.5)',   minWins: 1, exact: r => r.filter(x=>x==='W').length === 1 || r.filter(x=>x==='D').length >= 2 },
+    DOWN:   { label: 'Düşüşte',   arrow: '↘',  color: '#ff9800', glow: 'rgba(255,152,0,0.6)',  minWins: 0, exact: r => r.filter(x=>x==='L').length >= 2 && r.filter(x=>x==='W').length === 0 },
+    CRISIS: { label: 'Krizde',    arrow: '⬇',  color: '#ff3d3d', glow: 'rgba(255,61,61,0.7)',  minWins: 0, exact: r => r.filter(x=>x==='L').length === 3 },
+};
+
+/**
+ * Son 3 maç sonucu dizisinden ('W','L','D') form durumu hesapla.
+ * @param {string[]} results — ['W','L','W'] gibi
+ */
+function calculateCondition(results) {
+    if (!results || results.length === 0) return null;
+    const wins   = results.filter(x => x === 'W').length;
+    const losses = results.filter(x => x === 'L').length;
+    if (wins === 3)                         return CONDITION_MAP.FIRE;
+    if (wins === 2)                         return CONDITION_MAP.GOOD;
+    if (wins === 1)                         return CONDITION_MAP.NORMAL;
+    if (losses === 3)                       return CONDITION_MAP.CRISIS;
+    if (losses >= 2 && wins === 0)          return CONDITION_MAP.DOWN;
+    return CONDITION_MAP.NORMAL;
+}
+
+/** Form ok HTML'i üret (FUT kart + Hakkımda ortak kullanım) */
+function conditionArrowHTML(cond, size = '1.6rem') {
+    if (!cond) return '';
+    return `<span class="live-condition-arrow"
+        data-cond="${cond.label}"
+        title="Son 3 maçlık performansına göre güncellendi: ${cond.label}"
+        style="
+            font-size:${size};
+            color:${cond.color};
+            text-shadow:0 0 10px ${cond.glow}, 0 0 22px ${cond.glow};
+            cursor:default;
+            display:inline-block;
+            line-height:1;
+            vertical-align:middle;
+        ">${cond.arrow}</span>`;
+}
+
+/** Tüm .live-condition-target elementlerine form okunu yazar */
+async function renderLiveCondition(userId) {
+    if (!userId || !window.DB) return;
+    try {
+        const results = await window.DB.Matches.getLastResults(userId, 3);
+        const cond    = calculateCondition(results);
+        window.__LIVE_CONDITION__ = cond;   // diğer render'lar da okuyabilsin
+
+        // FUT kart — GEN yanı + FORM stat hücresini yenile
+        const futArrowEl = document.getElementById('fut-condition-arrow');
+        if (futArrowEl) futArrowEl.innerHTML = cond ? conditionArrowHTML(cond, '1.1rem') : '';
+        // FORM alanı FUT kart stat listesindeyse yeniden render et
+        if (typeof populateFutCard === 'function') populateFutCard();
+
+        // Hakkımda — canlı form banner'ı (ok + etiket)
+        const hkmArrowEl = document.getElementById('hkm-condition-arrow');
+        if (hkmArrowEl) hkmArrowEl.innerHTML = cond ? conditionArrowHTML(cond, '1.4rem') : '';
+        const hkmLabelEl = document.getElementById('hkm-condition-label');
+        if (hkmLabelEl && cond) {
+            hkmLabelEl.textContent = cond.label;
+            hkmLabelEl.style.color = cond.color;
+        }
+    } catch(e) { console.warn('renderLiveCondition error:', e); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PARTNER KİMYASI (Dynamic Duos)
+// ══════════════════════════════════════════════════════════════════════════
+
+async function renderDynamicDuos(userId) {
+    const container = document.getElementById('dynamic-duos-container');
+    if (!container || !userId || !window.DB) return;
+
+    container.innerHTML = `<div style="color:#555; font-size:0.85rem; padding:0.5rem 0;">
+        <i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor...
+    </div>`;
+
+    try {
+        const partners = await window.DB.Matches.getTopPartners(userId, 3);
+
+        if (!partners || partners.length === 0) {
+            container.innerHTML = `<div style="color:#444; font-size:0.82rem; padding:0.5rem 0; text-align:center;">
+                <i class="fa-solid fa-user-slash" style="margin-right:6px;"></i>Henüz birlikte maç verisi yok.
+            </div>`;
+            return;
+        }
+
+        container.innerHTML = partners.map(p => {
+            const avatar = p.avatar_url ||
+                `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.username || 'x')}`;
+            const winColor = p.winRate >= 60 ? 'var(--neon-green)' : p.winRate >= 40 ? 'var(--neon-cyan)' : '#ff9800';
+            return `<div class="duo-card" onclick="if(window.openUserProfile) openUserProfile('${p.id}')">
+                <img src="${avatar}" class="duo-avatar"
+                     onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.username||'x')}'">
+                <div class="duo-name">@${p.username || 'oyuncu'}</div>
+                <div class="duo-stat" style="color:${winColor};">
+                    Birlikte <strong>%${p.winRate}</strong> galibiyet
+                </div>
+                <div class="duo-matches">${p.wins}G / ${p.total} maç</div>
+            </div>`;
+        }).join('');
+    } catch(e) {
+        console.warn('renderDynamicDuos error:', e);
+        container.innerHTML = `<div style="color:#444; font-size:0.82rem;">Yüklenemedi.</div>`;
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// MEDYA VİTRİNİ (Highlights)
+// ══════════════════════════════════════════════════════════════════════════
+
+/** YouTube / Shorts URL'sini embed URL'sine çevir */
+function toEmbedUrl(url) {
+    if (!url || typeof url !== 'string') return null;
+    url = url.trim();
+    // youtube.com/watch?v=ID
+    let m = url.match(/youtube\.com\/watch\?.*v=([^&]+)/);
+    if (m) return `https://www.youtube.com/embed/${m[1]}`;
+    // youtu.be/ID
+    m = url.match(/youtu\.be\/([^?&]+)/);
+    if (m) return `https://www.youtube.com/embed/${m[1]}`;
+    // youtube.com/shorts/ID
+    m = url.match(/youtube\.com\/shorts\/([^?&]+)/);
+    if (m) return `https://www.youtube.com/embed/${m[1]}`;
+    // Instagram — iframe'i kısıtlıyor, link olarak göster
+    if (url.includes('instagram.com')) return null;
+    return null;
+}
+
+function renderHighlights(player) {
+    const container = document.getElementById('highlights-container');
+    if (!container) return;
+    const d = player?.details || {};
+    const url1 = d.highlight_url_1 || player?.highlight_url_1 || '';
+    const url2 = d.highlight_url_2 || player?.highlight_url_2 || '';
+    const embed1 = toEmbedUrl(url1);
+    const embed2 = toEmbedUrl(url2);
+    const isInsta1 = url1 && url1.includes('instagram.com');
+    const isInsta2 = url2 && url2.includes('instagram.com');
+
+    const hasAny = embed1 || embed2 || isInsta1 || isInsta2;
+
+    if (!hasAny) {
+        container.innerHTML = `<div style="text-align:center; color:#444; padding:1.5rem 0; font-size:0.85rem;">
+            <i class="fa-solid fa-video" style="font-size:1.6rem; display:block; margin-bottom:0.5rem; opacity:0.3;"></i>
+            Henüz video eklenmedi.
+        </div>`;
+        return;
+    }
+
+    const makeFrame = (embed, rawUrl, isInsta) => {
+        if (embed) {
+            return `<div class="highlight-frame-wrap">
+                <iframe src="${embed}" class="highlight-iframe"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen></iframe>
+            </div>`;
+        }
+        if (isInsta) {
+            return `<a href="${rawUrl}" target="_blank" rel="noopener" class="highlight-insta-link">
+                <i class="fa-brands fa-instagram"></i> Instagram'da İzle
+            </a>`;
+        }
+        return '';
+    };
+
+    container.innerHTML = `
+        <div class="highlights-grid">
+            ${makeFrame(embed1, url1, isInsta1)}
+            ${makeFrame(embed2, url2, isInsta2)}
+        </div>`;
+}
+
+// ─── FUT Oyuncu Kartı ──────────────────────────────────────────────────────
+
+const FUT_ALL_FIELDS = {
+    mevki:     { label: 'MEVKİ',   get: p => p.details?.anaMevki || '—' },
+    takim:     { label: 'TAKIM',   get: p => p._sbTeamName || p.current_team_name || '—' },
+    yas:       { label: 'YAŞ',     get: p => p.details?.age ? `${p.details.age}` : '—' },
+    sehir:     { label: 'ŞEHİR',   get: p => p.details?.city || p.city || '—' },
+    ayak:      { label: 'AYAK',    get: p => p.details?.ayak || '—' },
+    form:      { label: 'FORM',    get: _p => {
+        const c = window.__LIVE_CONDITION__;
+        if (!c) return '<span style="color:#555;">—</span>';
+        return `<span title="${c.label} · Son 3 maç"
+                     style="font-size:1.15rem; color:${c.color};
+                            text-shadow:0 0 8px ${c.glow}, 0 0 18px ${c.glow};
+                            line-height:1; display:inline-block;">${c.arrow}</span>`;
+    }},
+    ekol:      { label: 'EKOL',    get: p => p.details?.ekol || '—' },
+    boy:       { label: 'BOY',     get: p => p.details?.height ? `${p.details.height} cm` : '—' },
+    kilo:      { label: 'KİLO',    get: p => p.details?.weight ? `${p.details.weight} kg` : '—' },
+    oyunTarzi: { label: 'TARZI',   get: p => p.details?.oyunTarzi || '—' },
+    mac:       { label: 'MAÇ',     get: p => p.total_matches != null ? `${p.total_matches}` : '—' },
+    gol:       { label: 'GOL',     get: p => p.total_goals != null ? `${p.total_goals}` : '—' },
+    asist:     { label: 'ASİST',   get: p => p.total_assists != null ? `${p.total_assists}` : '—' },
+};
+const FUT_FIELDS_DEFAULT = ['mevki', 'ayak', 'yas', 'sehir', 'takim', 'form'];
+const FUT_LS_KEY = 'ss_fut_fields';
+
+function getFutFields() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(FUT_LS_KEY));
+        if (Array.isArray(saved) && saved.length > 0) {
+            // Eski varsayılan ('ekol' veya 'boy' içeren) — kayıtlı tercihi temizle
+            const OLD_DEFAULTS = [
+                ['ayak','ekol','mevki','sehir','takim','yas'],   // v1 — ekol vardı
+                ['ayak','boy','mevki','sehir','takim','yas'],    // v2 — boy vardı
+            ];
+            const sortedSaved = JSON.stringify([...saved].sort());
+            if (OLD_DEFAULTS.some(od => JSON.stringify(od.sort()) === sortedSaved)) {
+                localStorage.removeItem(FUT_LS_KEY);
+                return [...FUT_FIELDS_DEFAULT];
+            }
+            return saved;
+        }
+    } catch(e) {}
+    return [...FUT_FIELDS_DEFAULT];
+}
+
+function getPositionAbbr(anaMevki) {
+    const map = {
+        'Kaleci': 'KL', 'Sol Bek': 'SB', 'Sağ Bek': 'SB', 'Stoper': 'STR',
+        'Libero': 'LB', 'Defansif OS': 'DOS', 'Box-to-Box OS': 'BBX',
+        'Ofansif OS (10 Numara)': 'OOS', 'Sol Kanat': 'SK', 'Sağ Kanat': 'SK',
+        'İkinci Forvet': 'İF', 'Santrafor (9 Numara)': 'SF',
+    };
+    return map[anaMevki] || (anaMevki ? anaMevki.substring(0, 2).toUpperCase() : 'OS');
+}
+
+window.populateFutCard = function() {
+    const player = players.find(p => p.id === activePlayerId) || players[0];
+    if (!player) return;
+    const d = player.details || {};
+
+    // GEN
+    const rVals = Object.values(player.ratings || {}).filter(v => v != null);
+    const gen = rVals.length ? Math.round(rVals.reduce((a,b) => a+b, 0) / rVals.length) : null;
+    const genEl = document.getElementById('fut-gen');
+    if (genEl) {
+        genEl.textContent = gen ?? '—';
+        genEl.style.color = gen >= 85 ? 'var(--neon-green)' : gen >= 75 ? 'var(--neon-cyan)' : '#ff9800';
+    }
+
+    // Pozisyon kısaltması
+    const posEl = document.getElementById('fut-pos');
+    if (posEl) posEl.textContent = getPositionAbbr(d.anaMevki);
+
+    // Avatar
+    const avatarEl = document.getElementById('fut-avatar');
+    if (avatarEl) {
+        avatarEl.src = player.avatar_url || '';
+        avatarEl.style.opacity = player.avatar_url ? '1' : '0.25';
+    }
+
+    // İsim & kullanıcı adı
+    const nameEl = document.getElementById('fut-name');
+    if (nameEl) nameEl.textContent = (player.full_name || player.name || 'OYUNCU').toUpperCase();
+    const unEl = document.getElementById('fut-username');
+    if (unEl) unEl.textContent = `@${player.supabase_username || player.name || 'oyuncu'}`;
+
+    // Seçili alanlar
+    const statsEl = document.getElementById('fut-stats');
+    if (statsEl) {
+        const fields = getFutFields();
+        statsEl.innerHTML = fields.slice(0, 6).map(key => {
+            const f = FUT_ALL_FIELDS[key];
+            if (!f) return '';
+            return `<div class="fut-stat">
+                <span class="fut-stat-label">${f.label}</span>
+                <span class="fut-stat-value">${f.get(player)}</span>
+            </div>`;
+        }).join('');
+    }
+
+    // Settings checkbox'larını doldur (ilk kez veya yeniden)
+    buildFutFieldOptions();
+};
+
+function buildFutFieldOptions() {
+    const container = document.getElementById('fut-field-options');
+    if (!container || container.childElementCount > 0) return;
+    const selected = getFutFields();
+    Object.entries(FUT_ALL_FIELDS).forEach(([key, f]) => {
+        const checked = selected.includes(key);
+        const div = document.createElement('label');
+        div.style.cssText = 'display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.75rem; color:#ccc;';
+        div.innerHTML = `<input type="checkbox" value="${key}" ${checked ? 'checked' : ''}
+            style="accent-color:var(--neon-green); width:13px; height:13px;">
+            ${f.label}`;
+        div.querySelector('input').addEventListener('change', onFutFieldChange);
+        container.appendChild(div);
+    });
+}
+
+function onFutFieldChange() {
+    const checked = [...document.querySelectorAll('#fut-field-options input:checked')].map(i => i.value);
+    if (checked.length > 6) { this.checked = false; return; }
+    localStorage.setItem(FUT_LS_KEY, JSON.stringify(checked));
+    populateFutCard();
+}
+
+window.toggleFutSettings = function(e) {
+    e.stopPropagation();
+    const panel = document.getElementById('fut-settings-panel');
+    if (!panel) return;
+    const open = panel.style.display === 'block';
+    panel.style.display = open ? 'none' : 'block';
+    if (!open) buildFutFieldOptions();
+};
+
+// Kart dışına tıklayınca kapat
+document.addEventListener('click', () => {
+    const panel = document.getElementById('fut-settings-panel');
+    if (panel) panel.style.display = 'none';
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+
+window.toggleHakkimdaEdit = function(section) {
+    const viewEl = document.getElementById(`hakkimda-${section}-view`);
+    const editEl = document.getElementById(`hakkimda-${section}-edit`);
+    const editBtn = document.getElementById(`btn-hkm-edit-${section}`);
+    if (!viewEl || !editEl) return;
+
+    const isEditing = editEl.style.display !== 'none';
+    if (isEditing) {
+        editEl.style.display = 'none';
+        viewEl.style.display = '';
+        if (editBtn) editBtn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Düzenle';
+    } else {
+        const player = players.find(p => p.id === activePlayerId);
+        if (!player) return;
+        const d = player.details || {};
+
+        if (section === 'temel') {
+            _hkmSetVal('hkm-inp-username', player.supabase_username || player.name);
+            _hkmSetVal('hkm-inp-fullname', player.full_name || d.full_name);
+            _hkmSetVal('hkm-inp-age',      d.age);
+            _hkmSetVal('hkm-inp-city',     d.city || player.city);
+            _hkmSetVal('hkm-inp-height',   d.height);
+            _hkmSetVal('hkm-inp-weight',   d.weight);
+            _hkmSetVal('hkm-inp-bio',         d.bio);
+            _hkmSetVal('hkm-inp-highlight-1', d.highlight_url_1 || player.highlight_url_1);
+            _hkmSetVal('hkm-inp-highlight-2', d.highlight_url_2 || player.highlight_url_2);
+
+            // Bio karakter sayacı
+            const bioInp = document.getElementById('hkm-inp-bio');
+            const bioCtr = document.getElementById('hkm-bio-counter');
+            if (bioInp && bioCtr) {
+                bioCtr.textContent = `${bioInp.value.length}/500`;
+                bioInp.oninput = () => { bioCtr.textContent = `${bioInp.value.length}/500`; };
+            }
+
+            // Takım dropdown
+            const teamSel = document.getElementById('hkm-sel-team');
+            if (teamSel && window.DB && window.__AUTH_USER__) {
+                window.DB.Teams.getMyTeams(window.__AUTH_USER__.id).then(teams => {
+                    teamSel.innerHTML = '<option value="">— Takım Seçilmedi —</option>';
+                    teams.forEach(t => {
+                        const opt = document.createElement('option');
+                        opt.value = t.id;
+                        opt.textContent = `${t.name}${t.role === 'captain' ? ' ★' : ''}`;
+                        if (t.id === player.current_team_id) opt.selected = true;
+                        teamSel.appendChild(opt);
+                    });
+                }).catch(() => {});
+            }
+
+            // Güncel username/fullname/bio Supabase'den
+            if (window.__AUTH_USER__ && window.DB) {
+                window.DB.Profiles.get(window.__AUTH_USER__.id).then(prof => {
+                    if (!prof) return;
+                    if (prof.username)  _hkmSetVal('hkm-inp-username', prof.username);
+                    if (prof.full_name) _hkmSetVal('hkm-inp-fullname', prof.full_name);
+                    if (prof.bio)       _hkmSetVal('hkm-inp-bio',      prof.bio);
+                    const bioCtr2 = document.getElementById('hkm-bio-counter');
+                    const bioInp2 = document.getElementById('hkm-inp-bio');
+                    if (bioCtr2 && bioInp2) bioCtr2.textContent = `${bioInp2.value.length}/500`;
+                }).catch(() => {});
+            }
+        } else if (section === 'futbol') {
+            _hkmSetVal('hkm-sel-ana-mevki',  d.anaMevki);
+            _hkmSetVal('hkm-inp-alt-pos',    d.altPos);
+            _hkmSetVal('hkm-sel-ayak',       d.ayak);
+            _hkmSetVal('hkm-sel-oyun-tarzi', d.oyunTarzi);
+            _hkmSetVal('hkm-sel-ekol',       d.ekol);
+        }
+
+        viewEl.style.display = 'none';
+        editEl.style.display = '';
+        if (editBtn) editBtn.innerHTML = '<i class="fa-solid fa-xmark"></i> Kapat';
+    }
+};
+
+window.saveHakkimdaSection = async function(section) {
+    const player = players.find(p => p.id === activePlayerId);
+    if (!player) return;
+    const getV = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+
+    if (section === 'temel') {
+        const username = getV('hkm-inp-username');
+        const fullName = getV('hkm-inp-fullname');
+        const age      = parseInt(getV('hkm-inp-age'))    || null;
+        const city     = getV('hkm-inp-city');
+        const height   = parseInt(getV('hkm-inp-height')) || null;
+        const weight   = parseInt(getV('hkm-inp-weight')) || null;
+        const bio           = getV('hkm-inp-bio');
+        const highlightUrl1 = getV('hkm-inp-highlight-1');
+        const highlightUrl2 = getV('hkm-inp-highlight-2');
+        const teamSel  = document.getElementById('hkm-sel-team');
+        const teamIdRaw = teamSel ? teamSel.value : '';
+        const teamId   = teamIdRaw || null;
+        const teamNameVal = teamId && teamSel
+            ? (teamSel.options[teamSel.selectedIndex]?.text || '').replace(' ★', '').trim()
+            : null;
+
+        // Sınır kontrolü
+        if (age    !== null && (age    < 10 || age    > 50))  { showToast('⚠️ Yaş 10–50 arasında olmalıdır.');      return; }
+        if (height !== null && (height < 140 || height > 220)) { showToast('⚠️ Boy 140–220 cm arasında olmalıdır.'); return; }
+        if (weight !== null && (weight < 40  || weight > 120)) { showToast('⚠️ Kilo 40–120 kg arasında olmalıdır.'); return; }
+
+        if (!player.details) player.details = {};
+        if (username) { player.name = username; player.supabase_username = username; }
+        if (fullName) { player.full_name = fullName; player.details.full_name = fullName; }
+        if (age)      player.details.age    = age;
+        if (city)     { player.city = city; player.details.city = city; }
+        if (height)   player.details.height = height;
+        if (weight)   player.details.weight = weight;
+        player.details.bio = bio;
+        player.details.highlight_url_1 = highlightUrl1;
+        player.details.highlight_url_2 = highlightUrl2;
+        player.highlight_url_1 = highlightUrl1;
+        player.highlight_url_2 = highlightUrl2;
+        if (teamId)          { player.current_team_id = teamId; player._sbTeamName = teamNameVal; }
+        else if (!teamIdRaw) { player.current_team_id = null;   player._sbTeamName = null; }
+
+        savePlayers();
+        updateUI();
+
+        const user = window.__AUTH_USER__;
+        if (user && window.DB) {
+            // Highlight URL'leri ayrı RPC ile kaydet (schema cache bypass)
+            const saveHighlights = window.DB.Profiles.updateHighlightUrls(
+                user.id, highlightUrl1 || null, highlightUrl2 || null
+            ).catch(e => console.warn('Highlight save warn:', e.message));
+
+            // Ana profil güncelleme (highlight alanları hariç)
+            const upd = { bio };
+            if (username) upd.username        = username;
+            if (fullName) upd.full_name       = fullName;
+            if (age)      upd.age             = age;
+            if (city)     upd.city            = city;
+            if (height)   upd.height          = height;
+            if (weight)   upd.weight          = weight;
+            if (teamId)   upd.current_team_id = teamId;
+            else          upd.current_team_id = null;
+            try {
+                await Promise.all([
+                    window.DB.Profiles.update(user.id, upd),
+                    saveHighlights
+                ]);
+                showToast('✅ Profil bilgileri kaydedildi!');
+            } catch(e) { showToast('❌ Kayıt hatası: ' + e.message); }
+        }
+    } else if (section === 'futbol') {
+        const anaMevki  = getV('hkm-sel-ana-mevki');
+        const altPos    = getV('hkm-inp-alt-pos');
+        const ayak      = getV('hkm-sel-ayak');
+        const oyunTarzi = getV('hkm-sel-oyun-tarzi');
+        const ekol      = getV('hkm-sel-ekol');
+
+        if (!player.details) player.details = {};
+        if (anaMevki)  player.details.anaMevki  = anaMevki;
+        player.details.altPos    = altPos;
+        if (ayak)      player.details.ayak      = ayak;
+        if (oyunTarzi) player.details.oyunTarzi = oyunTarzi;
+        if (ekol)      player.details.ekol      = ekol;
+
+        savePlayers();
+        updateUI();
+
+        const user = window.__AUTH_USER__;
+        if (user && window.DB) {
+            const upd = { alt_pos: altPos };
+            if (anaMevki)  upd.ana_mevki  = anaMevki;
+            if (ayak)      upd.ayak       = ayak;
+            if (oyunTarzi) upd.oyun_tarzi = oyunTarzi;
+            if (ekol)      upd.ekol       = ekol;
+            try {
+                await window.DB.Profiles.update(user.id, upd);
+                showToast('✅ Futbol profili kaydedildi!');
+            } catch(e) { showToast('❌ Kayıt hatası: ' + e.message); }
+        }
+    }
+
+    toggleHakkimdaEdit(section);
+};
+
+// ───────────────────────────────────────────────────────────────────────────
+
 /**
  * Sets profile to view-only or edit mode based on permissions
  */
@@ -1143,6 +1728,19 @@ function applyProfileViewMode() {
         if (viewPanel) viewPanel.style.display = '';
     }
 
+    // Hakkımda sekme düzenleme butonları
+    document.querySelectorAll('.hakkimda-edit-trigger').forEach(btn => {
+        btn.style.display = canEdit ? '' : 'none';
+    });
+    if (viewingOther && !isAdmin) {
+        ['temel', 'futbol'].forEach(s => {
+            const ed = document.getElementById(`hakkimda-${s}-edit`);
+            const vw = document.getElementById(`hakkimda-${s}-view`);
+            if (ed) ed.style.display = 'none';
+            if (vw) vw.style.display = '';
+        });
+    }
+
     // Maça davet butonu — sadece başkasının profilindeyken görünsün
     const davetBtn = document.getElementById('btn-mac-davet');
     if (davetBtn) {
@@ -1215,6 +1813,9 @@ window.switchProfileTab = function (tabId) {
     if (tabId === 'tab-maclar') {
         loadMatchHistory();
     }
+    if (tabId === 'tab-arkadaslarim') {
+        if (window.loadFriendsList) window.loadFriendsList();
+    }
     if (tabId === 'tab-kariyer') {
         const player = players.find(p => p.id === activePlayerId) || players[0];
         if (player) {
@@ -1235,7 +1836,7 @@ window.updateUI = function () {
 
     // --- Header ---
     const nameEl = document.getElementById('player-name');
-    if (nameEl) nameEl.textContent = player.name;
+    if (nameEl) nameEl.textContent = player.full_name || player.details?.full_name || player.name;
 
     // Avatar — önce Supabase URL, yoksa boş (Dicebear kaldırıldı #4)
     const avatarEl = document.getElementById('profile-avatar');
@@ -1256,25 +1857,10 @@ window.updateUI = function () {
         if (sidebarAvatar && player.avatar_url) sidebarAvatar.src = player.avatar_url;
     }
 
-    // Header: Yaş, Şehir, Takım — sadece dolu ise göster (#6)
-    const ageHeaderSpan = document.getElementById('disp-age-header');
-    const ageHeaderVal  = document.getElementById('disp-age-header-val');
-    const cityHeaderSpan = document.getElementById('disp-city-header');
-    const cityHeaderVal  = document.getElementById('disp-city-header-val');
-    const teamHeaderSpan = document.getElementById('disp-team-header');
-    const teamHeaderName = document.getElementById('disp-team-header-name');
-
+    // Takım adını sonraki satırlarda kullanmak için sakla (header’da gösterilmez)
     const age  = player.details?.age  || player.age;
     const city = player.details?.city || player.city;
-    if (ageHeaderSpan)  ageHeaderSpan.style.display  = age  ? '' : 'none';
-    if (ageHeaderVal)   ageHeaderVal.textContent  = age  || '';
-    if (cityHeaderSpan) cityHeaderSpan.style.display = city ? '' : 'none';
-    if (cityHeaderVal)  cityHeaderVal.textContent = city || '';
-
-    // Takım header’a al— mevcut_team veya _sbTeamName
     const teamName = player._sbTeamName || player.current_team_name || null;
-    if (teamHeaderSpan) teamHeaderSpan.style.display = teamName ? '' : 'none';
-    if (teamHeaderName) teamHeaderName.textContent = teamName || '';
 
     // --- GEN skoru: kendi puanı yoksa community ortalamasına düş ---
     const ratingVals = Object.values(player.ratings || {}).filter(v => v !== null && v !== undefined);
@@ -1346,6 +1932,37 @@ window.updateUI = function () {
     const teamGbEl = document.getElementById('disp-team-gb');
     if (teamGbEl) teamGbEl.textContent = teamName || '—';
 
+    // Hakkımda sekmesi görünümünü güncelle
+    populateHakkimdaView();
+
+    // FUT kart güncelle
+    populateFutCard();
+
+    // Medya Vitrini güncelle
+    renderHighlights(player);
+
+    // Form Oku + Partner Kimyası — aktif oyuncunun Supabase ID'si
+    const liveUserId = player.supabase_id || (window.__AUTH_USER__?.id);
+    if (liveUserId) {
+        renderLiveCondition(liveUserId);
+        renderDynamicDuos(liveUserId);
+    }
+
+    // Header: kullanıcı adı satırı (full name zaten h1'de, tekrar gösterilmez)
+    const usernameRow  = document.getElementById('player-username-row');
+    const usernameDisp = document.getElementById('player-username-disp');
+    const fullNameRow  = document.getElementById('player-fullname-row');
+    if (fullNameRow) fullNameRow.style.display = 'none';
+    if (usernameRow && usernameDisp) {
+        const uname = player.supabase_username || player.name;
+        if (uname) {
+            usernameDisp.textContent = uname;
+            usernameRow.style.display = '';
+        } else {
+            usernameRow.style.display = 'none';
+        }
+    }
+
     // Fill Inputs
     setVal('inp-age', player.details.age);
     setVal('inp-height', player.details.height);
@@ -1413,6 +2030,13 @@ window.updateUI = function () {
 
     // --- Profile view mode ---
     applyProfileViewMode();
+
+    // --- Tanrı Modu butonu: sadece admin kullanıcıda göster ---
+    const godFab = document.getElementById('god-mode-fab');
+    if (godFab) {
+        const acc = getActiveAccount();
+        godFab.style.display = (acc && acc.role === 'admin') ? 'block' : 'none';
+    }
 
     // Update community rating count badge
     updateCommunityBadge(player);
@@ -2108,7 +2732,7 @@ function getHonorTier(count) {
     return HONOR_TIERS.find(t => count >= t.min) || null;
 }
 
-// Genel Bakış sekmesindeki #honor-strip'e kazanılan onurları yansıt
+// Genel Bakış'taki #honor-strip'e kazanılan onurları büyük ikon kartları olarak render et
 function renderHonorShowcase(profileData) {
     const strip = document.getElementById('honor-strip');
     if (!strip) return;
@@ -2119,25 +2743,24 @@ function renderHonorShowcase(profileData) {
     });
 
     if (earned.length === 0) {
-        strip.innerHTML = '<span style="color:#444; font-size:0.82rem;">— henüz onur yok —</span>';
+        strip.innerHTML = '<span style="color:#444; font-size:0.82rem; padding:0.25rem 0;">— henüz onur yok —</span>';
         return;
     }
 
-    strip.innerHTML = earned.map(def => {
-        const count = profileData[`honor_${def.key}`] || 0;
-        const tier = getHonorTier(count);
-        const color = tier.color.startsWith('var') ? tier.color : tier.color;
-        return `<span title="${def.description}: ${count} oy (${tier.name})"
-                      style="display:inline-flex; align-items:center; gap:4px;
-                             padding:4px 10px; border-radius:20px;
-                             border:1px solid ${color};
-                             color:${color};
-                             font-size:0.78rem; font-weight:700;
-                             background:${color === 'var(--neon-cyan)' ? 'rgba(0,229,255,0.1)' : color + '18'};
-                             cursor:default; white-space:nowrap;">
-                  ${def.icon} ${def.label}
-                </span>`;
-    }).join('');
+    strip.innerHTML = `<div class="achievement-icon-grid">${
+        earned.map(def => {
+            const count = profileData[`honor_${def.key}`] || 0;
+            const tier  = getHonorTier(count);
+            const color = tier.color;
+            return `<div class="ach-icon-card" title="${def.description}: ${count} oy" style="--ach-color:${color};">
+                <div class="ach-icon-wrap">
+                    <span style="font-size:1.8rem; line-height:1;">${def.icon}</span>
+                </div>
+                <div class="ach-icon-label">${def.label}</div>
+                <div class="ach-icon-tier">${tier.name} · ${count}</div>
+            </div>`;
+        }).join('')
+    }</div>`;
 }
 
 // tab-kariyer içindeki #honor-badges-grid'e 5 onur rozeti kartını render et
@@ -2174,7 +2797,7 @@ function checkSkillUnlocks(player, avg) {
 }
 
 /**
- * UI-07 + SYNC-14: Kazanılan rozetleri Genel Bakış'taki #badge-strip'e yansıt
+ * UI-07 + SYNC-14: Kazanılan rozetleri büyük ikon kartları olarak render et
  */
 function renderBadgeStrip(player, avg) {
     const strip = document.getElementById('badge-strip');
@@ -2185,24 +2808,23 @@ function renderBadgeStrip(player, avg) {
     });
 
     if (unlocked.length === 0) {
-        strip.innerHTML = '<span style="color:#444; font-size:0.82rem;">— henüz rozet yok —</span>';
+        strip.innerHTML = '<span style="color:#444; font-size:0.82rem; padding:0.25rem 0;">— henüz rozet yok —</span>';
         return;
     }
 
-    const tierColors = { bronz: '#cd7f32', gumus: '#aaa', altin: 'gold' };
-    strip.innerHTML = unlocked.map(ach => `
-        <span title="${ach.title}: ${ach.desc}"
-              style="display:inline-flex; align-items:center; gap:4px;
-                     padding:4px 10px; border-radius:20px;
-                     border:1px solid ${ach.color || tierColors[ach.tier] || '#555'};
-                     color:${ach.color || tierColors[ach.tier] || '#aaa'};
-                     font-size:0.78rem; font-weight:700;
-                     background:${ach.color ? ach.color + '15' : 'rgba(255,255,255,0.04)'};
-                     cursor:default; white-space:nowrap;">
-            <i class="fa-solid ${ach.icon}" style="font-size:0.7rem;"></i>
-            ${ach.emoji} ${ach.title}
-        </span>
-    `).join('');
+    const tierColors = { bronz: '#cd7f32', gumus: '#c0c0c0', altin: '#ffd700' };
+    strip.innerHTML = `<div class="achievement-icon-grid">${
+        unlocked.map(ach => {
+            const color = ach.color || tierColors[ach.tier] || '#aaa';
+            return `<div class="ach-icon-card" title="${ach.desc}" style="--ach-color:${color};">
+                <div class="ach-icon-wrap">
+                    <i class="fa-solid ${ach.icon}"></i>
+                </div>
+                <div class="ach-icon-label">${ach.title}</div>
+                ${ach.tier ? `<div class="ach-icon-tier">${ach.tier.charAt(0).toUpperCase() + ach.tier.slice(1)}</div>` : ''}
+            </div>`;
+        }).join('')
+    }</div>`;
 }
 
 function renderAchievements(player, avg) {
@@ -2998,5 +3620,148 @@ window._submitSingleHonor = async function(ratedPlayerId, matchId, honorType) {
     } catch(e) {
         window.showToast?.('\u274c ' + (e.message || 'Onur verilemedi'), 'error');
     }
+};
+
+// \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+// TANRI MODU \u2014 Admin test paneli
+// \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+
+window.toggleGodMode = function() {
+    const modal = document.getElementById('god-mode-modal');
+    if (!modal) return;
+    if (modal.style.display !== 'none') { modal.style.display = 'none'; return; }
+
+    const player = players.find(p => p.id === activePlayerId);
+    if (!player) return;
+
+    // Beceri slider'lar\u0131n\u0131 doldur
+    const skillDefs = [
+        { key: 'teknik', label: 'Teknik' }, { key: 'sut', label: '\u015eut' },
+        { key: 'pas', label: 'Pas' }, { key: 'hiz', label: 'H\u0131z' },
+        { key: 'fizik', label: 'Fizik' }, { key: 'kondisyon', label: 'Kondisyon' }
+    ];
+    const grid = document.getElementById('gm-skills-grid');
+    if (grid) {
+        grid.innerHTML = skillDefs.map(({ key, label }) => {
+            const val = player.ratings?.[key] ?? 60;
+            return `<div class="gm-skill-row">
+                <span class="gm-skill-label">${label}</span>
+                <input type="range" id="gm-sk-${key}" min="40" max="99" value="${val}"
+                       oninput="document.getElementById('gm-skv-${key}').textContent=this.value"
+                       class="gm-slider">
+                <span id="gm-skv-${key}" class="gm-skill-val">${val}</span>
+            </div>`;
+        }).join('');
+    }
+
+    // \u0130statistik alanlar\u0131n\u0131 doldur
+    const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? 0; };
+    setV('gm-inp-matches', player.stats?.totalMatches ?? player.total_matches ?? 0);
+    setV('gm-inp-goals',   player.stats?.totalGoals   ?? player.total_goals   ?? 0);
+    setV('gm-inp-assists', player.stats?.totalAssists ?? player.total_assists ?? 0);
+
+    // Onurlar\u0131 doldur
+    const honorsList = document.getElementById('gm-honors-list');
+    if (honorsList) {
+        const sbProf = window.__SUPABASE_PROFILE__ || {};
+        honorsList.innerHTML = HONOR_DEFS.map(h => {
+            const count = sbProf[`honor_${h.key}`] ?? 0;
+            return `<div class="gm-honor-row">
+                <span class="gm-honor-icon">${h.icon}</span>
+                <span class="gm-honor-label">${h.label}</span>
+                <span class="gm-honor-count" id="gm-hc-${h.key}">${count}</span>
+                <div class="gm-honor-btns">
+                    <button class="gm-honor-btn" onclick="window.godModeAddHonor('${h.key}',1)">+1</button>
+                    <button class="gm-honor-btn" onclick="window.godModeAddHonor('${h.key}',5)">+5</button>
+                    <button class="gm-honor-btn" onclick="window.godModeAddHonor('${h.key}',20)">+20</button>
+                    <button class="gm-honor-btn gm-honor-btn-reset" title="S\u0131f\u0131rla"
+                            onclick="window.godModeSetHonorAbsolute('${h.key}',0)">\u21ba</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    modal.style.display = 'flex';
+    window.switchGmTab('beceriler', document.querySelector('.gm-tab'));
+};
+
+window.switchGmTab = function(tab, btn) {
+    document.querySelectorAll('.gm-tab-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.gm-tab').forEach(el => el.classList.remove('active'));
+    const target = document.getElementById(`gm-tab-${tab}`);
+    if (target) target.style.display = 'block';
+    if (btn) btn.classList.add('active');
+};
+
+window.godModeSaveSkills = async function() {
+    const user = window.__AUTH_USER__;
+    if (!user || !window.DB) return;
+    const ratings = {};
+    ['teknik','sut','pas','hiz','fizik','kondisyon'].forEach(k => {
+        const el = document.getElementById(`gm-sk-${k}`);
+        ratings[k] = el ? parseInt(el.value) : 60;
+    });
+    try {
+        await window.DB.Profiles.updateRatings(user.id, ratings);
+        const player = players.find(p => p.id === activePlayerId);
+        if (player) {
+            if (!player.ratings) player.ratings = {};
+            Object.assign(player.ratings, ratings);
+            savePlayers();
+            updateUI();
+        }
+        showToast('\u2705 Beceriler kaydedildi!');
+    } catch(e) { showToast('\u274c ' + e.message); }
+};
+
+window.godModeSaveStats = async function() {
+    const user = window.__AUTH_USER__;
+    if (!user || !window.DB) return;
+    const matches = parseInt(document.getElementById('gm-inp-matches')?.value) || 0;
+    const goals   = parseInt(document.getElementById('gm-inp-goals')?.value)   || 0;
+    const assists = parseInt(document.getElementById('gm-inp-assists')?.value) || 0;
+    try {
+        await window.DB.Profiles.update(user.id, {
+            total_matches: matches,
+            total_goals:   goals,
+            total_assists: assists
+        });
+        const player = players.find(p => p.id === activePlayerId);
+        if (player) {
+            player.total_matches = matches;
+            player.total_goals   = goals;
+            player.total_assists = assists;
+            if (!player.stats) player.stats = {};
+            player.stats.totalMatches = matches;
+            player.stats.totalGoals   = goals;
+            player.stats.totalAssists = assists;
+            savePlayers();
+            updateUI();
+        }
+        showToast('\u2705 \u0130statistikler kaydedildi!');
+    } catch(e) { showToast('\u274c ' + e.message); }
+};
+
+window.godModeAddHonor = async function(honorKey, amount) {
+    const sbProf = window.__SUPABASE_PROFILE__ || {};
+    const current = sbProf[`honor_${honorKey}`] ?? 0;
+    await window.godModeSetHonorAbsolute(honorKey, current + amount);
+};
+
+window.godModeSetHonorAbsolute = async function(honorKey, newVal) {
+    const user = window.__AUTH_USER__;
+    if (!user || !window.DB) return;
+    newVal = Math.max(0, newVal);
+    const col = `honor_${honorKey}`;
+    try {
+        await window.DB.Profiles.update(user.id, { [col]: newVal });
+        if (!window.__SUPABASE_PROFILE__) window.__SUPABASE_PROFILE__ = {};
+        window.__SUPABASE_PROFILE__[col] = newVal;
+        const countEl = document.getElementById(`gm-hc-${honorKey}`);
+        if (countEl) countEl.textContent = newVal;
+        renderHonorShowcase(window.__SUPABASE_PROFILE__);
+        if (document.getElementById('honor-badges-grid')) renderHonorBadges(window.__SUPABASE_PROFILE__);
+        showToast(`\u2705 ${honorKey}: ${newVal}`);
+    } catch(e) { showToast('\u274c ' + e.message); }
 };
 

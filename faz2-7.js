@@ -2239,22 +2239,23 @@ function _mcMatchCard(row, ratingStatuses, userId, playerCounts) {
            </button>`
         : '';
 
-    // İptal butonu (creator, aktif maç)
-    const cancelBtn = isCreator && isActive
+    // İptal butonu (creator, yalnızca gerçekten aktif maçlar — TEST_MODE bypass etmez)
+    const isTrulyActive = ['scheduled', 'confirmed'].includes(m.status);
+    const cancelBtn = isCreator && isTrulyActive
         ? `<button class="btn-sm mc-cancel-match-btn" onclick="mcCancelMatch('${_mcEsc(mid)}')">
                <i class="fa-solid fa-xmark"></i> İptal Et
            </button>`
         : '';
 
-    // Ayrıl butonu (katılımcı ama yaratıcı değil, aktif maç)
-    const leaveBtn = !isCreator && isActive
+    // Ayrıl butonu (katılımcı ama yaratıcı değil, yalnızca gerçekten aktif maçlar)
+    const leaveBtn = !isCreator && isTrulyActive
         ? `<button class="btn-sm mc-leave-btn" onclick="mcLeaveMatch('${_mcEsc(mid)}')">
                <i class="fa-solid fa-person-walking-arrow-right"></i> Ayrıl
            </button>`
         : '';
 
-    // Inline skor form (gizli)
-    const scoreForm = isCreator && isActive ? `
+    // Inline skor form (gizli) — yalnızca gerçekten aktif maçlar
+    const scoreForm = isCreator && isTrulyActive ? `
     <div id="mc-score-form-${_mcEsc(mid)}" class="mc-score-form" style="display:none;">
         <div class="mc-score-inputs-row">
             <div class="mc-score-team-col">
