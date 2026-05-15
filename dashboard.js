@@ -7,11 +7,12 @@
     'use strict';
 
     // ── Modül state ──────────────────────────────────
-    let dashFeedPosts      = [];
+    let dashFeedPosts       = [];
+    let dashMatchHistory    = [];   // gazete için maç geçmişi saklanır
     let dashRealtimeChannel = null;
-    let dashInitialized    = false;
-    let dashUserProfile    = null;
-    let dashUserId         = null;
+    let dashInitialized     = false;
+    let dashUserProfile     = null;
+    let dashUserId          = null;
 
     // ── Yardımcı: maç sonucu hesapla ────────────────
     function computeResult(row) {
@@ -137,7 +138,12 @@
     // ── Bölge sıralaması yükle ───────────────────────
     async function loadDashStandings() {
         const city = dashUserProfile?.city;
-        if (!city) return;
+        if (!city) {
+            const listEl = document.getElementById('dash-standings-list');
+            if (listEl) listEl.innerHTML =
+                '<li style="color:var(--text-muted);font-size:0.8rem;padding:0.5rem;list-style:none;">Bölge sıralaması için profilinize şehir ekleyin.</li>';
+            return;
+        }
 
         try {
             const profiles = await window.DB.Profiles.getAll({ city, limit: 10 });
@@ -184,7 +190,7 @@
         // Feed'den maç sonucu postlarını da ekle
         const matchPosts = dashFeedPosts.filter(p => p.post_type === 'match_result').slice(0, 2);
         matchPosts.forEach(p => {
-            const author = p.profiles?.username || p.profiles?.full_name || 'Oyuncu';
+            const author = p.author?.username || p.author?.full_name || 'Oyuncu';
             headlines.push(`📰 ${author} yeni bir maç sonucu paylaştı — Sosyal Duvar'da incele!`);
         });
 
@@ -203,7 +209,8 @@
     async function loadDashGazette() {
         try {
             const history = await window.DB.Matches.getPlayerHistory(dashUserId, 10);
-            renderDashGazette(history || []);
+            dashMatchHistory = history || [];   // modül state'e kaydet
+            renderDashGazette(dashMatchHistory);
         } catch (e) {
             console.warn('[Dashboard] Gazete yükleme hatası:', e);
             renderDashGazette([]);
@@ -229,7 +236,7 @@
         } else {
             // buildRealFeedCard henüz yüklenmediyse basit kart göster
             el.innerHTML = dashFeedPosts.map(p => {
-                const author  = p.profiles?.username || p.profiles?.full_name || 'Oyuncu';
+                const author  = p.author?.username || p.author?.full_name || 'Oyuncu';
                 const content = p.content || '';
                 const ago     = p.created_at
                     ? new Date(p.created_at).toLocaleDateString('tr-TR')
@@ -260,11 +267,12 @@
         if (dashRealtimeChannel) return; // çift abone koruması
 
         try {
-            dashRealtimeChannel = window.DB.Feed.subscribeToFeed(newPost => {
+            dashRealtimeChannel = window.DB.Feed.subscribeToFeed(async newPost => {
                 if (!newPost) return;
-                dashFeedPosts.unshift(newPost);
-                renderDashFeed();
-                renderDashGazette([]); // güncel feed verisiyle başlıkları yenile
+                // Realtime payload'ı raw satır döndürür — author join'i olmaz.
+                // Feed'i yeniden çekerek doğru isim/avatar gösteriyoruz.
+                await loadDashFeed();
+                renderDashGazette(dashMatchHistory);
                 if (typeof window.showToast === 'function') {
                     window.showToast('🆕 Yeni paylaşım!');
                 }
@@ -278,6 +286,10 @@
     window.initDashboard = async function () {
         if (!window.DB) {
             setTimeout(() => window.initDashboard(), 300);
+            return;
+        }
+        if (!window.__AUTH_USER__) {
+            setTimeout(() => window.initDashboard(), 500);
             return;
         }
 
@@ -298,16 +310,8 @@
         dashInitialized = true;
     };
 
-    // ── showSection override (faz2-social.js zincirinin ardına eklenir) ──
-    const _prevShowSection = window.showSection;
-    window.showSection = function (id) {
-        if (typeof _prevShowSection === 'function') _prevShowSection(id);
-        if (id === 'dashboard') {
-            setTimeout(() => window.initDashboard(), 80);
-        }
-    };
-
     // ── İlk yükleme: DOMContentLoaded'dan sonra dashboard açıksa başlat ──
+    // NOT: showSection wrapper kaldırıldı — script.js zaten 'dashboard' için initDashboard() çağırıyor.
     document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             const dashEl = document.getElementById('dashboard');

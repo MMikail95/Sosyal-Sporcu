@@ -1740,7 +1740,7 @@ window.initTeamSubTabContent = function(tabId) {
 // MAÇ SONU MODALİ — Puan + Onur (birleşik, step-by-step)
 // ══════════════════════════════════════════════════════════════
 
-const HONOR_MAX = 5;
+const HONOR_MAX = 13;
 let _pmrMatchId = null;
 let _pmrParticipants = [];
 let _pmrRatedSet = new Set();
@@ -1749,11 +1749,23 @@ let _pmrCurrentUserSide = null;
 let _honorSelections = {}; // { [rated_id]: honor_type } — modal boyunca toplanır
 
 const _HONOR_BTNS = [
-    { key: 'calm',     icon: '🕊️', label: 'Sakin'   },
-    { key: 'maestro',  icon: '🎯', label: 'Maestro' },
-    { key: 'punctual', icon: '⏱️', label: 'Dakik'   },
-    { key: 'joker',    icon: '😄', label: 'Joker'   },
-    { key: 'dynamo',   icon: '⚡', label: 'Dinamo'  }
+    // Saha İçi Performans
+    { key: 'mvp',              icon: '👑', label: 'MVP',             group: 'Saha İçi' },
+    { key: 'maestro',          icon: '🎯', label: 'Maestro',         group: 'Saha İçi' },
+    { key: 'fuzeci',           icon: '🚀', label: 'Füzeci',          group: 'Saha İçi' },
+    { key: 'duvar',            icon: '🧱', label: 'Duvar',           group: 'Saha İçi' },
+    { key: 'cigersiz_honor',   icon: '🫁', label: 'Ciğersiz',        group: 'Saha İçi' },
+    // Karakter & Vibe
+    { key: 'beyefendi',        icon: '🎩', label: 'Beyefendi',       group: 'Karakter' },
+    { key: 'sosyal',           icon: '🎉', label: 'Sosyal',          group: 'Karakter' },
+    { key: 'gizli_cevher',     icon: '💎', label: 'Gizli Cevher',    group: 'Karakter' },
+    { key: 'oyunbozan',        icon: '😤', label: 'Oyunbozan',       group: 'Karakter' },
+    // Lojistik & Fedakarlık
+    { key: 'organizator',      icon: '📋', label: 'Organizatör',     group: 'Lojistik' },
+    { key: 'saha_komiseri',    icon: '🏟️', label: 'Saha Komiseri',   group: 'Lojistik' },
+    { key: 'emanetci',         icon: '🎒', label: 'Emanetçi',        group: 'Lojistik' },
+    { key: 'fedakar_eldiven',  icon: '🧤', label: 'Fedakar Eldiven', group: 'Lojistik' },
+    { key: 'joker',            icon: '🃏', label: 'Joker',           group: 'Lojistik' },
 ];
 
 const _RATING_KEYS = [
@@ -1781,6 +1793,15 @@ window.openPostMatchRatingModal = async function(matchId, currentUserSide) {
             return;
         }
     } catch(e) { console.warn('Participation check failed:', e); }
+
+    // 24 saatlik oylama penceresi kontrolü
+    try {
+        const votingOpen = await window.DB.Ratings.isVotingOpen(matchId);
+        if (!votingOpen) {
+            if (typeof showToast === 'function') showToast('⏱ Oylamanın süresi doldu. Oylar yalnızca maç bitişinden itibaren 24 saat içinde kullanılabilir.');
+            return;
+        }
+    } catch(e) { console.warn('Voting window check failed:', e); }
 
     _pmrMatchId = matchId;
     _pmrCurrentUserSide = currentUserSide;
@@ -1866,13 +1887,22 @@ function _pmrHonorRow(playerId) {
     const selCount = Object.keys(_honorSelections).length;
     const atLimit = !selected && selCount >= HONOR_MAX;
 
-    const btns = _HONOR_BTNS.map(h => {
-        const isSel = selected === h.key;
-        return `<button class="honor-type-btn${isSel ? ' honor-type-selected' : ''}"
-                        ${atLimit ? 'disabled title="Onur limiti doldu"' : ''}
+    const groups = ['Saha İçi', 'Karakter', 'Lojistik'];
+    const groupLabels = { 'Saha İçi': '⚽ Saha İçi', 'Karakter': '😄 Karakter', 'Lojistik': '🔧 Lojistik' };
+
+    const groupedHtml = groups.map(g => {
+        const btns = _HONOR_BTNS.filter(h => h.group === g).map(h => {
+            const isSel = selected === h.key;
+            return `<button class="honor-type-btn${isSel ? ' honor-type-selected' : ''}"
+                        ${atLimit && !isSel ? 'disabled title="Onur limiti doldu"' : ''}
                         onclick="_pmrHonorToggle('${_pmrEsc(playerId)}','${h.key}')">
                     ${h.icon} ${h.label}
                 </button>`;
+        }).join('');
+        return `<div class="honor-group">
+            <div class="honor-group-label">${groupLabels[g]}</div>
+            <div class="honor-type-btns">${btns}</div>
+        </div>`;
     }).join('');
 
     return `
@@ -1882,7 +1912,7 @@ function _pmrHonorRow(playerId) {
                 Onur Ver (opsiyonel)
                 <span class="honor-count-badge" style="font-size:0.65rem; padding:0.1rem 0.5rem;">${selCount}/${HONOR_MAX}</span>
             </div>
-            <div class="honor-type-btns">${btns}</div>
+            ${groupedHtml}
         </div>`;
 }
 
@@ -1978,6 +2008,14 @@ window._pmrSubmitCurrent = async function() {
     });
 
     try {
+        // Submit anı pencere kontrolü
+        const stillOpen = await window.DB.Ratings.isVotingOpen(_pmrMatchId).catch(() => true);
+        if (!stillOpen) {
+            if (typeof showToast === 'function') showToast('⏱ Oylama süresi doldu, puanlar kaydedilemedi.');
+            if (typeof window.closePostMatchRatingModal === 'function') window.closePostMatchRatingModal();
+            return;
+        }
+
         await window.DB.Ratings.upsertRating(user.id, p.player_id, ratings, '', _pmrMatchId);
         _pmrRatedSet.add(p.player_id);
 
@@ -2220,6 +2258,8 @@ function _mcMatchCard(row, ratingStatuses, userId, playerCounts) {
             </button>`;
         } else if (rs === 'done') {
             actionHtml = `<span class="pmr-badge-done-sm"><i class="fa-solid fa-shield-heart"></i> Onurlandırıldı</span>`;
+        } else if (rs === 'expired') {
+            actionHtml = `<span class="pmr-badge-expired-sm"><i class="fa-solid fa-clock"></i> Süre Doldu</span>`;
         }
     } else if (isCreator && isActive) {
         actionHtml = `<button class="btn-sm mc-score-entry-btn" onclick="mcOpenScoreEntry('${_mcEsc(mid)}')">

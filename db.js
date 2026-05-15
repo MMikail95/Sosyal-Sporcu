@@ -120,20 +120,23 @@ const Profiles = {
     return data;
   },
 
-  // Highlight URL'lerini RPC üzerinden OKU (schema-cache bypass)
+  // Highlight URL'lerini oku
   async getHighlightUrls(userId) {
-    const { data, error } = await sb().rpc('get_highlight_urls', { p_user_id: userId });
+    const { data, error } = await sb()
+      .from('profiles')
+      .select('highlight_url_1, highlight_url_2')
+      .eq('id', userId)
+      .single();
     if (error) { console.warn('getHighlightUrls error:', error); return {}; }
-    return data?.[0] || {};
+    return data || {};
   },
 
-  // Highlight URL'lerini RPC üzerinden güncelle (schema-cache bypass)
+  // Highlight URL'lerini güncelle
   async updateHighlightUrls(userId, url1, url2) {
-    const { error } = await sb().rpc('update_highlight_urls', {
-      p_user_id: userId,
-      p_url_1:   url1 || null,
-      p_url_2:   url2 || null
-    });
+    const { error } = await sb()
+      .from('profiles')
+      .update({ highlight_url_1: url1 || null, highlight_url_2: url2 || null })
+      .eq('id', userId);
     if (error) { console.error('updateHighlightUrls error:', error); throw error; }
   },
 
@@ -662,7 +665,7 @@ const Matches = {
   // Kullanıcının tüm maçlarını getir (hem geçmiş hem yaklaşan)
   async getMyMatches(userId, myTeamIds = [], limit = 50) {
     const matchSelect = `
-      id, scheduled_at, status, home_score, away_score, match_type, notes, created_by,
+      id, scheduled_at, status, finished_at, home_score, away_score, match_type, notes, created_by,
       home_team_id, away_team_id,
       home_team:home_team_id(id, name),
       away_team:away_team_id(id, name),
@@ -1227,8 +1230,22 @@ const Ratings = {
     return new Set((data || []).map(r => r.rated_player_id));
   },
 
+  // Bu maç için 24 saatlik oylama penceresi hâlâ açık mı?
+  async isVotingOpen(matchId) {
+    if (!matchId) return false;
+    if (window.TEST_MODE) return true;
+    const { data } = await sb()
+      .from('matches')
+      .select('status, finished_at')
+      .eq('id', matchId)
+      .maybeSingle();
+    if (!data || data.status !== 'finished') return false;
+    if (!data.finished_at) return true; // migration henüz çalışmadıysa fail-open
+    return (Date.now() - new Date(data.finished_at).getTime()) < 24 * 60 * 60 * 1000;
+  },
+
   // Maç geçmişi tablosu için toplu durum sorgulama
-  // Döndürür: { [matchId]: 'pending' | 'done' | null }
+  // Döndürür: { [matchId]: 'pending' | 'done' | 'expired' | null }
   async getMatchRatingStatuses(userId, matchIds) {
     if (!matchIds || matchIds.length === 0) return {};
 
@@ -1239,17 +1256,19 @@ const Ratings = {
       .in('match_id', matchIds)
       .neq('player_id', userId);
 
-    // 2) Maçların home/away takım ID'lerini çek
+    // 2) Maçların home/away takım ID'lerini ve finished_at'i çek
     const { data: matchRows } = await sb()
       .from('matches')
-      .select('id, home_team_id, away_team_id')
+      .select('id, home_team_id, away_team_id, finished_at')
       .in('id', matchIds);
 
     // 3) Takım ID'lerinden üye listesini çek (fallback)
     const teamIds = [];
     const matchTeamMap = {}; // matchId -> [teamId, ...]
+    const finishedAtMap = {}; // matchId -> finished_at string | null
     (matchRows || []).forEach(m => {
       matchTeamMap[m.id] = [];
+      finishedAtMap[m.id] = m.finished_at || null;
       if (m.home_team_id) { teamIds.push(m.home_team_id); matchTeamMap[m.id].push(m.home_team_id); }
       if (m.away_team_id) { teamIds.push(m.away_team_id); matchTeamMap[m.id].push(m.away_team_id); }
     });
@@ -1299,6 +1318,12 @@ const Ratings = {
     // 6) Sonucu hesapla
     const result = {};
     matchIds.forEach(mid => {
+      // Oylama penceresi dolmuşsa expired döndür
+      const fat = finishedAtMap[mid];
+      if (fat && (Date.now() - new Date(fat).getTime()) >= 24 * 60 * 60 * 1000) {
+        result[mid] = 'expired';
+        return;
+      }
       const peers = [...byMatch[mid]];
       if (peers.length === 0) { result[mid] = 'pending'; return; } // takım varsa pending göster
       result[mid] = peers.every(pid => givenSet.has(`${mid}:${pid}`)) ? 'done' : 'pending';
@@ -1316,7 +1341,7 @@ const Honors = {
   // Maç için onur gönder — selections: [{ rated_id, honor_type }], max 5
   async submitMatchHonors(raterId, matchId, selections) {
     if (!selections || selections.length === 0) return { inserted: 0 };
-    if (selections.length > 5) throw new Error('En fazla 5 onur seçilebilir.');
+    if (selections.length > 13) throw new Error('En fazla 13 onur seçilebilir.');
     const rows = selections.map(s => ({
       match_id:   matchId,
       rater_id:   raterId,

@@ -637,6 +637,7 @@
 
 <!-- JS — sıra önemli: components.js önce DOMContentLoaded'ı alır -->
 <script src="../db.js"></script>
+<script src="../badges.js"></script>
 <script src="../assets/js/components.js"></script>
 <script src="../script.js"></script>
 <script src="../faz1.js"></script>
@@ -672,6 +673,9 @@ document.addEventListener('supabaseUserReady', async function onSupabaseReady() 
 
     const finalId = viewedId || loggedInId;
     if (typeof loadMatchHistory === 'function' && finalId) loadMatchHistory(finalId);
+    if (window.Badges && finalId) {
+        Badges.refresh(finalId, window.__SUPABASE_PROFILE__ || {});
+    }
 });
 </script>
 </body>

@@ -1129,6 +1129,12 @@
     font-size: 0.72rem; font-weight: 700;
     padding: 2px 7px; border-radius: 6px;
 }
+.pmr-badge-expired-sm {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.72rem; font-weight: 600; color: #555;
+    background: rgba(102,102,102,0.08); border: 1px solid #3a3a3a;
+    padding: 2px 7px; border-radius: 6px; cursor: default;
+}
 
 @media (max-width: 480px) {
     .pmr-box { border-radius: 14px; }
@@ -1746,6 +1752,16 @@
 .honor-player-name { font-size: 0.9rem; font-weight: 700; }
 .honor-player-side { font-size: 0.72rem; font-weight: 600; margin-top: 2px; }
 
+.honor-group { margin-top: 0.5rem; }
+.honor-group-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.3rem;
+}
+
 .honor-type-btns {
     display: flex;
     flex-wrap: wrap;
@@ -1816,4 +1832,235 @@
 .honor-badge-tier   { font-size: 0.62rem; font-weight: 800; text-transform: uppercase;
                       letter-spacing: 1px; margin-top: 0.25rem; }
 
+/* ======================================================
+   TİER ROZET SİSTEMİ — badges.js için stiller
+   ====================================================== */
+
+/* --- Strip chip'leri (#badge-strip içinde) --- */
+.tb-strip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.35rem;
+    width: 100%;
+}
+
+.tier-badge-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 99px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    font-family: 'Outfit', sans-serif;
+    border: 1px solid;
+    cursor: default;
+    transition: transform 0.15s ease;
+    white-space: nowrap;
+}
+.tier-badge-chip:hover { transform: translateY(-1px); }
+
+.tier-badge-chip.tb-bronz {
+    color: #CD7F32;
+    border-color: rgba(205,127,50,0.45);
+    background: rgba(205,127,50,0.1);
+}
+.tier-badge-chip.tb-gumus {
+    color: #A8A9AD;
+    border-color: rgba(168,169,173,0.4);
+    background: rgba(168,169,173,0.08);
+}
+.tier-badge-chip.tb-altin {
+    color: #adff2f;
+    border-color: rgba(173,255,47,0.5);
+    background: rgba(173,255,47,0.08);
+    animation: neon-pulse-chip 2s ease-in-out infinite;
+}
+.tier-badge-chip.tb-locked {
+    color: #444;
+    border-color: #333;
+    filter: grayscale(1);
+    opacity: 0.4;
+}
+
+@keyframes neon-pulse-chip {
+    0%, 100% { box-shadow: 0 0 4px rgba(173,255,47,0.2); }
+    50%       { box-shadow: 0 0 12px rgba(173,255,47,0.6); }
+}
+
+/* --- Kart grid (#achievements-container içinde) --- */
+.tb-section {
+    padding: 1.25rem;
+    margin-top: 1.5rem;
+}
+.tb-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.tb-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+    gap: 0.9rem;
+}
+
+@media (max-width: 600px) {
+    .tb-cards-grid { grid-template-columns: repeat(2, 1fr); gap: 0.65rem; }
+}
+
+/* --- Temel kart --- */
+.tier-badge-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 14px;
+    padding: 1.1rem 0.75rem 0.85rem;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    text-align: center;
+    cursor: default;
+    transition: transform 0.2s ease;
+}
+.tier-badge-card:hover { transform: translateY(-3px); }
+
+/* --- Bronz — sade border, animasyon yok --- */
+.tier-badge-card.tb-bronz {
+    border-color: rgba(205,127,50,0.35);
+    box-shadow: 0 2px 12px rgba(205,127,50,0.08);
+}
+.tier-badge-card.tb-bronz .tb-card-icon { color: #CD7F32; }
+
+/* --- Gümüş — shimmer ::before animasyonu --- */
+.tier-badge-card.tb-gumus {
+    border-color: rgba(168,169,173,0.4);
+}
+.tier-badge-card.tb-gumus::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    background: linear-gradient(
+        135deg,
+        rgba(168,169,173,0) 30%,
+        rgba(168,169,173,0.18) 50%,
+        rgba(168,169,173,0) 70%
+    );
+    background-size: 200% 200%;
+    animation: shimmer-frame 3s ease-in-out infinite;
+    pointer-events: none;
+}
+@keyframes shimmer-frame {
+    0%, 100% { background-position: 0% 50%; opacity: 0.3; }
+    50%       { background-position: 100% 50%; opacity: 1; }
+}
+.tier-badge-card.tb-gumus .tb-card-icon {
+    color: #A8A9AD;
+    filter: drop-shadow(0 0 4px rgba(168,169,173,0.5));
+}
+
+/* --- Altın — pulsing neon box-shadow --- */
+.tier-badge-card.tb-altin {
+    border-color: rgba(173,255,47,0.5);
+    animation: neon-pulse-card 2.5s ease-in-out infinite;
+}
+@keyframes neon-pulse-card {
+    0%, 100% { box-shadow: 0 0 8px rgba(173,255,47,0.25), inset 0 0 2px rgba(173,255,47,0.1); }
+    50%       { box-shadow: 0 0 24px rgba(173,255,47,0.6), inset 0 0 8px rgba(173,255,47,0.25); }
+}
+.tier-badge-card.tb-altin .tb-card-icon {
+    color: #adff2f;
+    filter: drop-shadow(0 0 8px rgba(173,255,47,0.8));
+}
+
+/* --- Kilitli --- */
+.tier-badge-card.tb-locked {
+    filter: grayscale(1);
+    opacity: 0.38;
+}
+.tier-badge-card.tb-locked .tb-card-icon { color: #555; }
+
+/* --- İç elementler --- */
+.tb-card-icon {
+    font-size: 2rem;
+    line-height: 1;
+    position: relative;
+    z-index: 1;
+}
+.tb-icon-locked { color: #444 !important; }
+
+.tb-card-label {
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #aaa;
+    line-height: 1.2;
+    z-index: 1;
+}
+.tb-tier-stamp {
+    font-size: 0.62rem;
+    font-weight: 900;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    z-index: 1;
+}
+.tb-card-score {
+    font-size: 1.5rem;
+    font-weight: 900;
+    line-height: 1;
+    z-index: 1;
+}
+
+/* --- Progress bar --- */
+.tb-progress-bar-wrap {
+    width: 100%;
+    height: 3px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+    overflow: hidden;
+    z-index: 1;
+    margin-top: 0.15rem;
+}
+.tb-progress-bar {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.7s ease;
+}
+.tb-bar-bronz  { background: #CD7F32; }
+.tb-bar-gumus  { background: #A8A9AD; }
+.tb-bar-altin  { background: #adff2f; box-shadow: 0 0 6px rgba(173,255,47,0.5); }
+.tb-bar-locked { background: #444; }
+
+.tb-next-hint {
+    font-size: 0.63rem;
+    color: #555;
+    z-index: 1;
+    margin-top: 0.05rem;
+    line-height: 1.3;
+}
+
+/* --- CSS Tooltip (hover) --- */
+.tier-badge-card[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 7px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(10,10,10,0.92);
+    color: #ddd;
+    font-size: 0.7rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 200;
+    border: 1px solid rgba(255,255,255,0.1);
+    font-family: 'Outfit', sans-serif;
+}
 

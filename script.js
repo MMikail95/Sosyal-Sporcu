@@ -899,6 +899,7 @@ function showSection(id) {
             const player = players.find(p => p.id === activePlayerId) || players[0];
             updateUI();
             updateChart(player);
+            _setupRatingsRealtime(player);
         }, 100);
     }
     if (id === 'feed') {
@@ -935,6 +936,7 @@ window.previousSection = null;
  * Profil görüntülemede geri dön — hangi sekmeden geldiyse oraya döner
  */
 window.goBackFromProfile = function() {
+    _teardownRatingsRealtime();
     const acc = getActiveAccount();
     if (acc) {
         activePlayerId = acc.playerId;
@@ -1824,6 +1826,12 @@ window.switchProfileTab = function (tabId) {
             checkSkillUnlocks(player, avg);
         }
         renderHonorBadges(window.__SUPABASE_PROFILE__ || {});
+        // Tier rozet sistemi (async — renderAchievements'dan sonra append eder)
+        if (window.Badges && window.__AUTH_USER__) {
+            const sbp = window.__SUPABASE_PROFILE__ || {};
+            const uid = (sbp.id && sbp.id === activePlayerId) ? activePlayerId : window.__AUTH_USER__.id;
+            Badges.refresh(uid, sbp);
+        }
     }
 };
 
@@ -2063,6 +2071,63 @@ function setText(id, txt) {
 // ======================================================
 // 7. CHART
 // ======================================================
+
+// Realtime subscription state
+window._ratingsRealtimeChannel = null;
+window._ratingsRealtimePlayerId = null;
+
+// Supabase'den en güncel community ratings'i çekip chart'ı yeniler
+async function _refreshPlayerCommunityRatings(player) {
+    const sbId = player?.supabase_id || player?.id;
+    if (!sbId || !window.DB || typeof sbId !== 'string' || sbId.startsWith('p')) return;
+    const sbRatings = await window.DB.Ratings.getPlayerRatings(sbId).catch(() => null);
+    if (!sbRatings) return;
+    player.communityRatings = sbRatings.map(r => ({
+        fromAccountId: r.rater_id,
+        raterName:     r.rater?.username || 'Biri',
+        teknik:        r.rating_teknik    || 0,
+        sut:           r.rating_sut       || 0,
+        pas:           r.rating_pas       || 0,
+        hiz:           r.rating_hiz       || 0,
+        fizik:         r.rating_fizik     || 0,
+        kondisyon:     r.rating_kondisyon || 0,
+        comment:       r.comment          || '',
+        date:          r.created_at       || '',
+    }));
+    updateChart(player);
+}
+
+// Belirtilen oyuncu için community_ratings realtime aboneliğini başlatır
+function _setupRatingsRealtime(player) {
+    const sbId = player?.supabase_id || player?.id;
+    if (!sbId || !window.sbClient || typeof sbId !== 'string' || sbId.startsWith('p')) return;
+    if (window._ratingsRealtimePlayerId === sbId && window._ratingsRealtimeChannel) return;
+    _teardownRatingsRealtime();
+    window._ratingsRealtimePlayerId = sbId;
+    window._ratingsRealtimeChannel = window.sbClient
+        .channel(`community-ratings-${sbId}`)
+        .on('postgres_changes', {
+            event:  '*',
+            schema: 'public',
+            table:  'community_ratings',
+            filter: `rated_player_id=eq.${sbId}`
+        }, () => {
+            const p = typeof players !== 'undefined'
+                ? players.find(pl => (pl.supabase_id || pl.id) === sbId)
+                : null;
+            if (p) _refreshPlayerCommunityRatings(p);
+        })
+        .subscribe();
+}
+
+// Mevcut realtime aboneliğini temizler
+function _teardownRatingsRealtime() {
+    if (window._ratingsRealtimeChannel) {
+        window.sbClient?.removeChannel(window._ratingsRealtimeChannel);
+        window._ratingsRealtimeChannel = null;
+        window._ratingsRealtimePlayerId = null;
+    }
+}
 
 function updateChart(player) {
     const ctx = document.getElementById('profileChart');
@@ -2714,11 +2779,27 @@ function getPlayerStats(player) {
 // =====================================================
 
 const HONOR_DEFS = [
+    // Eski kategoriler (geriye dönük uyum — mevcut oylar görünmeye devam eder)
     { key: 'calm',     label: 'Sakin',   icon: '🕊️', faIcon: 'fa-dove',          description: 'Baskı altında soğukkanlılığını koruyan oyuncu' },
-    { key: 'maestro',  label: 'Maestro', icon: '🎯', faIcon: 'fa-bullseye',       description: 'Maçta fark yaratan, oyunu yönlendiren isim' },
     { key: 'punctual', label: 'Dakik',   icon: '⏱️', faIcon: 'fa-clock',          description: 'Her zaman zamanında, güvenilir takım arkadaşı' },
-    { key: 'joker',    label: 'Joker',   icon: '😄', faIcon: 'fa-face-grin-wide', description: 'Takım ruhunu yükselten, eğlenceli karakter' },
-    { key: 'dynamo',   label: 'Dinamo',  icon: '⚡', faIcon: 'fa-bolt',           description: 'Yorulmak bilmeyen, sürekli koşan enerji deposu' }
+    { key: 'dynamo',   label: 'Dinamo',  icon: '⚡', faIcon: 'fa-bolt',           description: 'Yorulmak bilmeyen, sürekli koşan enerji deposu' },
+    // Saha İçi Performans
+    { key: 'mvp',              label: 'MVP',             icon: '👑', faIcon: 'fa-crown',          description: 'Maçın en iyisi' },
+    { key: 'maestro',          label: 'Maestro',         icon: '🎯', faIcon: 'fa-bullseye',       description: 'Oyun kurucu, pas dağıtıcı akıl' },
+    { key: 'fuzeci',           label: 'Füzeci',          icon: '🚀', faIcon: 'fa-rocket',         description: 'Uzaktan sert ve isabetli şut atan' },
+    { key: 'duvar',            label: 'Duvar',           icon: '🧱', faIcon: 'fa-shield',         description: 'Geçilmez savunma yapan tank' },
+    { key: 'cigersiz_honor',   label: 'Ciğersiz',        icon: '🫁', faIcon: 'fa-lungs',          description: 'Bitmek bilmeyen kondisyon, sürekli pres' },
+    // Karakter & Vibe
+    { key: 'beyefendi',        label: 'Beyefendi',       icon: '🎩', faIcon: 'fa-hat-wizard',     description: 'En saygılı, centilmen oyuncu' },
+    { key: 'sosyal',           label: 'Sosyal',          icon: '🎉', faIcon: 'fa-face-grin-wide', description: 'Maçın en eğlenceli, neşeli karakteri' },
+    { key: 'gizli_cevher',     label: 'Gizli Cevher',   icon: '💎', faIcon: 'fa-gem',            description: 'Beklenmedik, şaşırtıcı performans' },
+    { key: 'oyunbozan',        label: 'Oyunbozan',       icon: '😤', faIcon: 'fa-face-angry',     description: 'Maçın en çok şikayet edeni' },
+    // Lojistik & Fedakarlık
+    { key: 'organizator',      label: 'Organizatör',     icon: '📋', faIcon: 'fa-clipboard-list', description: 'Maçı kuran, herkesi toplayan adam' },
+    { key: 'saha_komiseri',    label: 'Saha Komiseri',   icon: '🏟️', faIcon: 'fa-building',       description: 'Sahayı bulan, rezervasyonu yapan' },
+    { key: 'emanetci',         label: 'Emanetçi',        icon: '🎒', faIcon: 'fa-bag-shopping',   description: 'Top, yelek, eldiveni getiren adam' },
+    { key: 'fedakar_eldiven',  label: 'Fedakar Eldiven', icon: '🧤', faIcon: 'fa-hand',           description: 'Takım kalecisiz kalınca gol alan kahraman' },
+    { key: 'joker',            label: 'Joker',           icon: '🃏', faIcon: 'fa-dice',           description: 'Her mevkiye koşan, her açığı kapatan' },
 ];
 
 const HONOR_TIERS = [
@@ -3014,6 +3095,14 @@ window.syncProfileData = function () {
             total_matches: player.stats.totalMatches,
             total_goals: player.stats.totalGoals,
             total_assists: player.stats.totalAssists
+        }).then(() => {
+            if (window.Badges) {
+                Badges.refresh(user.id, {
+                    total_matches: player.stats.totalMatches || 0,
+                    total_goals:   player.stats.totalGoals   || 0,
+                    total_assists: player.stats.totalAssists || 0
+                });
+            }
         }).catch(err => console.error("Detaylar DB'ye kaydedilemedi:", err));
     }
 
