@@ -2592,14 +2592,13 @@ function _mcRenderCalendarMonth() {
             : '';
 
         const cls = ['mc-cal-day',
-            dayMatches.length ? 'has-match' : '',
+            dayMatches.length ? 'has-match' : 'no-match',
             isToday    ? 'today'    : '',
             isSelected ? 'selected' : '',
             isPast && !dayMatches.length ? 'past-empty' : ''
         ].filter(Boolean).join(' ');
 
-        const clickAttr = dayMatches.length ? `onclick="mcCalSelectDay('${dateStr}')"` : '';
-        cells += `<div class="${cls}" data-date="${dateStr}" ${clickAttr}>
+        cells += `<div class="${cls}" data-date="${dateStr}" onclick="mcCalSelectDay('${dateStr}')">
             <span class="mc-cal-day-num">${d}</span>
             ${dotsHtml}
         </div>`;
