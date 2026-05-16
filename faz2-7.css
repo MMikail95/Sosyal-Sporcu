@@ -1787,6 +1787,131 @@
     color: #ccc;
 }
 
+/* ═══════════════════════════════════════
+   MAÇ TAKVİMİ
+   ═══════════════════════════════════════ */
+
+.mc-cal-container {
+    padding: 1rem 1.2rem !important;
+    margin-bottom: 1rem;
+}
+
+.mc-cal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.mc-cal-title {
+    font-size: 1rem; font-weight: 800;
+    color: #ddd; letter-spacing: 0.5px;
+}
+
+.mc-cal-nav-btn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: #888; font-size: 0.85rem;
+    width: 32px; height: 32px;
+    cursor: pointer; transition: all 0.15s ease;
+    display: flex; align-items: center; justify-content: center;
+}
+.mc-cal-nav-btn:hover { background: rgba(0,229,255,0.1); color: var(--neon-cyan); border-color: rgba(0,229,255,0.3); }
+
+.mc-cal-weekdays {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 2px; margin-bottom: 4px;
+}
+.mc-cal-weekdays span {
+    text-align: center; font-size: 0.65rem; font-weight: 800;
+    text-transform: uppercase; color: #444; letter-spacing: 0.5px;
+    padding: 0.25rem 0;
+}
+
+.mc-cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+}
+
+.mc-cal-day {
+    min-height: 50px; padding: 5px 4px 4px;
+    border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    transition: background 0.15s ease;
+}
+
+.mc-cal-day.has-match {
+    cursor: pointer;
+}
+.mc-cal-day.has-match:hover {
+    background: rgba(255,255,255,0.06);
+}
+
+.mc-cal-day.other-month { opacity: 0.2; }
+.mc-cal-day.past-empty  { opacity: 0.35; }
+
+.mc-cal-day.today .mc-cal-day-num {
+    border: 1.5px solid var(--neon-cyan);
+    color: var(--neon-cyan);
+}
+
+.mc-cal-day.selected {
+    background: rgba(0,229,255,0.1);
+}
+.mc-cal-day.selected .mc-cal-day-num {
+    color: var(--neon-cyan);
+}
+
+.mc-cal-day-num {
+    font-size: 0.78rem; font-weight: 700; color: #888;
+    width: 24px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+}
+
+.mc-cal-dots {
+    display: flex; flex-wrap: wrap; gap: 2px;
+    justify-content: center;
+}
+
+.mc-cal-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* Seçilen günün maç listesi */
+.mc-day-matches {
+    margin-top: 0.25rem;
+}
+
+.mc-day-header {
+    font-size: 0.78rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--neon-cyan); opacity: 0.8;
+    margin-bottom: 0.75rem;
+    display: flex; align-items: center; gap: 0.4rem;
+}
+
+.mc-day-empty {
+    text-align: center; padding: 1.5rem 1rem;
+    font-size: 0.85rem; color: #444;
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+}
+
+/* Takımsız "Maç Oluştur" butonu */
+.mc-tab-disabled {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+    pointer-events: none;
+}
+
+@media (max-width: 480px) {
+    .mc-cal-day { min-height: 42px; padding: 4px 2px 3px; }
+    .mc-cal-day-num { font-size: 0.7rem; width: 20px; height: 20px; }
+    .mc-cal-dot { width: 4px; height: 4px; }
+    .mc-cal-weekdays span { font-size: 0.58rem; }
+}
+
 .honor-type-btn.honor-type-selected {
     background: rgba(0,229,255,0.15);
     border-color: var(--neon-cyan);

@@ -683,7 +683,7 @@ const Matches = {
   // Kullanıcının tüm maçlarını getir (hem geçmiş hem yaklaşan)
   async getMyMatches(userId, myTeamIds = [], limit = 50) {
     const matchSelect = `
-      id, scheduled_at, status, finished_at, home_score, away_score, match_type, notes, created_by,
+      id, scheduled_at, status, home_score, away_score, match_type, notes, created_by,
       home_team_id, away_team_id,
       home_team:home_team_id(id, name),
       away_team:away_team_id(id, name),
@@ -1345,6 +1345,38 @@ const Ratings = {
       const peers = [...byMatch[mid]];
       if (peers.length === 0) { result[mid] = 'pending'; return; } // takım varsa pending göster
       result[mid] = peers.every(pid => givenSet.has(`${mid}:${pid}`)) ? 'done' : 'pending';
+    });
+    return result;
+  },
+
+  // Takım üyelerinin community rating ortalamalarını getir
+  async getTeamMemberAverages(playerIds) {
+    if (!playerIds || playerIds.length === 0) return {};
+    const { data, error } = await sb()
+      .from('community_ratings')
+      .select('rated_player_id,rating_teknik,rating_sut,rating_pas,rating_hiz,rating_fizik,rating_kondisyon')
+      .in('rated_player_id', playerIds);
+    if (error || !data) return {};
+
+    const acc = {};
+    data.forEach(r => {
+      const pid = r.rated_player_id;
+      if (!acc[pid]) acc[pid] = { teknik:[], sut:[], pas:[], hiz:[], fizik:[], kondisyon:[] };
+      acc[pid].teknik.push(r.rating_teknik);
+      acc[pid].sut.push(r.rating_sut);
+      acc[pid].pas.push(r.rating_pas);
+      acc[pid].hiz.push(r.rating_hiz);
+      acc[pid].fizik.push(r.rating_fizik);
+      acc[pid].kondisyon.push(r.rating_kondisyon);
+    });
+
+    const avg = arr => arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : null;
+    const result = {};
+    Object.entries(acc).forEach(([pid, vals]) => {
+      result[pid] = {
+        teknik: avg(vals.teknik), sut: avg(vals.sut), pas: avg(vals.pas),
+        hiz: avg(vals.hiz), fizik: avg(vals.fizik), kondisyon: avg(vals.kondisyon)
+      };
     });
     return result;
   }

@@ -9,14 +9,18 @@
 // ──────────────────────────────────────────────────────
 
 let _tmState = {
-  userId:      null,   // Supabase auth user id
-  profile:     null,   // profiles row
-  team:        null,   // aktif takım row (null = takımsız)
-  members:     [],     // team_members + player join
-  myRole:      null,   // 'captain' | 'player' | 'substitute'
-  myTeams:     [],     // kullanıcının tüm aktif takımları
-  realtimeSub: null,
-  loading:     false,
+  userId:           null,
+  profile:          null,
+  team:             null,
+  members:          [],
+  myRole:           null,
+  myTeams:          [],
+  realtimeSub:      null,
+  ratingSub:        null,
+  communityRatings: {},
+  computedStats:    null,
+  matches:          [],
+  loading:          false,
 };
 window._tmState = _tmState; // Expose globally for faz2-7.js
 
@@ -71,19 +75,22 @@ function _tmTeamGEN() {
 
 function _tmTeamStatProfile() {
   const members = _tmState.members.slice();
+  const communityRatings = _tmState.communityRatings || {};
   const sorted  = members
     .map(m => ({ ...m.player, _gen: _tmPlayerGEN(m.player) }))
     .filter(p => p._gen != null)
     .sort((a, b) => b._gen - a._gen)
     .slice(0, 7);
-  const keys = ['rating_teknik','rating_sut','rating_pas','rating_hiz','rating_fizik','rating_kondisyon'];
-  const labels = { rating_teknik:'teknik', rating_sut:'sut', rating_pas:'pas',
-                   rating_hiz:'hiz', rating_fizik:'fizik', rating_kondisyon:'kondisyon' };
+  const skills = ['teknik','sut','pas','hiz','fizik','kondisyon'];
   const result = {};
-  keys.forEach(k => {
-    const realVals = sorted.map(p => p[k]).filter(v => v != null && v > 0);
-    result[labels[k]] = realVals.length
-      ? Math.round(realVals.reduce((s, v) => s + v, 0) / realVals.length)
+  skills.forEach(skill => {
+    const vals = sorted.map(p => {
+      // Community rating varsa onu kullan, yoksa self-rating'e bak
+      const cr = communityRatings[p.id];
+      return cr?.[skill] ?? p[`rating_${skill}`] ?? null;
+    }).filter(v => v != null && v > 0);
+    result[skill] = vals.length
+      ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length)
       : null;
   });
   return result;
@@ -136,6 +143,32 @@ async function _tmLoadTeam(teamId) {
   _tmState.team    = await DB.Teams.get(teamId);
   _tmState.members = _tmState.team?.team_members || [];
   teamData         = _tmState.team;
+
+  // Community ratings — takım üyeleri için peer rating ortalamalarını çek
+  const memberPlayerIds = _tmState.members.map(m => m.player?.id).filter(Boolean);
+  try {
+    _tmState.communityRatings = memberPlayerIds.length && DB.Ratings?.getTeamMemberAverages
+      ? await DB.Ratings.getTeamMemberAverages(memberPlayerIds)
+      : {};
+  } catch (_) { _tmState.communityRatings = {}; }
+
+  // Maç istatistiklerini gerçek veriden hesapla
+  try {
+    const matches = await DB.Teams.getMatches(teamId, 200);
+    _tmState.matches = matches;
+    let wins = 0, draws = 0, losses = 0;
+    matches.forEach(m => {
+      const isHome = m.home_team?.id === teamId;
+      const myScore  = isHome ? m.home_score : m.away_score;
+      const oppScore = isHome ? m.away_score : m.home_score;
+      if (myScore == null || oppScore == null) return;
+      if (myScore > oppScore) wins++;
+      else if (myScore === oppScore) draws++;
+      else losses++;
+    });
+    _tmState.computedStats = { wins, draws, losses, total: wins + draws + losses };
+  } catch (_) { _tmState.computedStats = null; _tmState.matches = []; }
+
   _tmRenderTeamUI();
   _tmSubscribeRealtime();
 }
@@ -682,11 +715,17 @@ function _tmRenderHeader() {
              </div>`
         }
         ${isCA ? `
-        <label class="team-logo-upload-btn" title="Logo Değiştir" for="team-logo-input">
-          <i class="fa-solid fa-camera"></i>
-        </label>
-        <input type="file" id="team-logo-input" accept="image/*"
-               style="display:none;" onchange="_tmUploadLogo(this)">
+        <div class="team-avatar-actions">
+          <label class="team-logo-upload-btn" title="Fotoğraf Yükle" for="team-logo-input">
+            <i class="fa-solid fa-camera"></i>
+          </label>
+          <input type="file" id="team-logo-input" accept="image/*"
+                 style="display:none;" onchange="_tmUploadLogo(this)">
+          <button class="team-logo-upload-btn" title="Hazır Avatar Seç" onclick="_tmOpenAvatarPicker()" type="button"
+                  style="margin-left:2px;">
+            <i class="fa-solid fa-image"></i>
+          </button>
+        </div>
         ` : ''}
       </div>
       <div class="team-name-block">
@@ -696,7 +735,7 @@ function _tmRenderHeader() {
             <span id="team-gen-number">${gen ?? '—'}</span> GEN
           </span>
           <span class="team-member-count">
-            <i class="fa-solid fa-users"></i> ${_tmState.members.length}/7 Oyuncu
+            <i class="fa-solid fa-users"></i> ${_tmState.members.length} Oyuncu
           </span>
           <span class="team-captain-badge" title="Kaptan">
             <i class="fa-solid fa-crown" style="color:#ffd700;"></i>
@@ -716,10 +755,10 @@ function _tmRenderHeader() {
     </div>
     <div class="team-header-actions">
       <div class="team-season-counters">
-        <div class="ts-counter" aria-label="${(t.total_wins||0)+(t.total_draws||0)+(t.total_losses||0)} maç oynandı"><span class="ts-val" aria-hidden="true">${(t.total_wins||0)+(t.total_draws||0)+(t.total_losses||0)}</span><span class="ts-lbl" aria-hidden="true">Maç</span></div>
-        <div class="ts-counter win" aria-label="${t.total_wins||0} galibiyet"><span class="ts-val" aria-hidden="true">${t.total_wins||0}</span><span class="ts-lbl" aria-hidden="true">Galibiyet</span></div>
-        <div class="ts-counter draw" aria-label="${t.total_draws||0} beraberlik"><span class="ts-val" aria-hidden="true">${t.total_draws||0}</span><span class="ts-lbl" aria-hidden="true">Beraberlik</span></div>
-        <div class="ts-counter loss" aria-label="${t.total_losses||0} mağlubiyet"><span class="ts-val" aria-hidden="true">${t.total_losses||0}</span><span class="ts-lbl" aria-hidden="true">Mağlubiyet</span></div>
+        <div class="ts-counter" aria-label="${_tmState.computedStats?.total ?? (t.total_wins||0)+(t.total_draws||0)+(t.total_losses||0)} maç oynandı"><span class="ts-val" aria-hidden="true">${_tmState.computedStats?.total ?? (t.total_wins||0)+(t.total_draws||0)+(t.total_losses||0)}</span><span class="ts-lbl" aria-hidden="true">Maç</span></div>
+        <div class="ts-counter win" aria-label="${_tmState.computedStats?.wins ?? (t.total_wins||0)} galibiyet"><span class="ts-val" aria-hidden="true">${_tmState.computedStats?.wins ?? (t.total_wins||0)}</span><span class="ts-lbl" aria-hidden="true">Galibiyet</span></div>
+        <div class="ts-counter draw" aria-label="${_tmState.computedStats?.draws ?? (t.total_draws||0)} beraberlik"><span class="ts-val" aria-hidden="true">${_tmState.computedStats?.draws ?? (t.total_draws||0)}</span><span class="ts-lbl" aria-hidden="true">Beraberlik</span></div>
+        <div class="ts-counter loss" aria-label="${_tmState.computedStats?.losses ?? (t.total_losses||0)} mağlubiyet"><span class="ts-val" aria-hidden="true">${_tmState.computedStats?.losses ?? (t.total_losses||0)}</span><span class="ts-lbl" aria-hidden="true">Mağlubiyet</span></div>
       </div>
       <div class="team-header-btns">
         ${isCA ? `
@@ -792,6 +831,79 @@ window._tmUploadLogo = async function(input) {
   } finally {
     if (label && origHtml) label.innerHTML = origHtml;
     input.value = '';
+  }
+};
+
+// ──────────────────────────────────────────────────────
+// AVATAR PICKER MODALI
+// ──────────────────────────────────────────────────────
+
+const _AVATAR_PRESETS = [
+  { label: 'Kalkan',   url: 'https://api.dicebear.com/7.x/shapes/svg?seed=shield&backgroundColor=0d1117' },
+  { label: 'Yıldız',  url: 'https://api.dicebear.com/7.x/shapes/svg?seed=star&backgroundColor=0d1117' },
+  { label: 'Ateş',    url: 'https://api.dicebear.com/7.x/shapes/svg?seed=fire&backgroundColor=0d1117' },
+  { label: 'Kartal',  url: 'https://api.dicebear.com/7.x/shapes/svg?seed=eagle&backgroundColor=0d1117' },
+  { label: 'Aslan',   url: 'https://api.dicebear.com/7.x/shapes/svg?seed=lion&backgroundColor=0d1117' },
+  { label: 'Kurt',    url: 'https://api.dicebear.com/7.x/shapes/svg?seed=wolf&backgroundColor=0d1117' },
+  { label: 'Fırtına', url: 'https://api.dicebear.com/7.x/shapes/svg?seed=storm&backgroundColor=0d1117' },
+  { label: 'Kaplan',  url: 'https://api.dicebear.com/7.x/shapes/svg?seed=tiger&backgroundColor=0d1117' },
+  { label: 'Ejder',   url: 'https://api.dicebear.com/7.x/shapes/svg?seed=dragon&backgroundColor=0d1117' },
+  { label: 'Boğa',    url: 'https://api.dicebear.com/7.x/shapes/svg?seed=bull&backgroundColor=0d1117' },
+  { label: 'Şimşek',  url: 'https://api.dicebear.com/7.x/shapes/svg?seed=lightning&backgroundColor=0d1117' },
+  { label: 'Kaya',    url: 'https://api.dicebear.com/7.x/shapes/svg?seed=rock&backgroundColor=0d1117' },
+];
+
+window._tmOpenAvatarPicker = function() {
+  let modal = document.getElementById('team-avatar-picker-modal');
+  if (modal) { modal.remove(); }
+
+  modal = document.createElement('div');
+  modal.id = 'team-avatar-picker-modal';
+  modal.className = 'modal-backdrop';
+  modal.style.cssText = 'display:flex;z-index:9999;';
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+
+  modal.innerHTML = `
+    <div class="modal-box" onclick="event.stopPropagation()" style="max-width:480px;">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-image" style="color:var(--neon-cyan);"></i> Hazır Avatar Seç</h3>
+        <button class="modal-close" onclick="document.getElementById('team-avatar-picker-modal').remove()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p style="color:#888;font-size:0.85rem;margin-bottom:1rem;">Bir avatar seçin veya kendi fotoğrafınızı yükleyin.</p>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem;">
+          ${_AVATAR_PRESETS.map((p, i) => `
+            <button onclick="_tmSelectPresetAvatar(${i})" title="${p.label}"
+              style="background:rgba(255,255,255,0.04);border:2px solid rgba(255,255,255,0.08);
+                     border-radius:12px;padding:0.5rem;cursor:pointer;display:flex;flex-direction:column;
+                     align-items:center;gap:0.25rem;transition:border-color 0.2s;"
+              onmouseover="this.style.borderColor='var(--neon-cyan)'"
+              onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+              <img src="${p.url}" style="width:56px;height:56px;border-radius:8px;" alt="${p.label}">
+              <span style="color:#888;font-size:0.7rem;">${p.label}</span>
+            </button>`).join('')}
+        </div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+};
+
+window._tmSelectPresetAvatar = async function(index) {
+  const preset = _AVATAR_PRESETS[index];
+  if (!preset || !_tmState.team) return;
+  const modal = document.getElementById('team-avatar-picker-modal');
+  if (modal) modal.remove();
+  try {
+    await DB.Teams.update(_tmState.team.id, { logo_url: preset.url });
+    _tmState.team.logo_url = preset.url;
+    _tmRenderHeader();
+    _tmRenderTeamSelector();
+    window.showToast?.('✅ Avatar güncellendi!', 'success');
+  } catch (e) {
+    window.showToast?.('❌ Avatar güncellenemedi: ' + e.message, 'error');
   }
 };
 
@@ -1030,7 +1142,7 @@ function renderTeamOverview() {
   renderTeamRadarChart();
   renderTeamStrengthBadges();
   renderCoreSquadSection();
-  renderTeamMemberGrid();
+  renderTeamMatchHistory();
 }
 
 function renderTeamRadarChart() {
@@ -1138,10 +1250,24 @@ function renderCoreSquadSection() {
   const container = document.getElementById('team-core-squad');
   if (!container) return;
 
-  const top7 = [..._tmState.members]
-    .map(m => ({ ...m, _gen: _tmPlayerGEN(m.player) }))
-    .sort((a, b) => b._gen - a._gen)
-    .slice(0, 7);
+  const teamId = _tmState.team?.id;
+  const savedCore = teamId ? JSON.parse(localStorage.getItem('ss_core_' + teamId) || '[]') : [];
+  const isManual = savedCore.length > 0;
+
+  let squadMembers;
+  if (isManual) {
+    // Kadro tabındaki kemik kadro seçimiyle senkron
+    squadMembers = savedCore
+      .map(pid => _tmState.members.find(m => m.player?.id === pid))
+      .filter(Boolean)
+      .map(m => ({ ...m, _gen: _tmPlayerGEN(m.player) }));
+  } else {
+    // Kilit kadro seçilmemişse top 7 by GEN otomatik
+    squadMembers = [..._tmState.members]
+      .map(m => ({ ...m, _gen: _tmPlayerGEN(m.player) }))
+      .sort((a, b) => b._gen - a._gen)
+      .slice(0, 7);
+  }
 
   const posColors = { KL:'#ffd700', DEF:'#00e5ff', OS:'#00ff88', FV:'#ff007f' };
 
@@ -1149,11 +1275,12 @@ function renderCoreSquadSection() {
     <div class="core-squad-header">
       <div class="section-label-pill">
         <i class="fa-solid fa-star" style="color:#ffd700;"></i> BAŞLANGIÇ 7 / KİLİT KADRO
+        ${isManual ? '' : '<span style="font-size:0.65rem;color:#666;margin-left:6px;">(Otomatik Seçim)</span>'}
       </div>
       <span class="core-gen-total">Ort. GEN: <b style="color:var(--neon-green);">${_tmTeamGEN() ?? '—'}</b></span>
     </div>
     <div class="core-squad-grid">
-      ${top7.map((m, i) => {
+      ${squadMembers.map((m, i) => {
         const p   = m.player || {};
         const col = posColors[p.position] || '#aaa';
         const isCap = m.role === 'captain';
@@ -1174,6 +1301,73 @@ function renderCoreSquadSection() {
       }).join('')}
     </div>
   `;
+}
+
+// ──────────────────────────────────────────────────────
+// GEÇMİŞ MAÇLAR
+// ──────────────────────────────────────────────────────
+
+function renderTeamMatchHistory() {
+  const container = document.getElementById('team-member-grid');
+  if (!container) return;
+
+  const teamId  = _tmState.team?.id;
+  const matches = _tmState.matches || [];
+
+  if (matches.length === 0) {
+    container.innerHTML = `
+      <div class="section-label-pill" style="margin-bottom:1rem;">
+        <i class="fa-solid fa-clock-rotate-left" style="color:var(--neon-cyan);"></i> GEÇMİŞ MAÇLAR
+      </div>
+      <div style="text-align:center;padding:2rem;color:#555;font-size:0.9rem;">
+        <i class="fa-solid fa-futbol" style="font-size:2rem;margin-bottom:0.5rem;display:block;"></i>
+        Henüz tamamlanan maç yok.
+      </div>`;
+    return;
+  }
+
+  const rows = matches.map(m => {
+    const isHome   = m.home_team?.id === teamId;
+    const myScore  = isHome ? m.home_score : m.away_score;
+    const oppScore = isHome ? m.away_score : m.home_score;
+    const opp      = isHome ? m.away_team  : m.home_team;
+    const oppName  = opp?.name || 'Rakip';
+
+    let result = '—', resultColor = '#888', resultLabel = '—';
+    if (myScore != null && oppScore != null) {
+      if (myScore > oppScore)      { result = 'G'; resultColor = 'var(--neon-green)'; resultLabel = 'Galibiyet'; }
+      else if (myScore === oppScore){ result = 'B'; resultColor = '#aaa';              resultLabel = 'Beraberlik'; }
+      else                          { result = 'M'; resultColor = 'var(--neon-pink)';  resultLabel = 'Mağlubiyet'; }
+    }
+
+    const date = m.scheduled_at
+      ? new Date(m.scheduled_at).toLocaleDateString('tr-TR', { day:'2-digit', month:'short', year:'numeric' })
+      : '—';
+
+    const homeTeam = isHome ? (_tmState.team?.name || 'Biz') : oppName;
+    const awayTeam = isHome ? oppName : (_tmState.team?.name || 'Biz');
+    const homeScore = isHome ? myScore : oppScore;
+    const awayScore = isHome ? oppScore : myScore;
+
+    return `
+    <div class="team-match-row">
+      <span class="tmr-date">${date}</span>
+      <div class="tmr-teams">
+        <span class="tmr-home ${isHome ? 'tmr-us' : ''}">${homeTeam}</span>
+        <span class="tmr-score">${homeScore ?? '—'} – ${awayScore ?? '—'}</span>
+        <span class="tmr-away ${!isHome ? 'tmr-us' : ''}">${awayTeam}</span>
+      </div>
+      <span class="tmr-result" style="color:${resultColor};border-color:${resultColor};" title="${resultLabel}">${result}</span>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="section-label-pill" style="margin-bottom:1rem;">
+      <i class="fa-solid fa-clock-rotate-left" style="color:var(--neon-cyan);"></i>
+      GEÇMİŞ MAÇLAR
+      <span style="margin-left:0.5rem;font-size:0.7rem;color:#666;">${matches.length} maç</span>
+    </div>
+    <div class="team-match-list">${rows}</div>`;
 }
 
 function renderTeamMemberGrid() {
@@ -1400,12 +1594,36 @@ window.saveTeamEdit = async function() {
 // ──────────────────────────────────────────────────────
 
 const TEAM_ACHIEVEMENT_DEFS = [
-  { id:'ta-unbeatable', title:'Yenilmez Kale',  emoji:'🧱', icon:'fa-shield-halved', tier:'gumus', color:'#aaa',
-    desc:'Sezon boyunca 5 maçta gol yemeden kapattınız.', check: t => (t.total_wins||0) >= 5 },
-  { id:'ta-champion',   title:'Şampiyon',        emoji:'🏆', icon:'fa-trophy',        tier:'altin', color:'#ffd700',
-    desc:'Lig şampiyonu oldunuz.', check: _ => false },
-  { id:'ta-solidarity', title:'Dayanışma',       emoji:'🤝', icon:'fa-handshake',     tier:'bronz', color:'#cd7f32',
-    desc:'10 farklı oyuncu ile maç oynadınız.', check: (_, m) => m >= 10 },
+  { id:'ta-first-step',   title:'İlk Adım',       emoji:'👣', icon:'fa-shoe-prints',   tier:'bronz', color:'#cd7f32',
+    desc:'İlk maçınızı oynadınız.',
+    check: (t, _m, stats) => (stats?.total ?? (t.total_wins||0)+(t.total_draws||0)+(t.total_losses||0)) >= 1 },
+  { id:'ta-solidarity',   title:'Dayanışma',       emoji:'🤝', icon:'fa-handshake',     tier:'bronz', color:'#cd7f32',
+    desc:'Takımınızda 7 oyuncu tamamlandı.',
+    check: (_t, m) => m >= 7 },
+  { id:'ta-unbeatable',   title:'Yenilmez Kale',   emoji:'🧱', icon:'fa-shield-halved', tier:'gumus', color:'#aaa',
+    desc:'5 galibiyet kazandınız.',
+    check: (t, _m, stats) => (stats?.wins ?? (t.total_wins||0)) >= 5 },
+  { id:'ta-marathon',     title:'Uzun Soluk',       emoji:'🏃', icon:'fa-person-running',tier:'gumus', color:'#aaa',
+    desc:'10 maç oynadınız.',
+    check: (t, _m, stats) => (stats?.total ?? (t.total_wins||0)+(t.total_draws||0)+(t.total_losses||0)) >= 10 },
+  { id:'ta-goal-machine', title:'Gol Makinesi',     emoji:'⚽', icon:'fa-futbol',        tier:'gumus', color:'#aaa',
+    desc:'Toplam 20 gol attınız.',
+    check: t => (t.total_goals_scored||0) >= 20 },
+  { id:'ta-superstar',    title:'Süper Star',        emoji:'⭐', icon:'fa-star',          tier:'gumus', color:'#aaa',
+    desc:'Kadroda 85+ GEN oyuncu bulunuyor.',
+    check: (_t, _m, _s, members) => members.some(m => (_tmPlayerGEN(m.player)||0) >= 85) },
+  { id:'ta-elite',        title:'Elite Takım',       emoji:'💎', icon:'fa-gem',           tier:'altin', color:'#ffd700',
+    desc:'Takım GEN ortalaması 80 veya üzeri.',
+    check: (_t, _m, _s, members) => (_tmTeamGEN() || 0) >= 80 },
+  { id:'ta-streak',       title:'Seri Galip',        emoji:'🔥', icon:'fa-fire',          tier:'altin', color:'#ffd700',
+    desc:'3 galibiyet üst üste.',
+    check: (_t, _m, stats) => (stats?.wins ?? 0) >= 3 },
+  { id:'ta-champion',     title:'Şampiyon',          emoji:'🏆', icon:'fa-trophy',        tier:'altin', color:'#ffd700',
+    desc:'Lig şampiyonu oldunuz.',
+    check: _ => false },
+  { id:'ta-iron-wall',    title:'Demir Kale',        emoji:'🛡️', icon:'fa-shield',        tier:'altin', color:'#ffd700',
+    desc:'5 maç gol yemeden kapattınız.',
+    check: (_t, _m, stats) => (stats?.wins ?? 0) >= 5 && ((_t.total_goals_conceded||0) === 0) },
 ];
 
 function renderTeamAchievements() {
@@ -1413,7 +1631,9 @@ function renderTeamAchievements() {
   if (!container) return;
   const t = _tmState.team || {};
   const memberCount = _tmState.members.length;
-  const achs = TEAM_ACHIEVEMENT_DEFS.map(d => ({ ...d, unlocked: d.check(t, memberCount) }));
+  const stats = _tmState.computedStats;
+  const members = _tmState.members;
+  const achs = TEAM_ACHIEVEMENT_DEFS.map(d => ({ ...d, unlocked: d.check(t, memberCount, stats, members) }));
   const unlocked = achs.filter(a => a.unlocked).length;
 
   container.innerHTML = `
@@ -1451,10 +1671,13 @@ function _tmSubscribeRealtime() {
   if (_tmState.realtimeSub) {
     try { _tmState.realtimeSub.unsubscribe(); } catch (_) {}
   }
+  if (_tmState.ratingSub) {
+    try { _tmState.ratingSub.unsubscribe(); } catch (_) {}
+  }
   if (!_tmState.team) return;
+
   _tmState.realtimeSub = DB.Teams.subscribeToTeam(_tmState.team.id, async () => {
     const updated = await DB.Teams.get(_tmState.team.id);
-    // Takım silinmiş veya pasife alınmışsa UI'ı temizle
     if (!updated || updated.is_active === false) {
       _tmRemoveFromMyTeams(_tmState.team?.id);
       return;
@@ -1462,11 +1685,26 @@ function _tmSubscribeRealtime() {
     _tmState.team    = updated;
     _tmState.members = updated?.team_members || [];
     teamData = updated;
-    // Aktif sekmeyi koruyarak ilgili bölümleri yenile
     _tmRenderHeader();
-    renderTeamOverview();         // ttab-genel içeriği (üye grid dahil)
-    if (typeof renderKadroTab === 'function') renderKadroTab(); // ttab-kadro (Kadro & Davet)
+    renderTeamOverview();
+    if (typeof renderKadroTab === 'function') renderKadroTab();
   });
+
+  // Community ratings değişince radar chart ve stat barları güncelle
+  const memberIds = _tmState.members.map(m => m.player?.id).filter(Boolean);
+  if (memberIds.length) {
+    _tmState.ratingSub = window.sbClient
+      .channel('team-community-ratings-' + _tmState.team.id)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'community_ratings',
+        filter: `rated_player_id=in.(${memberIds.join(',')})`
+      }, async () => {
+        _tmState.communityRatings = await DB.Ratings.getTeamMemberAverages(memberIds);
+        renderTeamRadarChart();
+        renderTeamStrengthBadges();
+      })
+      .subscribe();
+  }
 }
 
 // ──────────────────────────────────────────────────────

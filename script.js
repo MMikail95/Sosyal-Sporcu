@@ -1597,13 +1597,8 @@ window.saveHakkimdaSection = async function(section) {
 
         const user = window.__AUTH_USER__;
         if (user && window.DB) {
-            // Highlight URL'leri ayrı RPC ile kaydet (schema cache bypass)
-            const saveHighlights = window.DB.Profiles.updateHighlightUrls(
-                user.id, highlightUrl1 || null, highlightUrl2 || null
-            ).catch(e => console.warn('Highlight save warn:', e.message));
-
-            // Ana profil güncelleme (highlight alanları hariç)
-            const upd = { bio };
+            // Ana profil güncelleme — highlight_url'leri de dahil et
+            const upd = { bio, highlight_url_1: highlightUrl1 || null, highlight_url_2: highlightUrl2 || null };
             if (username) upd.username        = username;
             if (fullName) upd.full_name       = fullName;
             if (age)      upd.age             = age;
@@ -1615,9 +1610,11 @@ window.saveHakkimdaSection = async function(section) {
             try {
                 await Promise.all([
                     window.DB.Profiles.update(user.id, upd),
-                    saveHighlights
+                    window.DB.Profiles.updateHighlightUrls(user.id, highlightUrl1 || null, highlightUrl2 || null)
                 ]);
                 showToast('✅ Profil bilgileri kaydedildi!');
+                // Genel Bakış'taki highlights bölümünü hemen güncelle
+                renderHighlights(players.find(p => p.id === activePlayerId) || players[0]);
             } catch(e) { showToast('❌ Kayıt hatası: ' + e.message); }
         }
     } else if (section === 'futbol') {
@@ -2881,6 +2878,9 @@ function renderHonorCard(r) {
 function renderHonorBadges(profileData) {
     const container = document.getElementById('honor-badges-grid');
     if (!container) return;
+    // Eski .honor-badges-grid class'ı (5-col grid) kalmışsa sıfırla
+    container.className = '';
+    container.style.cssText = 'margin-bottom:1.5rem; display:block; width:100%;';
 
     const results = HONOR_DEFS.map(def => {
         const count = profileData[`honor_${def.key}`] || 0;
@@ -2926,10 +2926,8 @@ function renderHonorBadges(profileData) {
                 </div>
             </div>
         </div>
-        <div class="ach-category-section" style="margin-top:0.75rem;">
-            <div class="ach-cards-grid">
-                ${results.map(renderHonorCard).join('')}
-            </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:1rem; margin-top:0.75rem;">
+            ${results.map(renderHonorCard).join('')}
         </div>
     `;
 }

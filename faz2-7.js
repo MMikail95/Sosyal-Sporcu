@@ -361,6 +361,7 @@ window.toggleCoreSquad = function(playerId, checked) {
     }
     localStorage.setItem('ss_core_' + t.id, JSON.stringify(core));
     renderKadroTab();
+    if (typeof renderCoreSquadSection === 'function') renderCoreSquadSection();
 };
 
 window.removeFromTeam = async function(playerId) {
@@ -498,6 +499,58 @@ const FORMATIONS_7V7 = {
             { id: 'os1',  label: 'OS',  x: 50, y: 46, pos: 'OS'  },
             { id: 'fv1',  label: 'FV',  x: 32, y: 18, pos: 'FV'  },
             { id: 'fv2',  label: 'FV',  x: 68, y: 18, pos: 'FV'  },
+        ]
+    },
+    '1-4-1': {
+        name: '1-4-1',
+        desc: 'Sıkı savunma, 4 orta saha',
+        positions: [
+            { id: 'kl',   label: 'KL',  x: 50, y: 88, pos: 'KL'  },
+            { id: 'def1', label: 'STR', x: 50, y: 70, pos: 'DEF' },
+            { id: 'os1',  label: 'SOK', x: 15, y: 50, pos: 'OS'  },
+            { id: 'os2',  label: 'OS',  x: 38, y: 48, pos: 'OS'  },
+            { id: 'os3',  label: 'OS',  x: 62, y: 48, pos: 'OS'  },
+            { id: 'os4',  label: 'SAK', x: 85, y: 50, pos: 'OS'  },
+            { id: 'fv',   label: 'FV',  x: 50, y: 18, pos: 'FV'  },
+        ]
+    },
+    '2-4-0': {
+        name: '2-4-0',
+        desc: 'Orta saha hakimiyeti, forvet yok',
+        positions: [
+            { id: 'kl',   label: 'KL',  x: 50, y: 88, pos: 'KL'  },
+            { id: 'def1', label: 'STR', x: 30, y: 70, pos: 'DEF' },
+            { id: 'def2', label: 'STR', x: 70, y: 70, pos: 'DEF' },
+            { id: 'os1',  label: 'SOK', x: 15, y: 46, pos: 'OS'  },
+            { id: 'os2',  label: 'OS',  x: 38, y: 42, pos: 'OS'  },
+            { id: 'os3',  label: 'OS',  x: 62, y: 42, pos: 'OS'  },
+            { id: 'os4',  label: 'SAK', x: 85, y: 46, pos: 'OS'  },
+        ]
+    },
+    '1-2-3': {
+        name: '1-2-3',
+        desc: 'Hücum odaklı, üçlü forvet',
+        positions: [
+            { id: 'kl',   label: 'KL',  x: 50, y: 88, pos: 'KL'  },
+            { id: 'def1', label: 'STR', x: 50, y: 70, pos: 'DEF' },
+            { id: 'os1',  label: 'OS',  x: 30, y: 50, pos: 'OS'  },
+            { id: 'os2',  label: 'OS',  x: 70, y: 50, pos: 'OS'  },
+            { id: 'fv1',  label: 'SOL', x: 20, y: 22, pos: 'FV'  },
+            { id: 'fv2',  label: 'SAN', x: 50, y: 15, pos: 'FV'  },
+            { id: 'fv3',  label: 'SAĞ', x: 80, y: 22, pos: 'FV'  },
+        ]
+    },
+    '4-2-0': {
+        name: '4-2-0',
+        desc: 'Ultra defansif, 4 stoper',
+        positions: [
+            { id: 'kl',   label: 'KL',  x: 50, y: 88, pos: 'KL'  },
+            { id: 'def1', label: 'STR', x: 15, y: 68, pos: 'DEF' },
+            { id: 'def2', label: 'STR', x: 38, y: 68, pos: 'DEF' },
+            { id: 'def3', label: 'STR', x: 62, y: 68, pos: 'DEF' },
+            { id: 'def4', label: 'STR', x: 85, y: 68, pos: 'DEF' },
+            { id: 'os1',  label: 'OS',  x: 30, y: 44, pos: 'OS'  },
+            { id: 'os2',  label: 'OS',  x: 70, y: 44, pos: 'OS'  },
         ]
     },
 };
@@ -706,6 +759,32 @@ window.renderSahaTab = function () {
         </div>
 
       </div>
+
+      <!-- Taktik Tahtası -->
+      <div class="glass-card" style="margin-top:1.5rem;padding:1.25rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+          <div class="section-label-pill">
+            <i class="fa-solid fa-chalkboard" style="color:var(--neon-cyan);"></i> TAKTİK TAHTASI
+          </div>
+          <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+            <button class="tactic-tool-btn active" id="tbtool-pen" onclick="tacticSetTool('pen')" title="Kalem">✏️</button>
+            <button class="tactic-tool-btn" id="tbtool-arrow" onclick="tacticSetTool('arrow')" title="Ok">➡️</button>
+            <button class="tactic-tool-btn" id="tbtool-text" onclick="tacticSetTool('text')" title="Not">🔤</button>
+            <input type="color" id="tactic-color" value="#00ff88" title="Renk"
+              style="width:28px;height:28px;border:none;background:none;cursor:pointer;border-radius:4px;padding:0;"
+              onchange="tacticSetColor(this.value)">
+            <button class="tactic-tool-btn" onclick="tacticUndo()" title="Geri Al">↩️</button>
+            <button class="tactic-tool-btn" onclick="tacticClear()" title="Temizle" style="color:#ff5555;">🗑️</button>
+          </div>
+        </div>
+        <canvas id="tactic-board-canvas"
+          style="width:100%;height:320px;background:#1a2e1a;border-radius:10px;border:1px solid rgba(255,255,255,0.07);cursor:crosshair;display:block;touch-action:none;">
+        </canvas>
+        <p style="color:#555;font-size:0.75rem;margin-top:0.5rem;text-align:center;">
+          <i class="fa-solid fa-info-circle"></i> Taktiklerinizi çizin, oklar ve notlar ekleyin
+        </p>
+      </div>
+
     </div>`;
 
     // refreshPitchUI override — yeni sistemle güncelle
@@ -721,11 +800,194 @@ window.renderSahaTab = function () {
         const lbl = slotsContainer?.querySelector('.psn-formation-label');
         if (lbl) lbl.textContent = pitchDragState.formation;
     };
+    // Taktik tahtasını başlat
+    requestAnimationFrame(() => initTacticBoard());
+
     } catch(e) {
         c.innerHTML = `<div style="padding:2rem;color:#ff5555;background:#222;border-radius:10px;"><b>Saha Sekmesi Hatası:</b> ${e.message}<br>${e.stack}</div>`;
         console.error("renderSahaTab Error:", e);
     }
 };
+
+// ──────────────────────────────────────────────────────
+// TAKTİK TAHTASI — Canvas çizim motoru
+// ──────────────────────────────────────────────────────
+let _tacticCtx = null;
+let _tacticTool = 'pen';
+let _tacticColor = '#00ff88';
+let _tacticDrawing = false;
+let _tacticStart = null;
+let _tacticStrokes = []; // { type, color, points/start/end/text }
+let _tacticUndoStack = [];
+
+function _tacticKey() {
+    return 'ss_tactic_' + (window._tmState?.team?.id || 'default');
+}
+
+function _tacticSave() {
+    try { localStorage.setItem(_tacticKey(), JSON.stringify(_tacticStrokes)); } catch(_) {}
+}
+
+function _tacticLoad() {
+    try { return JSON.parse(localStorage.getItem(_tacticKey()) || '[]'); } catch(_) { return []; }
+}
+
+function _tacticRedraw() {
+    if (!_tacticCtx) return;
+    const canvas = _tacticCtx.canvas;
+    _tacticCtx.clearRect(0, 0, canvas.width, canvas.height);
+    _tacticStrokes.forEach(s => _tacticDrawStroke(s));
+}
+
+function _tacticDrawStroke(s) {
+    const ctx = _tacticCtx;
+    ctx.save();
+    ctx.strokeStyle = s.color || '#00ff88';
+    ctx.fillStyle   = s.color || '#00ff88';
+    ctx.lineWidth   = 2.5;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+
+    if (s.type === 'pen' && s.points?.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(s.points[0].x, s.points[0].y);
+        s.points.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.stroke();
+    } else if (s.type === 'arrow' && s.start && s.end) {
+        const { x: x1, y: y1 } = s.start;
+        const { x: x2, y: y2 } = s.end;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        // Arrow head
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const headLen = 12;
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - headLen * Math.cos(angle - 0.4), y2 - headLen * Math.sin(angle - 0.4));
+        ctx.lineTo(x2 - headLen * Math.cos(angle + 0.4), y2 - headLen * Math.sin(angle + 0.4));
+        ctx.closePath();
+        ctx.fill();
+    } else if (s.type === 'text' && s.text) {
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(s.text, s.x, s.y);
+    }
+    ctx.restore();
+}
+
+function _tacticGetPos(e, canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const src = e.touches ? e.touches[0] : e;
+    return {
+        x: (src.clientX - rect.left) * scaleX,
+        y: (src.clientY - rect.top)  * scaleY
+    };
+}
+
+function initTacticBoard() {
+    const canvas = document.getElementById('tactic-board-canvas');
+    if (!canvas) return;
+
+    // Boyutu gerçek piksel cinsinden ayarla
+    const rect = canvas.getBoundingClientRect();
+    canvas.width  = rect.width  || 600;
+    canvas.height = rect.height || 320;
+
+    _tacticCtx = canvas.getContext('2d');
+    _tacticStrokes = _tacticLoad();
+    _tacticRedraw();
+
+    const isCA = window._tmIsCapOrAdmin ? window._tmIsCapOrAdmin() : true;
+    if (!isCA) {
+        // Yalnızca görüntüleme — event listener ekleme
+        return;
+    }
+
+    let currentStroke = null;
+
+    const startDraw = (e) => {
+        e.preventDefault();
+        _tacticDrawing = true;
+        const pos = _tacticGetPos(e, canvas);
+        _tacticStart = pos;
+        if (_tacticTool === 'text') {
+            const txt = prompt('Not girin:');
+            if (txt) {
+                _tacticStrokes.push({ type: 'text', color: _tacticColor, text: txt, x: pos.x, y: pos.y });
+                _tacticRedraw();
+                _tacticSave();
+            }
+            _tacticDrawing = false;
+            return;
+        }
+        currentStroke = { type: _tacticTool, color: _tacticColor, points: [pos], start: pos };
+    };
+
+    const moveDraw = (e) => {
+        if (!_tacticDrawing || !currentStroke) return;
+        e.preventDefault();
+        const pos = _tacticGetPos(e, canvas);
+        if (_tacticTool === 'pen') {
+            currentStroke.points.push(pos);
+            _tacticRedraw();
+            _tacticDrawStroke(currentStroke);
+        } else if (_tacticTool === 'arrow') {
+            _tacticRedraw();
+            _tacticDrawStroke({ ...currentStroke, end: pos });
+        }
+    };
+
+    const endDraw = (e) => {
+        if (!_tacticDrawing || !currentStroke) return;
+        e.preventDefault();
+        _tacticDrawing = false;
+        const pos = e.changedTouches
+            ? { x: (e.changedTouches[0].clientX - canvas.getBoundingClientRect().left) * (canvas.width / canvas.getBoundingClientRect().width),
+                y: (e.changedTouches[0].clientY - canvas.getBoundingClientRect().top)  * (canvas.height / canvas.getBoundingClientRect().height) }
+            : _tacticGetPos(e, canvas);
+        if (_tacticTool === 'arrow') currentStroke.end = pos;
+        _tacticStrokes.push(currentStroke);
+        _tacticRedraw();
+        _tacticSave();
+        currentStroke = null;
+    };
+
+    canvas.addEventListener('mousedown',  startDraw);
+    canvas.addEventListener('mousemove',  moveDraw);
+    canvas.addEventListener('mouseup',    endDraw);
+    canvas.addEventListener('mouseleave', endDraw);
+    canvas.addEventListener('touchstart', startDraw, { passive: false });
+    canvas.addEventListener('touchmove',  moveDraw,  { passive: false });
+    canvas.addEventListener('touchend',   endDraw,   { passive: false });
+}
+
+window.tacticSetTool = function(tool) {
+    _tacticTool = tool;
+    document.querySelectorAll('.tactic-tool-btn').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById('tbtool-' + tool);
+    if (btn) btn.classList.add('active');
+};
+
+window.tacticSetColor = function(color) { _tacticColor = color; };
+
+window.tacticUndo = function() {
+    if (_tacticStrokes.length === 0) return;
+    _tacticStrokes.pop();
+    _tacticRedraw();
+    _tacticSave();
+};
+
+window.tacticClear = function() {
+    if (!confirm('Tüm çizimler silinsin mi?')) return;
+    _tacticStrokes = [];
+    _tacticRedraw();
+    _tacticSave();
+};
+
+// ──────────────────────────────────────────────────────
 
 // Yeni auto-fill (Supabase üyelerini destekler)
 window.psn_autoFill = function() {
@@ -1348,38 +1610,98 @@ window.renderSinerjiTab = function() {
 // FAZ 6: RAKİPLER
 // ──────────────────────────────────────────────────────
 
-const MOCK_RIVALS = [
-    { id: 'r1', name: 'Kuzey Kaplanları', icon: 'fa-dragon', color: '#ff007f',  gen: 78, wins: 3, losses: 5, draws: 2, city: 'İstanbul', desc: 'Agresif hücum tarzı, hızlı kanatlar.' },
-    { id: 'r2', name: 'Güney Aslanları',  icon: 'fa-crown',  color: '#ffd700',  gen: 82, wins: 5, losses: 3, draws: 1, city: 'Ankara',   desc: 'Disiplinli defans, set topları güçlü.' },
-    { id: 'r3', name: 'Batı Kartalları',  icon: 'fa-feather-pointed', color: '#00e5ff', gen: 75, wins: 4, losses: 4, draws: 2, city: 'İzmir', desc: 'Pas oyunu öne çıkıyor, organize saldırı.' },
-    { id: 'r4', name: 'Doğu Fırtınası',  icon: 'fa-bolt',   color: '#a855f7',  gen: 71, wins: 2, losses: 6, draws: 1, city: 'Bursa',   desc: 'Genç kadro, tempo yüksek, kondisyon iyi.' },
-    { id: 'r5', name: 'Merkez Çakırlar', icon: 'fa-crow',   color: '#ff6b35',  gen: 80, wins: 4, losses: 3, draws: 3, city: 'İstanbul', desc: 'Tecrübeli oyuncular, taktik maç oynar.' },
-];
-
-window.renderRakiplerTab = function() {
+window.renderRakiplerTab = async function(activeFilter) {
     const c = document.getElementById('ttab-rakipler-content');
     const t = window._tmState?.team;
     if (!c || !t) return;
 
-    const savedH2H = JSON.parse(localStorage.getItem('ss_h2h') || '{}');
+    activeFilter = activeFilter || 'all';
     const myGen = calcTeamGEN();
+    const stats = window._tmState?.computedStats;
+    const favs = JSON.parse(localStorage.getItem('ss_fav_rivals') || '[]');
+    const savedH2H = JSON.parse(localStorage.getItem('ss_h2h') || '{}');
+
+    c.innerHTML = `<div style="color:#666;padding:2rem;text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Rakipler yükleniyor...</div>`;
+
+    const allTeams = await DB.Teams.getAll(100);
+    const rivals = allTeams.filter(r => r.id !== t.id);
+    const displayed = activeFilter === 'favs' ? rivals.filter(r => favs.includes(r.id)) : rivals;
+
+    const rivalCards = displayed.map(rival => {
+        const rivalGen = rival.captain?.gen_score ?? rival.gen_score ?? '—';
+        const memberCount = rival.team_members?.[0]?.count ?? 0;
+        const color = rival.color || '#00e5ff';
+        const isFav = favs.includes(rival.id);
+        const h2h = savedH2H[rival.id] || { w: 0, d: 0, l: 0 };
+        const totalH2H = h2h.w + h2h.d + h2h.l;
+        const genDiff = typeof rivalGen === 'number' ? myGen - rivalGen : null;
+        const logoHtml = rival.logo_url
+            ? `<img src="${rival.logo_url}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;" alt="${rival.name}">`
+            : `<div style="width:40px;height:40px;border-radius:50%;background:${color}22;border:2px solid ${color};display:flex;align-items:center;justify-content:center;color:${color};font-size:1.2rem;"><i class="fa-solid fa-shield"></i></div>`;
+        return `
+        <div class="rival-card glass-card" style="border-color:${color}33;">
+            <div class="rival-card-header" style="border-bottom:1px solid ${color}22;padding-bottom:0.75rem;margin-bottom:0.75rem;">
+                <div style="display:flex;align-items:center;gap:0.75rem;flex:1;">
+                    ${logoHtml}
+                    <div class="rival-identity">
+                        <h4 class="rival-name" style="color:${color};margin:0;">${rival.name}</h4>
+                        <span style="color:#777;font-size:0.75rem;">
+                            <i class="fa-solid fa-users"></i> ${memberCount} oyuncu
+                            &nbsp;·&nbsp;
+                            <i class="fa-solid fa-crown" style="color:#ffd700;"></i> ${rival.captain?.username || '—'}
+                        </span>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <div class="rival-gen-chip" style="border-color:${color};color:${color};">
+                        ${rivalGen} <span style="font-size:0.65rem;">GEN</span>
+                    </div>
+                    <button onclick="toggleFavRival('${rival.id}')" title="${isFav ? 'Favoriden çıkar' : 'Favorilere ekle'}"
+                        style="background:none;border:none;cursor:pointer;font-size:1.1rem;padding:2px 4px;line-height:1;">
+                        ${isFav ? '⭐' : '☆'}
+                    </button>
+                </div>
+            </div>
+            ${genDiff !== null ? `
+            <div class="rival-gen-compare" style="margin-bottom:0.5rem;">
+                <span style="color:#888;font-size:0.8rem;">GEN Farkı:</span>
+                <span style="color:${genDiff>=0?'var(--neon-green)':'var(--neon-pink)'};font-weight:700;">
+                    ${genDiff >= 0 ? '+' : ''}${genDiff}
+                </span>
+            </div>` : ''}
+            ${totalH2H > 0 ? `
+            <div class="h2h-record" style="margin-bottom:0.5rem;">
+                <span style="color:#888;font-size:0.8rem;">H2H:</span>
+                <span style="color:var(--neon-green);">${h2h.w}G</span>
+                <span style="color:#aaa;">${h2h.d}B</span>
+                <span style="color:var(--neon-pink);">${h2h.l}M</span>
+            </div>` : ''}
+            <div class="rival-card-actions">
+                <button class="btn-sm btn-outline-sm" onclick="openH2HModal('${rival.id}','${rival.name.replace(/'/g,"\\'")}')">
+                    <i class="fa-solid fa-clipboard-list"></i> Sonuç Gir
+                </button>
+                <button class="btn-sm btn-accent" onclick="challengeRival('${rival.id}','${rival.name.replace(/'/g,"\\'")}')">
+                    <i class="fa-solid fa-handshake"></i> Maç İste
+                </button>
+            </div>
+        </div>`;
+    }).join('');
 
     c.innerHTML = `
         <div class="rakipler-tab-wrapper">
-
             <!-- Özet Kart -->
             <div class="glass-card rival-summary-card">
                 <div class="rival-summary-grid">
                     <div class="rival-stat-box">
-                        <span class="rival-stat-val" style="color:var(--neon-green);">${t.total_wins||0}</span>
+                        <span class="rival-stat-val" style="color:var(--neon-green);">${stats?.wins ?? (t.total_wins||0)}</span>
                         <span class="rival-stat-lbl">Galibiyet</span>
                     </div>
                     <div class="rival-stat-box">
-                        <span class="rival-stat-val" style="color:#aaa;">${t.total_draws||0}</span>
+                        <span class="rival-stat-val" style="color:#aaa;">${stats?.draws ?? (t.total_draws||0)}</span>
                         <span class="rival-stat-lbl">Beraberlik</span>
                     </div>
                     <div class="rival-stat-box">
-                        <span class="rival-stat-val" style="color:var(--neon-pink);">${t.total_losses||0}</span>
+                        <span class="rival-stat-val" style="color:var(--neon-pink);">${stats?.losses ?? (t.total_losses||0)}</span>
                         <span class="rival-stat-lbl">Mağlubiyet</span>
                     </div>
                     <div class="rival-stat-box">
@@ -1389,56 +1711,27 @@ window.renderRakiplerTab = function() {
                 </div>
             </div>
 
-            <!-- Rival Cards -->
-            <div class="section-label-pill" style="margin-bottom:1rem;">
-                <i class="fa-solid fa-swords" style="color:var(--neon-pink);"></i>
-                LİG RAKİPLERİ
-            </div>
-            <div class="rival-cards-grid">
-                ${MOCK_RIVALS.map(rival => {
-                    const genDiff = myGen - rival.gen;
-                    const h2h = savedH2H[rival.id] || { w: 0, d: 0, l: 0 };
-                    const totalH2H = h2h.w + h2h.d + h2h.l;
-                    return `
-                    <div class="rival-card glass-card" style="border-color:${rival.color}33;">
-                        <div class="rival-card-header" style="border-bottom:1px solid ${rival.color}44; padding-bottom:1rem; margin-bottom:1rem;">
-                            <div class="rival-crest" style="color:${rival.color};">
-                                <i class="fa-solid ${rival.icon} fa-2x"></i>
-                            </div>
-                            <div class="rival-identity">
-                                <h4 class="rival-name" style="color:${rival.color};">${rival.name}</h4>
-                                <span style="color:#888; font-size:0.8rem;"><i class="fa-solid fa-location-dot"></i> ${rival.city}</span>
-                            </div>
-                            <div class="rival-gen-chip" style="border-color:${rival.color}; color:${rival.color};">
-                                ${rival.gen} <span style="font-size:0.7rem;">GEN</span>
-                            </div>
-                        </div>
-                        <p style="color:#666; font-size:0.85rem; margin-bottom:1rem;">${rival.desc}</p>
-                        <div class="rival-gen-compare">
-                            <span style="color:#888; font-size:0.8rem;">GEN Farkı:</span>
-                            <span style="color:${genDiff>=0?'var(--neon-green)':'var(--neon-pink)'}; font-weight:700;">
-                                ${genDiff >= 0 ? '+' : ''}${genDiff}
-                            </span>
-                        </div>
-                        ${totalH2H > 0 ? `
-                        <div class="h2h-record">
-                            <span style="color:#888; font-size:0.8rem;">H2H:</span>
-                            <span style="color:var(--neon-green);">${h2h.w}G</span>
-                            <span style="color:#aaa;">${h2h.d}B</span>
-                            <span style="color:var(--neon-pink);">${h2h.l}M</span>
-                        </div>` : ''}
-                        <div class="rival-card-actions">
-                            <button class="btn-sm btn-outline-sm" onclick="openH2HModal('${rival.id}', '${rival.name}')">
-                                <i class="fa-solid fa-clipboard-list"></i> Sonuç Gir
-                            </button>
-                            <button class="btn-sm btn-accent" onclick="challengeRival('${rival.id}', '${rival.name}')">
-                                <i class="fa-solid fa-handshake"></i> Maç İste
-                            </button>
-                        </div>
-                    </div>`;
-                }).join('')}
+            <!-- Filtre Sekmeleri -->
+            <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+                <button onclick="renderRakiplerTab('all')"
+                    style="padding:0.4rem 1rem;border-radius:20px;border:1px solid ${activeFilter==='all'?'var(--neon-cyan)':'rgba(255,255,255,0.1)'};
+                           background:${activeFilter==='all'?'rgba(0,229,255,0.1)':'transparent'};
+                           color:${activeFilter==='all'?'var(--neon-cyan)':'#888'};cursor:pointer;font-size:0.85rem;">
+                    <i class="fa-solid fa-users"></i> Tüm Rakipler (${rivals.length})
+                </button>
+                <button onclick="renderRakiplerTab('favs')"
+                    style="padding:0.4rem 1rem;border-radius:20px;border:1px solid ${activeFilter==='favs'?'#ffd700':'rgba(255,255,255,0.1)'};
+                           background:${activeFilter==='favs'?'rgba(255,215,0,0.1)':'transparent'};
+                           color:${activeFilter==='favs'?'#ffd700':'#888'};cursor:pointer;font-size:0.85rem;">
+                    ⭐ Favoriler (${favs.length})
+                </button>
             </div>
 
+            ${displayed.length === 0 ? `
+            <div style="text-align:center;padding:3rem;color:#555;">
+                ${activeFilter==='favs' ? 'Henüz favori rakip eklenmedi. Bir takımın ⭐ butonuna tıklayın.' : 'Henüz başka takım bulunmuyor.'}
+            </div>` : `
+            <div class="rival-cards-grid">${rivalCards}</div>`}
         </div>
 
         <!-- H2H Modal -->
@@ -1449,19 +1742,32 @@ window.renderRakiplerTab = function() {
                     <button class="modal-close" onclick="closeH2HModal()"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="modal-body">
-                    <p id="h2h-rival-name" style="color:#aaa; margin-bottom:1rem;"></p>
+                    <p id="h2h-rival-name" style="color:#aaa;margin-bottom:1rem;"></p>
                     <div class="modal-field">
                         <label>Sonuç</label>
-                        <div style="display:flex; gap:0.5rem;">
-                            <button class="btn-sm btn-success-sm" onclick="saveH2H('w')" style="flex:1; padding:0.8rem;">✅ Galibiyet</button>
-                            <button class="btn-sm" onclick="saveH2H('d')" style="flex:1; padding:0.8rem; background:#333; color:#aaa; border:1px solid #555; border-radius:8px;">🤝 Beraberlik</button>
-                            <button class="btn-sm btn-danger-sm" onclick="saveH2H('l')" style="flex:1; padding:0.8rem;">❌ Mağlubiyet</button>
+                        <div style="display:flex;gap:0.5rem;">
+                            <button class="btn-sm btn-success-sm" onclick="saveH2H('w')" style="flex:1;padding:0.8rem;">✅ Galibiyet</button>
+                            <button class="btn-sm" onclick="saveH2H('d')" style="flex:1;padding:0.8rem;background:#333;color:#aaa;border:1px solid #555;border-radius:8px;">🤝 Beraberlik</button>
+                            <button class="btn-sm btn-danger-sm" onclick="saveH2H('l')" style="flex:1;padding:0.8rem;">❌ Mağlubiyet</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     `;
+};
+
+window.toggleFavRival = function(teamId) {
+    let favs = JSON.parse(localStorage.getItem('ss_fav_rivals') || '[]');
+    if (favs.includes(teamId)) {
+        favs = favs.filter(id => id !== teamId);
+        showToast('Favorilerden çıkarıldı.');
+    } else {
+        favs.push(teamId);
+        showToast('⭐ Favorilere eklendi!');
+    }
+    localStorage.setItem('ss_fav_rivals', JSON.stringify(favs));
+    renderRakiplerTab();
 };
 
 let h2hCurrentRivalId = null;
@@ -2117,6 +2423,11 @@ let _mcMyTeams = [];
 let _mcDropdownsLoaded = false;
 let _mcSelectedAwayTeam = null;
 let _mcSearchTimeout = null;
+let _mcAllMatches = [];
+let _mcRatingStatuses = {};
+let _mcPlayerCounts = {};
+let _mcCalCurrentDate = new Date();
+let _mcCalSelectedDate = null;
 
 function _mcEsc(str) {
     if (!str) return '';
@@ -2138,20 +2449,10 @@ window.initMatchCenter = async function () {
         _mcDropdownsLoaded = true;
         const userId = _mcGetUserId();
 
-        const [venues, myTeams] = await Promise.all([
-            DB.Venues.getAll().catch(() => []),
-            userId ? DB.Teams.getMyTeams(userId).catch(() => []) : Promise.resolve([])
-        ]);
-        _mcVenues = venues;
+        const myTeams = userId
+            ? await DB.Teams.getMyTeams(userId).catch(() => [])
+            : [];
         _mcMyTeams = myTeams;
-
-        const venueSelect = document.getElementById('mc-venue-select');
-        if (venueSelect) {
-            venueSelect.innerHTML = '<option value="">— Saha seçin —</option>' +
-                venues.map(v =>
-                    `<option value="${_mcEsc(v.id)}">${_mcEsc(v.name)}${v.district ? ' — ' + _mcEsc(v.district) : ''}</option>`
-                ).join('');
-        }
 
         const homeSelect = document.getElementById('mc-home-team-select');
         if (homeSelect) {
@@ -2160,6 +2461,10 @@ window.initMatchCenter = async function () {
                     `<option value="${_mcEsc(t.id)}">${_mcEsc(t.name)}</option>`
                 ).join('');
         }
+
+        // Takım yoksa "Maç Oluştur" sekmesini pasif yap
+        const createBtn = document.querySelector('.mc-tab-btn[onclick*="create-match"]');
+        if (createBtn && myTeams.length === 0) createBtn.classList.add('mc-tab-disabled');
     }
 
     await _mcLoadMatches();
@@ -2190,12 +2495,8 @@ async function _mcLoadMatches() {
         return;
     }
 
-    const upcoming = rows.filter(r => ['scheduled', 'confirmed'].includes(r.match.status));
-    const past     = rows.filter(r => ['finished', 'cancelled'].includes(r.match.status));
-
-    // Tüm maç ID'leri için oyuncu sayısı + rating durumu
     const allIds      = rows.map(r => r.match.id).filter(Boolean);
-    const finishedIds = past.map(r => r.match.id).filter(Boolean);
+    const finishedIds = rows.filter(r => r.match.status === 'finished').map(r => r.match.id).filter(Boolean);
 
     const [playerCounts, ratingStatuses] = await Promise.all([
         DB.Matches.getPlayerCounts(allIds).catch(() => ({})),
@@ -2204,17 +2505,193 @@ async function _mcLoadMatches() {
             : Promise.resolve({})
     ]);
 
-    let html = '';
-    if (upcoming.length) {
-        html += '<div class="mc-group-label"><i class="fa-solid fa-clock"></i> Yaklaşan Maçlar</div>';
-        html += upcoming.map(r => _mcMatchCard(r, ratingStatuses, userId, playerCounts)).join('');
-    }
-    if (past.length) {
-        html += `<div class="mc-group-label" style="${upcoming.length ? 'margin-top:1.5rem;' : ''}"><i class="fa-solid fa-rotate-left"></i> Geçmiş Maçlar</div>`;
-        html += past.map(r => _mcMatchCard(r, ratingStatuses, userId, playerCounts)).join('');
+    _mcAllMatches = rows;
+    _mcRatingStatuses = ratingStatuses;
+    _mcPlayerCounts = playerCounts;
+    _mcCalSelectedDate = null;
+
+    _mcRenderCalendar();
+}
+
+function _mcRenderCalendar() {
+    const listEl = document.getElementById('mc-matches-list');
+    if (!listEl) return;
+    listEl.innerHTML = `
+        <div class="mc-cal-container glass-card">
+            <div class="mc-cal-header">
+                <button class="mc-cal-nav-btn" onclick="mcCalPrev()"><i class="fa-solid fa-chevron-left"></i></button>
+                <span id="mc-cal-title" class="mc-cal-title"></span>
+                <button class="mc-cal-nav-btn" onclick="mcCalNext()"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+            <div class="mc-cal-weekdays">
+                <span>Pzt</span><span>Sal</span><span>Çar</span><span>Per</span><span>Cum</span><span>Cmt</span><span>Paz</span>
+            </div>
+            <div id="mc-cal-grid" class="mc-cal-grid"></div>
+        </div>
+        <div id="mc-day-matches" class="mc-day-matches"></div>`;
+    _mcRenderCalendarMonth();
+}
+
+function _mcRenderCalendarMonth() {
+    const titleEl = document.getElementById('mc-cal-title');
+    const gridEl  = document.getElementById('mc-cal-grid');
+    if (!gridEl) return;
+
+    const year  = _mcCalCurrentDate.getFullYear();
+    const month = _mcCalCurrentDate.getMonth();
+    const monthNames = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+    if (titleEl) titleEl.textContent = `${monthNames[month]} ${year}`;
+
+    // Tarih → maçlar haritası
+    const matchesByDate = {};
+    for (const row of _mcAllMatches) {
+        const m = row.match;
+        if (!m.scheduled_at) continue;
+        const d = new Date(m.scheduled_at);
+        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        if (!matchesByDate[key]) matchesByDate[key] = [];
+        matchesByDate[key].push(row);
     }
 
-    listEl.innerHTML = html;
+    const today    = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+    const statusColor = {
+        scheduled: 'var(--neon-cyan)',
+        confirmed:  'var(--neon-green)',
+        finished:   'rgba(255,255,255,0.35)',
+        cancelled:  'var(--neon-pink)'
+    };
+
+    // İlk gün (0=Paz) → Pzt bazlı (0=Pzt)
+    const firstDayRaw = new Date(year, month, 1).getDay();
+    const firstDayMon = (firstDayRaw === 0) ? 6 : firstDayRaw - 1;
+    const daysInMonth  = new Date(year, month + 1, 0).getDate();
+    const prevMonthDays = new Date(year, month, 0).getDate();
+
+    let cells = '';
+
+    // Önceki ay taşma günleri
+    for (let i = 0; i < firstDayMon; i++) {
+        cells += `<div class="mc-cal-day other-month"><span class="mc-cal-day-num">${prevMonthDays - firstDayMon + 1 + i}</span></div>`;
+    }
+
+    // Bu ayın günleri
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr    = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const dayMatches = matchesByDate[dateStr] || [];
+        const isToday    = dateStr === todayStr;
+        const isSelected = _mcCalSelectedDate === dateStr;
+        const isPast     = dateStr < todayStr;
+
+        const dotsHtml = dayMatches.length
+            ? `<div class="mc-cal-dots">${dayMatches.slice(0, 4).map(r => {
+                const col = statusColor[r.match.status] || 'rgba(255,255,255,0.3)';
+                return `<span class="mc-cal-dot" style="background:${col};"></span>`;
+              }).join('')}</div>`
+            : '';
+
+        const cls = ['mc-cal-day',
+            dayMatches.length ? 'has-match' : '',
+            isToday    ? 'today'    : '',
+            isSelected ? 'selected' : '',
+            isPast && !dayMatches.length ? 'past-empty' : ''
+        ].filter(Boolean).join(' ');
+
+        const clickAttr = dayMatches.length ? `onclick="mcCalSelectDay('${dateStr}')"` : '';
+        cells += `<div class="${cls}" data-date="${dateStr}" ${clickAttr}>
+            <span class="mc-cal-day-num">${d}</span>
+            ${dotsHtml}
+        </div>`;
+    }
+
+    // Sonraki ay taşma günleri
+    const totalCells = firstDayMon + daysInMonth;
+    const remainder  = (7 - (totalCells % 7)) % 7;
+    for (let i = 1; i <= remainder; i++) {
+        cells += `<div class="mc-cal-day other-month"><span class="mc-cal-day-num">${i}</span></div>`;
+    }
+
+    gridEl.innerHTML = cells;
+
+    // Otomatik seçim: bugün maç varsa bugün, yoksa bu aydaki ilk yaklaşan maç
+    if (!_mcCalSelectedDate) {
+        if (matchesByDate[todayStr]) {
+            _mcCalSelectedDate = todayStr;
+            gridEl.querySelector(`[data-date="${todayStr}"]`)?.classList.add('selected');
+            _mcShowDayMatches(matchesByDate[todayStr], todayStr);
+        } else {
+            const upcoming = Object.keys(matchesByDate)
+                .filter(k => {
+                    const [ky, km] = k.split('-').map(Number);
+                    return ky === year && km - 1 === month && k >= todayStr;
+                }).sort();
+            if (upcoming.length) {
+                const key = upcoming[0];
+                _mcCalSelectedDate = key;
+                gridEl.querySelector(`[data-date="${key}"]`)?.classList.add('selected');
+                _mcShowDayMatches(matchesByDate[key], key);
+            } else {
+                _mcShowDayMatches([], null);
+            }
+        }
+    } else {
+        const sel = gridEl.querySelector(`[data-date="${_mcCalSelectedDate}"]`);
+        if (sel) {
+            sel.classList.add('selected');
+            const dayMatches = _mcAllMatches.filter(row => {
+                if (!row.match.scheduled_at) return false;
+                const d = new Date(row.match.scheduled_at);
+                const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                return key === _mcCalSelectedDate;
+            });
+            _mcShowDayMatches(dayMatches, _mcCalSelectedDate);
+        } else {
+            _mcShowDayMatches([], null);
+        }
+    }
+}
+
+window.mcCalPrev = function () {
+    _mcCalCurrentDate = new Date(_mcCalCurrentDate.getFullYear(), _mcCalCurrentDate.getMonth() - 1, 1);
+    _mcCalSelectedDate = null;
+    _mcRenderCalendarMonth();
+};
+
+window.mcCalNext = function () {
+    _mcCalCurrentDate = new Date(_mcCalCurrentDate.getFullYear(), _mcCalCurrentDate.getMonth() + 1, 1);
+    _mcCalSelectedDate = null;
+    _mcRenderCalendarMonth();
+};
+
+window.mcCalSelectDay = function (dateStr) {
+    _mcCalSelectedDate = dateStr;
+    document.querySelectorAll('.mc-cal-day').forEach(el => {
+        el.classList.toggle('selected', el.dataset.date === dateStr);
+    });
+    const dayMatches = _mcAllMatches.filter(row => {
+        if (!row.match.scheduled_at) return false;
+        const d = new Date(row.match.scheduled_at);
+        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        return key === dateStr;
+    });
+    _mcShowDayMatches(dayMatches, dateStr);
+};
+
+function _mcShowDayMatches(dayMatches, dateStr) {
+    const el = document.getElementById('mc-day-matches');
+    if (!el) return;
+    const userId = _mcGetUserId();
+    if (!dayMatches || !dayMatches.length) {
+        el.innerHTML = '<div class="mc-day-empty"><i class="fa-regular fa-calendar"></i> Bu gün maç yok</div>';
+        return;
+    }
+    const formatted = dateStr
+        ? new Date(dateStr + 'T12:00:00').toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })
+        : '';
+    el.innerHTML =
+        `<div class="mc-day-header"><i class="fa-regular fa-calendar-check"></i> ${formatted}</div>` +
+        dayMatches.map(r => _mcMatchCard(r, _mcRatingStatuses, userId, _mcPlayerCounts)).join('');
 }
 
 function _mcMatchCard(row, ratingStatuses, userId, playerCounts) {
@@ -2843,6 +3320,10 @@ window.mcJoinOpen = async function (matchId) {
 // ── Sekme & Form ─────────────────────────────────────
 
 window.mcSwitchTab = function (tab, btn) {
+    if ((tab === 'create' || tab === 'create-match') && _mcMyTeams.length === 0) {
+        if (typeof showToast === 'function') showToast('Maç oluşturmak için bir takıma üye olman gerekiyor.');
+        return;
+    }
     document.querySelectorAll('.mc-tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.mc-tab-content').forEach(c => { c.style.display = 'none'; });
     if (btn) btn.classList.add('active');
@@ -2868,11 +3349,12 @@ window._mcInitDateInput = function () {
     const minNow = new Date();
     const minStr = `${minNow.getFullYear()}-${pad(minNow.getMonth()+1)}-${pad(minNow.getDate())}T${pad(minNow.getHours())}:${pad(minNow.getMinutes())}`;
     el.min = minStr;
+    el.max = '2030-12-31T23:59';
 };
 
 window.mcSubmitCreate = async function () {
     const btn = document.getElementById('mc-submit-btn');
-    const venueId    = document.getElementById('mc-venue-select')?.value || null;
+    const venueText  = (document.getElementById('mc-venue-input')?.value || '').trim();
     const dateVal    = document.getElementById('mc-date-input')?.value;
     const matchType  = document.getElementById('mc-type-select')?.value || '5v5';
     const homeTeamId = document.getElementById('mc-home-team-select')?.value || null;
@@ -2907,8 +3389,29 @@ window.mcSubmitCreate = async function () {
         const parsedDate = new Date(safeDateStr);
         if (isNaN(parsedDate.getTime())) {
             showToast?.('Geçersiz tarih formatı. Lütfen takvimden seçin.');
-            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-plus"></i> Maç Oluştur'; }
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Maç Oluştur'; }
             return;
+        }
+
+        if (parsedDate < new Date()) {
+            showToast?.('Geçmiş tarihe maç oluşturamazsın!');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Maç Oluştur'; }
+            return;
+        }
+        const selectedYear = parsedDate.getFullYear();
+        if (selectedYear < 2024 || selectedYear > 2030) {
+            showToast?.('Lütfen geçerli bir yıl seçin (2024–2030).');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Maç Oluştur'; }
+            return;
+        }
+
+        // Saha metni girilmişse yeni venue oluştur
+        let venueId = null;
+        if (venueText) {
+            try {
+                const newVenue = await DB.Venues.add(userId, { name: venueText });
+                venueId = newVenue?.id || null;
+            } catch (e) { /* venue oluşturulamadıysa devam et */ }
         }
 
         const matchPayload = {
@@ -2950,6 +3453,8 @@ window.mcSubmitCreate = async function () {
 
         // Formu sıfırla
         document.getElementById('mc-date-input').value = '';
+        const venueInp = document.getElementById('mc-venue-input');
+        if (venueInp) venueInp.value = '';
         document.getElementById('mc-away-team-input').value = '';
         document.getElementById('mc-notes-input').value = '';
         mcClearAwayTeam();

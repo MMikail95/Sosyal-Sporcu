@@ -263,10 +263,8 @@ function _renderGrid(results) {
                 </div>
             </div>
         </div>
-        <div class="ach-category-section" style="margin-top:0.75rem;">
-            <div class="ach-cards-grid">
-                ${results.map(_renderCard).join('')}
-            </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:1rem; margin-top:0.75rem;">
+            ${results.map(_renderCard).join('')}
         </div>
     `;
     container.appendChild(section);
