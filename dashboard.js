@@ -9,6 +9,7 @@
     // ── Modül state ──────────────────────────────────
     let dashFeedPosts       = [];
     let dashMatchHistory    = [];   // gazete için maç geçmişi saklanır
+    let dashRecentMatches   = [];   // son biten takım maçları
     let dashRealtimeChannel = null;
     let dashInitialized     = false;
     let dashUserProfile     = null;
@@ -154,7 +155,7 @@
     }
 
     // ── Gazete başlıkları render ─────────────────────
-    function renderDashGazette(history) {
+    function renderDashGazette(history, recentMatches) {
         const ticker = document.getElementById('dash-gazette-ticker');
         if (!ticker) return;
 
@@ -167,53 +168,102 @@
         const name   = dashUserProfile?.full_name || dashUserProfile?.username || 'Oyuncu';
         const city   = dashUserProfile?.city || 'Bölge';
 
-        const headlines = [];
+        const pills = []; // { text, type }
 
+        // — Kişisel istatistikler —
         if (finished.length > 0) {
-            headlines.push(
-                `🏆 ${name} son ${finished.length} maçta ${wins} galibiyet, ${losses} mağlubiyet kaydetti!`
-            );
+            pills.push({ text: `🏆 ${name} son ${finished.length} maçta ${wins} galibiyet, ${losses} mağlubiyet kaydetti!`, type: 'personal' });
         }
-
         if (goals > 0) {
-            headlines.push(
-                `🎯 ${name} bu sezon toplam ${goals} gol attı — ${city} bölgesinin yıldızı!`
-            );
+            pills.push({ text: `🎯 ${name} bu sezon toplam ${goals} gol attı — ${city} bölgesinin yıldızı!`, type: 'personal' });
         }
-
         if (wins >= 3) {
-            headlines.push(`⚡ Formda devam! Son maçlarda ${wins} üst üste galibiyet — sürükleyici bir serüven!`);
+            pills.push({ text: `⚡ Formda devam! Son maçlarda ${wins} üst üste galibiyet — sürükleyici bir serüven!`, type: 'personal' });
         } else if (wins > 0) {
-            headlines.push(`⭐ ${name} ${city}'de gündem olmaya devam ediyor — ${wins} galibiyet!`);
+            pills.push({ text: `⭐ ${name} ${city}'de gündem olmaya devam ediyor — ${wins} galibiyet!`, type: 'personal' });
         }
 
-        // Feed'den maç sonucu postlarını da ekle
-        const matchPosts = dashFeedPosts.filter(p => p.post_type === 'match_result').slice(0, 2);
-        matchPosts.forEach(p => {
-            const author = p.author?.username || p.author?.full_name || 'Oyuncu';
-            headlines.push(`📰 ${author} yeni bir maç sonucu paylaştı — Sosyal Duvar'da incele!`);
+        // — Takım aktiviteleri (son biten maçlar) —
+        (recentMatches || dashRecentMatches).slice(0, 6).forEach(m => {
+            const ht = m.home_team?.name || 'Ev Sahibi';
+            const at = m.away_team?.name || 'Deplasman';
+            const hs = m.home_score ?? 0;
+            const as = m.away_score ?? 0;
+            if (hs === as) {
+                pills.push({ text: `🤝 ${ht} ile ${at} ${hs}-${as} berabere kaldı`, type: 'team' });
+            } else {
+                const winner = hs > as ? ht : at;
+                const loser  = hs > as ? at : ht;
+                pills.push({ text: `🏆 ${winner} ${hs}-${as} ${loser}'yi mağlup etti!`, type: 'team' });
+            }
         });
 
-        if (headlines.length === 0) {
-            headlines.push(`📰 ${city} bölgesindeki maç sonuçları bekleniyor — sahaya çık!`);
-            headlines.push(`⚽ Yeni maç oluştur, sonuçları paylaş ve bölge sıralamasına gir!`);
+        // — Gündem: en çok beğenilen paylaşımlar —
+        const topPosts = [...dashFeedPosts]
+            .filter(p => (p.like_count || 0) >= 3)
+            .sort((a, b) => (b.like_count || 0) - (a.like_count || 0))
+            .slice(0, 2);
+        topPosts.forEach(p => {
+            const author  = p.author?.username || p.author?.full_name || 'Oyuncu';
+            const preview = (p.content || '').slice(0, 60) + ((p.content || '').length > 60 ? '…' : '');
+            pills.push({ text: `🔥 @${author}: "${preview}"`, type: 'gundem' });
+        });
+
+        if (pills.length === 0) {
+            pills.push({ text: `📰 ${city} bölgesindeki maç sonuçları bekleniyor — sahaya çık!`, type: 'personal' });
+            pills.push({ text: `⚽ Yeni maç oluştur, sonuçları paylaş ve bölge sıralamasına gir!`, type: 'personal' });
         }
 
-        ticker.innerHTML = headlines
-            .slice(0, 5)
-            .map(h => `<div class="dash-headline-pill">${h}</div>`)
+        ticker.innerHTML = pills
+            .map(p => `<div class="dash-headline-pill pill-${p.type}">${p.text}</div>`)
             .join('');
+
+        initGazetteSlider(pills.length);
+    }
+
+    // ── Gazete slider init ────────────────────────────
+    const PILL_H = 56; // px — CSS min-height ile eşleşmeli
+    const VISIBLE = 3;
+    let gazetteIndex = 0;
+
+    function initGazetteSlider(total) {
+        gazetteIndex = 0;
+        const ticker = document.getElementById('dash-gazette-ticker');
+        const btnUp   = document.getElementById('dash-gz-up');
+        const btnDown = document.getElementById('dash-gz-down');
+        if (!ticker || !btnUp || !btnDown) return;
+
+        function applySlide() {
+            ticker.style.transform = `translateY(-${gazetteIndex * PILL_H}px)`;
+            btnUp.disabled   = gazetteIndex === 0;
+            btnDown.disabled = gazetteIndex >= total - VISIBLE;
+        }
+
+        // Listener'ları yenilemek için klonla
+        btnUp.replaceWith(btnUp.cloneNode(true));
+        btnDown.replaceWith(btnDown.cloneNode(true));
+        const up   = document.getElementById('dash-gz-up');
+        const down = document.getElementById('dash-gz-down');
+
+        up.addEventListener('click', () => { if (gazetteIndex > 0) { gazetteIndex--; applySlide(); } });
+        down.addEventListener('click', () => { if (gazetteIndex < total - VISIBLE) { gazetteIndex++; applySlide(); } });
+
+        applySlide();
     }
 
     // ── Gazete yükle ─────────────────────────────────
     async function loadDashGazette() {
         try {
-            const history = await window.DB.Matches.getPlayerHistory(dashUserId, 10);
-            dashMatchHistory = history || [];   // modül state'e kaydet
-            renderDashGazette(dashMatchHistory);
+            const [history, recent] = await Promise.all([
+                window.DB.Matches.getPlayerHistory(dashUserId, 10),
+                window.DB.Matches.getRecentFinished(8)
+            ]);
+            dashMatchHistory  = history || [];
+            dashRecentMatches = recent  || [];
+            renderDashGazette(dashMatchHistory, dashRecentMatches);
         } catch (e) {
             console.warn('[Dashboard] Gazete yükleme hatası:', e);
-            renderDashGazette([]);
+            renderDashGazette([], []);
         }
     }
 
@@ -272,7 +322,7 @@
                 // Realtime payload'ı raw satır döndürür — author join'i olmaz.
                 // Feed'i yeniden çekerek doğru isim/avatar gösteriyoruz.
                 await loadDashFeed();
-                renderDashGazette(dashMatchHistory);
+                renderDashGazette(dashMatchHistory, dashRecentMatches);
                 if (typeof window.showToast === 'function') {
                     window.showToast('🆕 Yeni paylaşım!');
                 }

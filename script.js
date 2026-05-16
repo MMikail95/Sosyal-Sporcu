@@ -1283,24 +1283,23 @@ function renderHighlights(player) {
     const container = document.getElementById('highlights-container');
     if (!container) return;
     const d = player?.details || {};
-    const url1 = d.highlight_url_1 || player?.highlight_url_1 || '';
-    const url2 = d.highlight_url_2 || player?.highlight_url_2 || '';
+    const url1 = (d.highlight_url_1 || player?.highlight_url_1 || '').trim();
+    const url2 = (d.highlight_url_2 || player?.highlight_url_2 || '').trim();
     const embed1 = toEmbedUrl(url1);
     const embed2 = toEmbedUrl(url2);
-    const isInsta1 = url1 && url1.includes('instagram.com');
-    const isInsta2 = url2 && url2.includes('instagram.com');
 
-    const hasAny = embed1 || embed2 || isInsta1 || isInsta2;
+    const hasAny = url1 || url2;
 
     if (!hasAny) {
         container.innerHTML = `<div style="text-align:center; color:#444; padding:1.5rem 0; font-size:0.85rem;">
             <i class="fa-solid fa-video" style="font-size:1.6rem; display:block; margin-bottom:0.5rem; opacity:0.3;"></i>
-            Henüz video eklenmedi.
+            Henüz video / link eklenmedi.
         </div>`;
         return;
     }
 
-    const makeFrame = (embed, rawUrl, isInsta) => {
+    const makeFrame = (embed, rawUrl) => {
+        if (!rawUrl) return '';
         if (embed) {
             return `<div class="highlight-frame-wrap">
                 <iframe src="${embed}" class="highlight-iframe"
@@ -1308,18 +1307,24 @@ function renderHighlights(player) {
                     allowfullscreen></iframe>
             </div>`;
         }
-        if (isInsta) {
-            return `<a href="${rawUrl}" target="_blank" rel="noopener" class="highlight-insta-link">
-                <i class="fa-brands fa-instagram"></i> Instagram'da İzle
-            </a>`;
-        }
-        return '';
+        // Herhangi bir link — platform ikonunu otomatik seç
+        let icon = 'fa-solid fa-link';
+        let label = 'Linki Aç';
+        if (rawUrl.includes('instagram.com')) { icon = 'fa-brands fa-instagram'; label = 'Instagram\'da Gör'; }
+        else if (rawUrl.includes('tiktok.com'))   { icon = 'fa-brands fa-tiktok';    label = 'TikTok\'ta Gör'; }
+        else if (rawUrl.includes('twitter.com') || rawUrl.includes('x.com')) { icon = 'fa-brands fa-x-twitter'; label = 'X\'te Gör'; }
+        else if (rawUrl.includes('twitch.tv'))    { icon = 'fa-brands fa-twitch';    label = 'Twitch\'te Gör'; }
+        let domain = '';
+        try { domain = new URL(rawUrl).hostname.replace('www.', ''); } catch(_) {}
+        return `<a href="${rawUrl}" target="_blank" rel="noopener" class="highlight-insta-link">
+            <i class="${icon}"></i> ${label}${domain ? ` — ${domain}` : ''}
+        </a>`;
     };
 
     container.innerHTML = `
         <div class="highlights-grid">
-            ${makeFrame(embed1, url1, isInsta1)}
-            ${makeFrame(embed2, url2, isInsta2)}
+            ${makeFrame(embed1, url1)}
+            ${makeFrame(embed2, url2)}
         </div>`;
 }
 
@@ -2788,7 +2793,6 @@ const HONOR_DEFS = [
     { key: 'maestro',          label: 'Maestro',         icon: '🎯', faIcon: 'fa-bullseye',       description: 'Oyun kurucu, pas dağıtıcı akıl' },
     { key: 'fuzeci',           label: 'Füzeci',          icon: '🚀', faIcon: 'fa-rocket',         description: 'Uzaktan sert ve isabetli şut atan' },
     { key: 'duvar',            label: 'Duvar',           icon: '🧱', faIcon: 'fa-shield',         description: 'Geçilmez savunma yapan tank' },
-    { key: 'cigersiz_honor',   label: 'Ciğersiz',        icon: '🫁', faIcon: 'fa-lungs',          description: 'Bitmek bilmeyen kondisyon, sürekli pres' },
     // Karakter & Vibe
     { key: 'beyefendi',        label: 'Beyefendi',       icon: '🎩', faIcon: 'fa-hat-wizard',     description: 'En saygılı, centilmen oyuncu' },
     { key: 'sosyal',           label: 'Sosyal',          icon: '🎉', faIcon: 'fa-face-grin-wide', description: 'Maçın en eğlenceli, neşeli karakteri' },
@@ -2844,28 +2848,90 @@ function renderHonorShowcase(profileData) {
     }</div>`;
 }
 
-// tab-kariyer içindeki #honor-badges-grid'e 5 onur rozeti kartını render et
+function renderHonorCard(r) {
+    const unlocked = r.tier !== null;
+    const color = unlocked ? r.tier.color : '#444';
+    const tierEmoji = { Bronz: '🥉', Gümüş: '🥈', Altın: '🥇', Elmas: '💎' }[r.tier?.name] || '';
+    const needed = Math.max(0, 5 - r.count);
+
+    return `
+        <div class="ach-card ${unlocked ? 'ach-unlocked' : 'ach-locked'}" title="${r.description}">
+            ${unlocked ? `<div class="ach-card-glow" style="background:radial-gradient(circle,${color}33 0%,transparent 70%);"></div>` : ''}
+            <div class="ach-card-top">
+                <div class="ach-card-icon" style="${unlocked ? `color:${color};` : 'color:#444;'}">
+                    <i class="fa-solid ${r.faIcon}"></i>
+                </div>
+                <span class="ach-card-emoji">${r.icon}</span>
+                ${unlocked
+                    ? `<div class="ach-status-badge ach-status-unlock"><i class="fa-solid fa-check"></i></div>`
+                    : `<div class="ach-status-badge ach-status-lock"><i class="fa-solid fa-lock"></i></div>`}
+            </div>
+            <div class="ach-card-body">
+                <h4 class="ach-card-title" style="${unlocked ? `color:${color}` : 'color:#555'}">${r.label}</h4>
+                <p class="ach-card-desc">${r.description}</p>
+                ${unlocked
+                    ? `<div class="ach-card-hint" style="color:${color}; border-color:${color}33;"><i class="fa-solid fa-users"></i> ${r.count} oy · ${r.tier.name}</div>`
+                    : `<div class="ach-card-hint"><i class="fa-solid fa-circle-info"></i> Bronz için ${needed} oy daha (${r.count}/5)</div>`}
+            </div>
+            ${unlocked ? `<div class="ach-tier-stamp">${tierEmoji}</div>` : ''}
+        </div>`;
+}
+
+// tab-kariyer içindeki #honor-badges-grid'e onur rozeti kartlarını render et
 function renderHonorBadges(profileData) {
     const container = document.getElementById('honor-badges-grid');
     if (!container) return;
 
-    container.innerHTML = HONOR_DEFS.map(def => {
+    const results = HONOR_DEFS.map(def => {
         const count = profileData[`honor_${def.key}`] || 0;
         const tier = getHonorTier(count);
-        const earned = tier !== null;
-        const color = earned ? tier.color : '#333';
-        const bg = earned
-            ? (tier.color === 'var(--neon-cyan)' ? 'rgba(0,229,255,0.07)' : tier.color + '12')
-            : 'rgba(255,255,255,0.02)';
-        return `
-            <div class="honor-badge-card ${earned ? 'honor-earned' : 'honor-locked'}"
-                 title="${def.description}">
-                <div class="honor-badge-icon" style="color:${color}; font-size:1.8rem;">${def.icon}</div>
-                <div class="honor-badge-label" style="color:${color};">${def.label}</div>
-                <div class="honor-badge-count" style="color:${color};">${count} oy</div>
-                ${earned ? `<div class="honor-badge-tier" style="color:${color};">${tier.name}</div>` : ''}
-            </div>`;
-    }).join('');
+        return { ...def, count, tier };
+    });
+
+    const earnedCount = results.filter(r => r.tier).length;
+    const total = results.length;
+    const circumference = 150.8;
+    const progress = Math.round((earnedCount / total) * circumference);
+
+    container.innerHTML = `
+        <div class="ach-banner glass-card">
+            <div class="ach-banner-left">
+                <div class="ach-banner-icon" style="color:var(--neon-cyan);"><i class="fa-solid fa-shield-heart"></i></div>
+                <div>
+                    <h2 class="ach-banner-title">ONUR ROZETLERİ</h2>
+                    <p class="ach-banner-sub">Topluluk oylarıyla verilen özel unvanlar</p>
+                </div>
+            </div>
+            <div class="ach-banner-right">
+                <div class="ach-progress-ring">
+                    <svg viewBox="0 0 60 60">
+                        <circle cx="30" cy="30" r="24" fill="none" stroke="#333" stroke-width="5"/>
+                        <circle cx="30" cy="30" r="24" fill="none"
+                            stroke="var(--neon-cyan)" stroke-width="5"
+                            stroke-dasharray="${progress} ${circumference}"
+                            stroke-dashoffset="37.7"
+                            stroke-linecap="round"
+                            style="transition:stroke-dasharray 1s ease;"/>
+                    </svg>
+                    <div class="ach-ring-text">
+                        <span class="ach-ring-num" style="color:var(--neon-cyan);">${earnedCount}</span>
+                        <span class="ach-ring-total">/ ${total}</span>
+                    </div>
+                </div>
+                <div class="ach-stat-pills">
+                    <div class="ach-pill" style="border-color:#cd7f32; color:#cd7f32;">🥉 ${results.filter(r => r.tier?.name === 'Bronz').length}</div>
+                    <div class="ach-pill" style="border-color:#aaa; color:#aaa;">🥈 ${results.filter(r => r.tier?.name === 'Gümüş').length}</div>
+                    <div class="ach-pill" style="border-color:gold; color:gold;">🥇 ${results.filter(r => r.tier?.name === 'Altın').length}</div>
+                    <div class="ach-pill" style="border-color:var(--neon-cyan); color:var(--neon-cyan);">💎 ${results.filter(r => r.tier?.name === 'Elmas').length}</div>
+                </div>
+            </div>
+        </div>
+        <div class="ach-category-section" style="margin-top:0.75rem;">
+            <div class="ach-cards-grid">
+                ${results.map(renderHonorCard).join('')}
+            </div>
+        </div>
+    `;
 }
 
 /**

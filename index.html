@@ -167,9 +167,15 @@
                         <span class="dash-gazette-title">Spor Gazetesi</span>
                         <span class="dash-gazette-sub">Bölgenizdeki son gelişmeler</span>
                     </div>
-                    <div id="dash-gazette-ticker">
-                        <div class="skeleton-text" style="width:80%;height:14px;margin-bottom:8px;border-radius:6px;"></div>
-                        <div class="skeleton-text" style="width:60%;height:14px;border-radius:6px;"></div>
+                    <div class="dash-gazette-ticker-wrap">
+                        <div id="dash-gazette-ticker">
+                            <div class="skeleton-text" style="width:80%;height:14px;margin-bottom:8px;border-radius:6px;"></div>
+                            <div class="skeleton-text" style="width:60%;height:14px;border-radius:6px;"></div>
+                        </div>
+                    </div>
+                    <div class="dash-gazette-nav">
+                        <button id="dash-gz-up" class="dash-gz-btn" title="Yukarı">▲</button>
+                        <button id="dash-gz-down" class="dash-gz-btn" title="Aşağı">▼</button>
                     </div>
                 </div>
 
@@ -518,14 +524,14 @@
                                             <span style="font-size:0.7rem; color:#555; display:block; text-align:right; margin-top:2px;" id="hkm-bio-counter">0/500</span>
                                         </div>
                                         <div class="detail-field" style="grid-column:1/-1;">
-                                            <label class="detail-label"><i class="fa-brands fa-youtube" style="color:#ff3d3d"></i> Maç Video Linki 1 (YouTube)</label>
+                                            <label class="detail-label"><i class="fa-solid fa-link" style="color:var(--neon-cyan)"></i> Video / Link 1</label>
                                             <input type="url" id="hkm-inp-highlight-1" class="profile-input"
-                                                   placeholder="https://youtube.com/watch?v=...">
+                                                   placeholder="YouTube, Instagram veya herhangi bir link...">
                                         </div>
                                         <div class="detail-field" style="grid-column:1/-1;">
-                                            <label class="detail-label"><i class="fa-brands fa-youtube" style="color:#ff3d3d"></i> Maç Video Linki 2 (YouTube)</label>
+                                            <label class="detail-label"><i class="fa-solid fa-link" style="color:var(--neon-cyan)"></i> Video / Link 2</label>
                                             <input type="url" id="hkm-inp-highlight-2" class="profile-input"
-                                                   placeholder="https://youtube.com/watch?v=...">
+                                                   placeholder="YouTube, Instagram veya herhangi bir link...">
                                         </div>
                                     </div>
                                     <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
@@ -681,14 +687,8 @@
                         <div id="tab-kariyer" class="profile-subtab" style="display:none;">
 
                             <!-- ONUR ROZETLERİ GALERİSİ -->
-                            <div class="glass-card" style="margin-bottom:1.5rem; padding:1.25rem;">
-                                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem;">
-                                    <i class="fa-solid fa-shield-heart" style="color:var(--neon-cyan);"></i>
-                                    <span style="font-size:0.75rem; font-weight:700; color:#888; letter-spacing:1px; text-transform:uppercase;">Onur Rozetleri</span>
-                                </div>
-                                <div id="honor-badges-grid" class="honor-badges-grid">
-                                    <!-- renderHonorBadges() tarafından doldurulur -->
-                                </div>
+                            <div id="honor-badges-grid" style="margin-bottom:1.5rem;">
+                                <!-- renderHonorBadges() tarafından doldurulur -->
                             </div>
 
                             <!-- BAŞARIM GALERİSİ -->

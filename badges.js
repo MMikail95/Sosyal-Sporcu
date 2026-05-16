@@ -221,18 +221,52 @@ function _renderGrid(results) {
     if (old) old.remove();
 
     const section = document.createElement('div');
-    section.className = 'tb-section glass-card';
+    section.className = 'tb-section';
+
+    const bronzCount = results.filter(r => r.tier === 'bronz').length;
+    const gumusCount = results.filter(r => r.tier === 'gumus').length;
+    const altinCount = results.filter(r => r.tier === 'altin').length;
+    const earnedCount = results.filter(r => r.tier).length;
+    const total = results.length;
+    const circumference = 150.8;
+    const progress = Math.round((earnedCount / total) * circumference);
 
     section.innerHTML = `
-        <div class="tb-section-header">
-            <i class="fa-solid fa-medal" style="color:#adff2f; font-size:1.1rem;"></i>
-            <span style="font-size:0.75rem; font-weight:700; color:#888; letter-spacing:1px; text-transform:uppercase;">Başarım Rozetleri</span>
-            <span style="margin-left:auto; font-size:0.72rem; color:#555;">
-                ${results.filter(r => r.tier).length} / ${results.length} kazanıldı
-            </span>
+        <div class="ach-banner glass-card">
+            <div class="ach-banner-left">
+                <div class="ach-banner-icon"><i class="fa-solid fa-medal"></i></div>
+                <div>
+                    <h2 class="ach-banner-title">BAŞARIM ROZETLERİ</h2>
+                    <p class="ach-banner-sub">İstatistik bazlı tier rozet sistemi</p>
+                </div>
+            </div>
+            <div class="ach-banner-right">
+                <div class="ach-progress-ring">
+                    <svg viewBox="0 0 60 60">
+                        <circle cx="30" cy="30" r="24" fill="none" stroke="#333" stroke-width="5"/>
+                        <circle cx="30" cy="30" r="24" fill="none"
+                            stroke="var(--neon-green)" stroke-width="5"
+                            stroke-dasharray="${progress} ${circumference}"
+                            stroke-dashoffset="37.7"
+                            stroke-linecap="round"
+                            style="transition:stroke-dasharray 1s ease;"/>
+                    </svg>
+                    <div class="ach-ring-text">
+                        <span class="ach-ring-num">${earnedCount}</span>
+                        <span class="ach-ring-total">/ ${total}</span>
+                    </div>
+                </div>
+                <div class="ach-stat-pills">
+                    <div class="ach-pill" style="border-color:#cd7f32; color:#cd7f32;">🥉 ${bronzCount}</div>
+                    <div class="ach-pill" style="border-color:#aaa; color:#aaa;">🥈 ${gumusCount}</div>
+                    <div class="ach-pill" style="border-color:#adff2f; color:#adff2f;">🥇 ${altinCount}</div>
+                </div>
+            </div>
         </div>
-        <div class="tb-cards-grid">
-            ${results.map(_renderCard).join('')}
+        <div class="ach-category-section" style="margin-top:0.75rem;">
+            <div class="ach-cards-grid">
+                ${results.map(_renderCard).join('')}
+            </div>
         </div>
     `;
     container.appendChild(section);
@@ -248,21 +282,36 @@ function _tierIcon(tier) {
 
 function _renderCard(r) {
     const locked = !r.tier;
-    const tierClass = r.tier ? `tb-${r.tier}` : 'tb-locked';
-    const tooltip = r.tooltipText || (r.tier === 'altin' ? 'En yüksek kademe!' : '');
+    const color = _tierColor(r.tier);
+
+    // Mevcut kademeye göre açıklama
+    let desc = r.bronzeDesc;
+    if (r.tier === 'gumus') desc = r.silverDesc;
+    else if (r.tier === 'altin') desc = r.goldDesc;
+
+    const hint = locked
+        ? (r.tooltipText || `Bronz için ${r.bronzeAt} gerekli`)
+        : (r.tooltipText || (r.tier === 'altin' ? 'En yüksek kademe! 🏆' : null));
 
     return `
-        <div class="tier-badge-card ${tierClass}"${tooltip ? ` data-tooltip="${tooltip}"` : ''}>
-            <div class="tb-card-icon${locked ? ' tb-icon-locked' : ''}">
-                <i class="fa-solid ${r.icon}"></i>
+        <div class="ach-card ${locked ? 'ach-locked' : 'ach-unlocked'} ${r.tier ? `ach-tier-${r.tier}` : ''}">
+            ${!locked ? `<div class="ach-card-glow" style="background:radial-gradient(circle,${color}33 0%,transparent 70%);"></div>` : ''}
+            <div class="ach-card-top">
+                <div class="ach-card-icon" style="${!locked ? `color:${color};` : 'color:#444;'}">
+                    <i class="fa-solid ${r.icon}"></i>
+                </div>
+                ${!locked
+                    ? `<div class="ach-status-badge ach-status-unlock"><i class="fa-solid fa-check"></i></div>`
+                    : `<div class="ach-status-badge ach-status-lock"><i class="fa-solid fa-lock"></i></div>`}
             </div>
-            <div class="tb-card-label">${r.label}</div>
-            <div class="tb-tier-stamp" style="color:${_tierColor(r.tier)}">${_tierIcon(r.tier)} ${_tierLabel(r.tier)}</div>
-            <div class="tb-card-score" style="color:${_tierColor(r.tier)}">${r.current.toLocaleString('tr-TR')}</div>
-            <div class="tb-progress-bar-wrap">
-                <div class="tb-progress-bar tb-bar-${r.tier || 'locked'}" style="width:${r.pct}%"></div>
+            <div class="ach-card-body">
+                <h4 class="ach-card-title" style="${!locked ? `color:${color}` : 'color:#555'}">${r.label}</h4>
+                <p class="ach-card-desc">${desc}</p>
+                ${!locked
+                    ? `<div class="ach-card-hint" style="color:${color}; border-color:${color}33;"><i class="fa-solid fa-chart-bar"></i> ${r.current.toLocaleString('tr-TR')} · ${_tierLabel(r.tier)}</div>`
+                    : hint ? `<div class="ach-card-hint"><i class="fa-solid fa-circle-info"></i> ${hint}</div>` : ''}
             </div>
-            ${r.tooltipText ? `<div class="tb-next-hint">${r.tooltipText}</div>` : ''}
+            ${!locked ? `<div class="ach-tier-stamp">${_tierIcon(r.tier)}</div>` : ''}
         </div>
     `;
 }

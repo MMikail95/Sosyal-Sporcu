@@ -619,6 +619,24 @@ const Matches = {
     return (data || []).filter(d => d.match !== null);
   },
 
+  // Son biten takım maçlarını getir (Spor Gazetesi için)
+  async getRecentFinished(limit = 10) {
+    const { data, error } = await sb()
+      .from('matches')
+      .select(`
+        id, home_score, away_score, scheduled_at,
+        home_team:home_team_id(id, name),
+        away_team:away_team_id(id, name)
+      `)
+      .eq('status', 'finished')
+      .not('home_team_id', 'is', null)
+      .not('away_team_id', 'is', null)
+      .order('scheduled_at', { ascending: false })
+      .limit(limit);
+    if (error) return [];
+    return data || [];
+  },
+
   // Maç sonucu gir
   async updateScore(matchId, homeScore, awayScore, updaterId) {
     const { data, error } = await sb()
