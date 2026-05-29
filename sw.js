@@ -1,25 +1,28 @@
 const CACHE = 'ss-v1';
 
+// Works both on localhost (/sw.js) and GitHub Pages (/Sosyal-Sporcu/sw.js)
+const BASE = self.location.pathname.replace(/\/sw\.js$/, '');
+
 const APP_SHELL = [
-  '/',
-  '/index.html',
-  '/auth.html',
-  '/style.css',
-  '/team-fix.css',
-  '/faz2-7.css',
-  '/fixes.css',
-  '/script.js',
-  '/db.js',
-  '/faz2-7.js',
-  '/faz2-social.js',
-  '/faz1.js',
-  '/takimim.js',
-  '/auth.js',
-  '/supabase.js',
-  '/badges.js',
-  '/assets/js/components.js',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
+  BASE + '/',
+  BASE + '/index.html',
+  BASE + '/auth.html',
+  BASE + '/style.css',
+  BASE + '/team-fix.css',
+  BASE + '/faz2-7.css',
+  BASE + '/fixes.css',
+  BASE + '/script.js',
+  BASE + '/db.js',
+  BASE + '/faz2-7.js',
+  BASE + '/faz2-social.js',
+  BASE + '/faz1.js',
+  BASE + '/takimim.js',
+  BASE + '/auth.js',
+  BASE + '/supabase.js',
+  BASE + '/badges.js',
+  BASE + '/assets/js/components.js',
+  BASE + '/icons/icon-192.png',
+  BASE + '/icons/icon-512.png',
 ];
 
 self.addEventListener('install', e => {
