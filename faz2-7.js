@@ -2557,11 +2557,18 @@ function _mcRenderCalendarMonth() {
     const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
 
     const statusColor = {
-        scheduled: 'var(--neon-cyan)',
-        confirmed:  'var(--neon-green)',
-        finished:   'rgba(255,255,255,0.35)',
-        cancelled:  'var(--neon-pink)'
+        scheduled: '#00e5ff',
+        confirmed:  '#adff2f',
+        finished:   'rgba(255,255,255,0.45)',
+        cancelled:  '#ff007f'
     };
+    const statusLabel = {
+        scheduled: 'Planlandı',
+        confirmed:  'Onaylandı',
+        finished:   'Tamamlandı',
+        cancelled:  'İptal'
+    };
+    const myTeamIdSet = new Set((_mcMyTeams || []).map(t => t.id));
 
     // İlk gün (0=Paz) → Pzt bazlı (0=Pzt)
     const firstDayRaw = new Date(year, month, 1).getDay();
@@ -2584,12 +2591,35 @@ function _mcRenderCalendarMonth() {
         const isSelected = _mcCalSelectedDate === dateStr;
         const isPast     = dateStr < todayStr;
 
-        const dotsHtml = dayMatches.length
-            ? `<div class="mc-cal-dots">${dayMatches.slice(0, 4).map(r => {
+        // Hücre içeriği
+        let cellContent = '';
+        if (dayMatches.length === 1) {
+            const m   = dayMatches[0].match;
+            const col = statusColor[m.status] || 'rgba(255,255,255,0.3)';
+            const lbl = statusLabel[m.status] || '';
+            const time = m.scheduled_at
+                ? new Date(m.scheduled_at).toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit' })
+                : '';
+            // Rakip takım adı
+            let opp = '';
+            if (m.home_team && m.away_team) {
+                opp = myTeamIdSet.has(m.home_team_id)
+                    ? (m.away_team.name || '').split(' ').slice(0, 2).join(' ')
+                    : (m.home_team.name || '').split(' ').slice(0, 2).join(' ');
+            }
+            cellContent = `
+                <div class="mc-cal-match-pill" style="border-color:${col};color:${col};">${lbl}</div>
+                ${time ? `<div class="mc-cal-match-time">${time}</div>` : ''}
+                ${opp  ? `<div class="mc-cal-match-opp">vs ${_mcEsc(opp)}</div>` : ''}`;
+        } else if (dayMatches.length > 1) {
+            const dots = dayMatches.slice(0, 4).map(r => {
                 const col = statusColor[r.match.status] || 'rgba(255,255,255,0.3)';
-                return `<span class="mc-cal-dot" style="background:${col};"></span>`;
-              }).join('')}</div>`
-            : '';
+                return `<span class="mc-cal-dot" style="background:${col};box-shadow:0 0 4px ${col};"></span>`;
+            }).join('');
+            cellContent = `
+                <div class="mc-cal-dots">${dots}</div>
+                <div class="mc-cal-count">${dayMatches.length} maç</div>`;
+        }
 
         const cls = ['mc-cal-day',
             dayMatches.length ? 'has-match' : 'no-match',
@@ -2598,9 +2628,11 @@ function _mcRenderCalendarMonth() {
             isPast && !dayMatches.length ? 'past-empty' : ''
         ].filter(Boolean).join(' ');
 
-        cells += `<div class="${cls}" data-date="${dateStr}" onclick="mcCalSelectDay('${dateStr}')">
+        const clickAttr = `onclick="mcCalSelectDay('${dateStr}')"`;
+
+        cells += `<div class="${cls}" data-date="${dateStr}" ${clickAttr}>
             <span class="mc-cal-day-num">${d}</span>
-            ${dotsHtml}
+            ${cellContent}
         </div>`;
     }
 

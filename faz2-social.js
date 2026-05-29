@@ -16,7 +16,7 @@ let exploreFilter  = { search: '', position: '', city: '' };
 // ── Sekme geçişi ──
 window.switchExploreTab = function(tab) {
     // Tab içeriklerini gizle/göster
-    ['players','teams','friends'].forEach(t => {
+    ['players','teams'].forEach(t => {
         const content = document.getElementById(`etab-${t}`);
         const btn     = document.getElementById(`etab-btn-${t}`);
         if (content) content.style.display = t === tab ? 'block' : 'none';
@@ -28,8 +28,6 @@ window.switchExploreTab = function(tab) {
         window.initExplore();
     } else if (tab === 'teams') {
         initExploreTeams();
-    } else if (tab === 'friends') {
-        renderFriendsList();
     }
 };
 

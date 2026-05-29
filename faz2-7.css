@@ -1792,125 +1792,180 @@
    ═══════════════════════════════════════ */
 
 .mc-cal-container {
-    padding: 0.75rem 1rem !important;
+    padding: 1.1rem 1.2rem 1.2rem !important;
     margin-bottom: 0.75rem;
 }
 
+/* ── Başlık satırı ── */
 .mc-cal-header {
     display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.9rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 
 .mc-cal-title {
-    font-size: 0.88rem; font-weight: 800;
-    color: #ccc; letter-spacing: 0.3px;
+    font-size: 0.92rem; font-weight: 800;
+    color: #e0e0e0; letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 
 .mc-cal-nav-btn {
     background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 6px;
-    color: #666; font-size: 0.75rem;
-    width: 26px; height: 26px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: #888; font-size: 0.82rem;
+    width: 30px; height: 30px;
     cursor: pointer; transition: all 0.15s ease;
     display: flex; align-items: center; justify-content: center;
 }
-.mc-cal-nav-btn:hover { background: rgba(0,229,255,0.1); color: var(--neon-cyan); border-color: rgba(0,229,255,0.3); }
+.mc-cal-nav-btn:hover {
+    background: rgba(0,229,255,0.12);
+    color: var(--neon-cyan);
+    border-color: rgba(0,229,255,0.35);
+    transform: scale(1.08);
+}
 
+/* ── Haftanın günleri satırı ── */
 .mc-cal-weekdays {
     display: grid; grid-template-columns: repeat(7, 1fr);
-    gap: 2px; margin-bottom: 3px;
+    gap: 3px; margin-bottom: 5px;
 }
 .mc-cal-weekdays span {
-    text-align: center; font-size: 0.6rem; font-weight: 700;
-    text-transform: uppercase; color: #3a3a3a; letter-spacing: 0.3px;
-    padding: 0.15rem 0;
+    text-align: center; font-size: 0.62rem; font-weight: 800;
+    text-transform: uppercase; color: #484848; letter-spacing: 0.5px;
+    padding: 0.2rem 0;
 }
 
+/* ── Izgara ── */
 .mc-cal-grid {
     display: grid; grid-template-columns: repeat(7, 1fr);
-    gap: 2px;
+    gap: 3px;
 }
 
+/* ── Hücre ── */
 .mc-cal-day {
-    min-height: 38px; padding: 4px 2px 3px;
-    border-radius: 6px;
-    display: flex; flex-direction: column; align-items: center; gap: 2px;
-    transition: background 0.12s ease;
+    min-height: 64px; padding: 5px 4px 4px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    transition: background 0.13s ease, border-color 0.13s ease, transform 0.12s ease;
     position: relative;
+    cursor: pointer;
 }
 
-.mc-cal-day.has-match {
-    cursor: pointer;
-}
 .mc-cal-day.has-match:hover {
-    background: rgba(0,229,255,0.07);
-}
-.mc-cal-day.no-match {
-    cursor: pointer;
+    background: rgba(0,229,255,0.08);
+    border-color: rgba(0,229,255,0.18);
+    transform: translateY(-1px);
 }
 .mc-cal-day.no-match:hover {
-    background: rgba(255,255,255,0.03);
+    background: rgba(255,255,255,0.04);
 }
 
-.mc-cal-day.other-month { opacity: 0.18; pointer-events: none; }
-.mc-cal-day.past-empty  { opacity: 0.28; }
+.mc-cal-day.other-month { opacity: 0.15; pointer-events: none; }
+.mc-cal-day.past-empty  { opacity: 0.3; }
 
+/* Bugün */
+.mc-cal-day.today {
+    background: rgba(0,229,255,0.05);
+    border-color: rgba(0,229,255,0.25);
+}
 .mc-cal-day.today .mc-cal-day-num {
-    border: 1.5px solid var(--neon-cyan);
-    color: var(--neon-cyan);
-    background: rgba(0,229,255,0.08);
+    background: var(--neon-cyan);
+    color: #000;
+    font-weight: 900;
 }
 
+/* Seçili gün */
 .mc-cal-day.selected {
-    background: rgba(0,229,255,0.08);
-    border-radius: 6px;
+    background: rgba(0,229,255,0.1);
+    border-color: rgba(0,229,255,0.4);
+    box-shadow: 0 0 10px rgba(0,229,255,0.12);
 }
 .mc-cal-day.selected .mc-cal-day-num {
     color: var(--neon-cyan);
     font-weight: 900;
 }
 .mc-cal-day.has-match.selected {
-    background: rgba(0,229,255,0.12);
+    background: rgba(0,229,255,0.13);
 }
 
+/* ── Gün sayısı ── */
 .mc-cal-day-num {
     font-size: 0.72rem; font-weight: 700; color: #666;
-    width: 20px; height: 20px;
+    width: 22px; height: 22px;
     display: flex; align-items: center; justify-content: center;
     border-radius: 50%;
-    transition: color 0.12s;
+    transition: all 0.12s;
+    flex-shrink: 0;
 }
-.mc-cal-day.has-match .mc-cal-day-num { color: #aaa; }
+.mc-cal-day.has-match .mc-cal-day-num { color: #bbb; }
 
+/* ── Tek maç: renkli pill + saat + rakip ── */
+.mc-cal-match-pill {
+    font-size: 0.56rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.4px;
+    border: 1px solid;
+    border-radius: 4px;
+    padding: 1px 4px;
+    line-height: 1.4;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden; text-overflow: ellipsis;
+}
+
+.mc-cal-match-time {
+    font-size: 0.68rem; font-weight: 700;
+    color: #ddd;
+    line-height: 1.2;
+}
+
+.mc-cal-match-opp {
+    font-size: 0.58rem; font-weight: 500;
+    color: #888;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 100%; text-align: center;
+    padding: 0 2px;
+}
+
+/* ── Çok maç: nokta + sayaç ── */
 .mc-cal-dots {
     display: flex; flex-wrap: wrap; gap: 2px;
     justify-content: center;
 }
-
 .mc-cal-dot {
-    width: 4px; height: 4px;
+    width: 5px; height: 5px;
     border-radius: 50%;
     flex-shrink: 0;
 }
+.mc-cal-count {
+    font-size: 0.6rem; font-weight: 800;
+    color: var(--neon-cyan);
+    letter-spacing: 0.2px;
+}
 
-/* Seçilen günün maç listesi */
+/* ── Seçilen günün detay alanı ── */
 .mc-day-matches {
-    margin-top: 0.5rem;
+    margin-top: 0.6rem;
 }
 
 .mc-day-header {
-    font-size: 0.72rem; font-weight: 800;
-    text-transform: uppercase; letter-spacing: 0.6px;
-    color: var(--neon-cyan); opacity: 0.75;
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.55rem 0.85rem;
     margin-bottom: 0.6rem;
-    display: flex; align-items: center; gap: 0.35rem;
-    padding: 0 0.1rem;
+    background: rgba(0,229,255,0.06);
+    border: 1px solid rgba(0,229,255,0.15);
+    border-radius: 10px;
+    font-size: 0.82rem; font-weight: 800;
+    color: var(--neon-cyan);
+    letter-spacing: 0.3px;
 }
+.mc-day-header i { font-size: 0.85rem; opacity: 0.85; }
 
 .mc-day-empty {
-    text-align: center; padding: 1.2rem 1rem;
-    font-size: 0.8rem; color: #333;
+    text-align: center; padding: 1.4rem 1rem;
+    font-size: 0.82rem; color: #3a3a3a;
     display: flex; align-items: center; justify-content: center; gap: 0.4rem;
 }
 
@@ -1922,11 +1977,14 @@
 }
 
 @media (max-width: 480px) {
-    .mc-cal-day { min-height: 32px; padding: 3px 1px 2px; }
-    .mc-cal-day-num { font-size: 0.62rem; width: 17px; height: 17px; }
-    .mc-cal-dot { width: 3px; height: 3px; }
-    .mc-cal-weekdays span { font-size: 0.52rem; }
-    .mc-cal-container { padding: 0.5rem 0.6rem !important; }
+    .mc-cal-container { padding: 0.75rem 0.75rem 0.9rem !important; }
+    .mc-cal-day { min-height: 50px; padding: 4px 2px 3px; }
+    .mc-cal-day-num { font-size: 0.65rem; width: 19px; height: 19px; }
+    .mc-cal-dot { width: 4px; height: 4px; }
+    .mc-cal-weekdays span { font-size: 0.55rem; }
+    .mc-cal-match-pill { font-size: 0.5rem; padding: 1px 3px; }
+    .mc-cal-match-time { font-size: 0.6rem; }
+    .mc-cal-match-opp { display: none; }
 }
 
 .honor-type-btn.honor-type-selected {
