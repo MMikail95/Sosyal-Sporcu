@@ -1031,11 +1031,12 @@ window._tmSearchPlayers = async function() {
     }
 
     resultsEl.innerHTML = data.map(p => {
-      const isMember = members.includes(p.id);
-      const hasTeam  = !!p.current_team_id;
-      const avatar   = p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.username||'u')}`;
-      const pos      = p.ana_mevki || p.position || 'OS';
-      const gen      = p.gen_score || '—';
+      const isMember  = members.includes(p.id);
+      const isSent    = _tmState.sentInvites?.has(p.id);
+      const hasTeam   = !!p.current_team_id;
+      const avatar    = p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.username||'u')}`;
+      const pos       = p.ana_mevki || p.position || 'OS';
+      const gen       = p.gen_score || '—';
       const displayName = p.username;
 
       return `
@@ -1047,9 +1048,11 @@ window._tmSearchPlayers = async function() {
           </div>
           ${isMember
             ? `<span class="tm-inv-badge-member"><i class="fa-solid fa-check"></i> Üye</span>`
-            : `<button class="tm-inv-send-btn" onclick="_tmSendInvite('${p.id}','${p.username}',this)">
-                 <i class="fa-solid fa-paper-plane"></i> Davet Et
-               </button>`
+            : isSent
+              ? `<span class="tm-inv-badge-member" style="color:var(--neon-cyan)"><i class="fa-solid fa-check"></i> Gönderildi</span>`
+              : `<button class="tm-inv-send-btn" onclick="_tmSendInvite('${p.id}','${p.username}',this)">
+                   <i class="fa-solid fa-paper-plane"></i> Davet Et
+                 </button>`
           }
         </div>`;
     }).join('');
@@ -1066,14 +1069,18 @@ window._tmSendInvite = async function(targetUserId, targetUsername, btn) {
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
 
   try {
-    // Bildirim gönder
     await DB.Notifications.send(
       targetUserId,
       'team_invite',
       `${t.name} Takımına Davet`,
-      `${_tmState.profile?.username || 'Kaptan'} seni ${t.name} takımına davet etti! Davet kodu: ${t.slug || ''}`,
-      _tmState.userId
+      `${_tmState.profile?.username || 'Kaptan'} seni ${t.name} takımına davet etti!`,
+      _tmState.userId,
+      t.id  // related_id = team ID (bildirim panelinde doğrudan katılım için)
     );
+
+    // Bu oturumda davet edilenleri izle (modal yeniden açılınca "Gönderildi" gösterir)
+    if (!_tmState.sentInvites) _tmState.sentInvites = new Set();
+    _tmState.sentInvites.add(targetUserId);
 
     window.showToast?.(`✅ ${targetUsername} davet edildi!`, 'success');
     if (btn) { btn.innerHTML = '<i class="fa-solid fa-check"></i> Gönderildi'; btn.style.color = 'var(--neon-green)'; }
@@ -1719,6 +1726,80 @@ window.viewPlayerFromTeam = function(playerId) {
     window.activePlayerId = playerId;
     updateUI();
     if (typeof showSection === 'function') showSection('profile');
+  }
+};
+
+// ──────────────────────────────────────────────────────
+// MİSAFİR (HESAPSIZ) OYUNCU EKLEME
+// ──────────────────────────────────────────────────────
+
+window._tmOpenGuestModal = function() {
+  document.getElementById('tm-guest-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'tm-guest-modal';
+  modal.className = 'modal-backdrop';
+  modal.style.cssText = 'display:flex;z-index:9999;';
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  modal.innerHTML = `
+    <div class="modal-box" onclick="event.stopPropagation()" style="max-width:380px;">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-user-tag" style="color:#ff6b35;"></i> Hesapsız Oyuncu Ekle</h3>
+        <button class="modal-close" onclick="document.getElementById('tm-guest-modal').remove()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:0.75rem;">
+        <div>
+          <label style="font-size:0.78rem;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Oyuncu Adı *</label>
+          <input id="guest-name-input" class="profile-input" placeholder="İsim Soyisim"
+                 style="width:100%;margin-top:0.3rem;" maxlength="40">
+        </div>
+        <div>
+          <label style="font-size:0.78rem;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Mevki</label>
+          <select id="guest-pos-select" class="profile-select" style="width:100%;margin-top:0.3rem;">
+            <option value="OS">Orta Saha</option>
+            <option value="DEF">Defans</option>
+            <option value="FV">Forvet</option>
+            <option value="KL">Kaleci</option>
+          </select>
+        </div>
+        <button class="btn-primary" onclick="_tmAddGuestPlayer()" style="margin-top:0.25rem;">
+          <i class="fa-solid fa-plus"></i> Ekle
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  setTimeout(() => document.getElementById('guest-name-input')?.focus(), 100);
+};
+
+window._tmAddGuestPlayer = async function() {
+  const name = document.getElementById('guest-name-input')?.value?.trim();
+  const pos  = document.getElementById('guest-pos-select')?.value || 'OS';
+  if (!name) { window.showToast?.('Oyuncu adı zorunlu!', 'error'); return; }
+  const teamId = window._tmState?.team?.id;
+  if (!teamId) return;
+  try {
+    const newMember = await window.DB.Teams.addGuestMember(teamId, name, pos);
+    // State'e ekle
+    if (!window._tmState.members) window._tmState.members = [];
+    window._tmState.members.push({ id: newMember.id, team_id: teamId, player_id: null, guest_name: name, guest_position: pos, player: null, role: 'player' });
+    document.getElementById('tm-guest-modal')?.remove();
+    window.showToast?.(`✅ ${name} kadroya eklendi!`, 'success');
+    if (typeof renderKadroTab === 'function') renderKadroTab();
+  } catch(e) {
+    window.showToast?.('❌ Eklenemedi: ' + e.message, 'error');
+  }
+};
+
+window._tmRemoveGuestMember = async function(memberId) {
+  if (!confirm('Bu misafir oyuncu kadradan çıkarılsın mı?')) return;
+  try {
+    await window.DB.Teams.removeGuestMember(memberId);
+    window._tmState.members = (window._tmState.members || []).filter(m => m.id !== memberId);
+    window.showToast?.('Misafir oyuncu çıkarıldı.', 'success');
+    if (typeof renderKadroTab === 'function') renderKadroTab();
+  } catch(e) {
+    window.showToast?.('❌ ' + e.message, 'error');
   }
 };
 

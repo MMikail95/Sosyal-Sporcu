@@ -1386,7 +1386,26 @@ function getPositionAbbr(anaMevki) {
 }
 
 window.populateFutCard = function() {
-    const player = players.find(p => p.id === activePlayerId) || players[0];
+    let player = players.find(p => p.id === activePlayerId) || players[0];
+    // Karakter sayfasında players boşsa Supabase profilinden oluştur
+    if (!player && window.__SUPABASE_PROFILE__) {
+        const sp = window.__SUPABASE_PROFILE__;
+        player = {
+            id: sp.id, full_name: sp.full_name, name: sp.username,
+            avatar_url: sp.avatar_url, city: sp.city,
+            total_matches: sp.total_matches, total_goals: sp.total_goals, total_assists: sp.total_assists,
+            _sbTeamName: sp.current_team_name || null,
+            details: {
+                anaMevki: sp.ana_mevki || sp.position,
+                age: sp.age, city: sp.city, ayak: sp.ayak,
+                height: sp.height, weight: sp.weight, ekol: sp.ekol, oyunTarzi: sp.oyun_tarzi
+            },
+            ratings: {
+                teknik: sp.rating_teknik, sut: sp.rating_sut, pas: sp.rating_pas,
+                hiz: sp.rating_hiz, fizik: sp.rating_fizik, kondisyon: sp.rating_kondisyon
+            }
+        };
+    }
     if (!player) return;
     const d = player.details || {};
 
@@ -1436,8 +1455,15 @@ window.populateFutCard = function() {
 
 function buildFutFieldOptions() {
     const container = document.getElementById('fut-field-options');
-    if (!container || container.childElementCount > 0) return;
+    if (!container) return;
+    // Her açılışta mevcut seçimi yansıt (rebuild yerine state sync)
     const selected = getFutFields();
+    if (container.childElementCount > 0) {
+        container.querySelectorAll('input[type=checkbox]').forEach(cb => {
+            cb.checked = selected.includes(cb.value);
+        });
+        return;
+    }
     Object.entries(FUT_ALL_FIELDS).forEach(([key, f]) => {
         const checked = selected.includes(key);
         const div = document.createElement('label');
@@ -1463,13 +1489,23 @@ window.toggleFutSettings = function(e) {
     if (!panel) return;
     const open = panel.style.display === 'block';
     panel.style.display = open ? 'none' : 'block';
-    if (!open) buildFutFieldOptions();
+    if (!open) {
+        buildFutFieldOptions();
+        // Panel içi tıklamalar document'e ulaşmasın — sadece bir kez ekle
+        if (!panel._clickBlocked) {
+            panel.addEventListener('click', evt => evt.stopPropagation());
+            panel._clickBlocked = true;
+        }
+    }
 };
 
-// Kart dışına tıklayınca kapat
-document.addEventListener('click', () => {
+// Panel dışına tıklayınca kapat
+document.addEventListener('click', (e) => {
     const panel = document.getElementById('fut-settings-panel');
-    if (panel) panel.style.display = 'none';
+    if (!panel || panel.style.display !== 'block') return;
+    if (!e.target.closest('.fut-settings-btn') && !e.target.closest('#fut-settings-panel')) {
+        panel.style.display = 'none';
+    }
 });
 
 // ───────────────────────────────────────────────────────────────────────────

@@ -162,7 +162,7 @@
 }
 .pitch-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; }
 .pitch-field {
-    position: relative; width: 100%; padding-top: 130%;
+    position: relative; width: 100%; padding-top: 95%;
     background: linear-gradient(175deg, #0a280a 0%, #0f2f0f 100%);
     border: 2px solid rgba(255,255,255,0.15); border-radius: 8px; overflow: hidden;
 }
@@ -822,9 +822,10 @@
     display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;
 }
 
-/* Saha alanı */
+/* Saha alanı — yükseklik viewport'a göre sınırlandırılmış */
 .psn-pitch {
-    position: relative; width: 100%; padding-top: 142%;
+    position: relative; width: 100%;
+    height: min(90vw, 56vh);
     border-radius: 12px; overflow: hidden;
     border: 2px solid rgba(255,255,255,0.1);
     box-shadow: inset 0 0 40px rgba(0,0,0,0.6), 0 8px 30px rgba(0,0,0,0.5);
@@ -976,6 +977,9 @@
 }
 .psn-bench-chip:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); transform: translateX(2px); }
 .psn-bench-chip:active { cursor: grabbing; }
+.psn-bench-chip.tap-sel { border-color: var(--neon-cyan) !important; background: rgba(0,229,255,0.12) !important; box-shadow: 0 0 0 2px var(--neon-cyan); }
+.psn-card.tap-sel { outline: 2px solid var(--neon-cyan); box-shadow: 0 0 12px var(--neon-cyan); }
+.pitch-slot-new.tap-sel-target { filter: brightness(1.4); }
 .psn-bench-avatar { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.15); }
 .psn-bench-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .psn-bench-name { font-size: 0.82rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -984,6 +988,76 @@
 .psn-bench-empty {
     text-align: center; padding: 2rem; color: #555; font-size: 0.85rem;
     display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+}
+
+/* Taktik tahtası toolbar */
+.psn-tactic-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+    flex-wrap: wrap;
+}
+.psn-draw-toggle {
+    padding: 0.35rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: transparent;
+    color: #888;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.psn-draw-toggle:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); }
+.psn-tactic-tools {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+/* Manuel takım atama butonları (A/B/Oto) */
+.pab {
+    padding: 0 5px;
+    height: 20px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: transparent;
+    color: #555;
+    font-size: 0.65rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    transition: all 0.15s;
+}
+.pab:hover { border-color: rgba(255,255,255,0.3); color: #ccc; }
+.pab-a { background: rgba(0,255,136,0.15); border-color: var(--neon-green); color: var(--neon-green); }
+.pab-b { background: rgba(0,229,255,0.15); border-color: var(--neon-cyan); color: var(--neon-cyan); }
+.pab-auto { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2); color: #aaa; }
+
+.psn-slot-btn {
+    padding: 0.3rem 0.65rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: transparent;
+    color: #777;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+}
+.psn-slot-btn:hover { border-color: rgba(255,255,255,0.3); color: #ccc; }
+.psn-slot-btn.active {
+    background: rgba(173,255,47,0.1);
+    border-color: var(--neon-green);
+    color: var(--neon-green);
 }
 
 @media (max-width: 860px) {

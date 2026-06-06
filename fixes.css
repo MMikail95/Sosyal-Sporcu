@@ -1924,9 +1924,13 @@ body {
 }
 
 .team-avatar-actions {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 3px;
+    z-index: 3;
 }
 
 /* ── Geçmiş Maçlar ── */

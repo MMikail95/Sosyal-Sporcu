@@ -549,6 +549,62 @@ const Teams = {
     return data || [];
   },
 
+  // Hesapsız (misafir) oyuncu ekle
+  async addGuestMember(teamId, guestName, guestPosition) {
+    const { data, error } = await sb()
+      .from('team_members')
+      .insert({ team_id: teamId, player_id: null, guest_name: guestName, guest_position: guestPosition || 'OS', role: 'player' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  // Misafir oyuncu sil
+  async removeGuestMember(memberId) {
+    const { error } = await sb()
+      .from('team_members')
+      .delete()
+      .eq('id', memberId);
+    if (error) throw error;
+  },
+
+  // Takım ID'siyle katıl
+  async joinById(userId, teamId) {
+    const { data: team, error: tErr } = await sb()
+      .from('teams')
+      .select('id, name, slug, captain_id')
+      .eq('id', teamId)
+      .eq('is_active', true)
+      .single();
+    if (tErr || !team) throw new Error('Takım bulunamadı');
+
+    const { data: existing } = await sb()
+      .from('team_members')
+      .select('id')
+      .eq('team_id', team.id)
+      .eq('player_id', userId)
+      .single();
+    if (existing) throw new Error('Zaten bu takımın üyesisiniz');
+
+    const role = team.captain_id === userId ? 'captain' : 'player';
+    await sb().from('team_members').insert({ team_id: team.id, player_id: userId, role });
+    await sb().from('profiles').update({ current_team_id: team.id }).eq('id', userId);
+    return team;
+  },
+
+  // Kullanıcıya gelen takım davetlerini getir (notifications tablosundan)
+  async getMyInvites(userId) {
+    const { data, error } = await sb()
+      .from('notifications')
+      .select('id, related_id, actor_id, created_at')
+      .eq('user_id', userId)
+      .eq('type', 'team_invite')
+      .eq('is_read', false);
+    if (error) return [];
+    return (data || []).map(n => ({ id: n.id, team_id: n.related_id, created_at: n.created_at }));
+  },
+
   // Realtime: takım değişikliklerini dinle
   subscribeToTeam(teamId, callback) {
     return sb()

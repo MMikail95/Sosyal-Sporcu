@@ -7,9 +7,23 @@
 window.getTeamPlayers = window.getTeamPlayers || function() {
     if (window._tmState && _tmState.members && _tmState.members.length > 0) {
         return _tmState.members.map(m => {
+            // Misafir oyuncu (hesapsız)
+            if (!m.player && m.guest_name) {
+                return {
+                    id: 'guest_' + m.id,
+                    _memberId: m.id,
+                    _isGuest: true,
+                    username: m.guest_name,
+                    name: m.guest_name,
+                    position: m.guest_position || 'OS',
+                    ana_mevki: m.guest_position || 'OS',
+                    gen_score: null,
+                    avatar_url: null,
+                    details: { pos: m.guest_position || 'OS' }
+                };
+            }
             const p = m.player || {};
-            // Geriye dönük uyumluluk için
-            p.details = p.details || { pos: p.ana_mevki || p.position || 'OS', oyunTarzi: 'Dengeli', dakiklik: 'Vaktinde', sahaIletisim: 'Orta', pasTercihi: 'Kısa Pas', macSonu: 'Sohbet' };
+            p.details = p.details || { pos: p.ana_mevki || p.position || 'OS' };
             p.name = p.username || 'İsimsiz';
             return p;
         }).filter(Boolean);
@@ -83,6 +97,10 @@ window.renderKadroTab = function () {
                         <button class="btn-sm btn-accent" onclick="if(typeof _tmOpenInviteModal === 'function') _tmOpenInviteModal(); else alert('Davet modülü yüklenemedi.');">
                             <i class="fa-solid fa-user-plus"></i> Oyuncu Davet Et
                         </button>
+                        ${isCapOrAdmin ? `
+                        <button class="btn-sm btn-outline-sm" onclick="_tmOpenGuestModal()" style="border-color:rgba(255,107,53,0.4);color:#ff6b35;">
+                            <i class="fa-solid fa-user-tag"></i> Hesapsız Ekle
+                        </button>` : ''}
                     </div>
                 </div>
 
@@ -96,41 +114,43 @@ window.renderKadroTab = function () {
                         ${isCapOrAdmin ? '<span>İşlem</span>' : ''}
                     </div>
                     ${teamPlayers.map((p, i) => {
-                        const gen = calcPlayerGEN(p);
+                        const isGuest = !!p._isGuest;
+                        const gen = isGuest ? null : calcPlayerGEN(p);
                         const pInfo = _getPInfo(p);
-                        const isCore = coreSquad.includes(pInfo.id);
-                        const isCap = pInfo.id === t.captain_id;
+                        const isCore = !isGuest && coreSquad.includes(pInfo.id);
+                        const isCap = !isGuest && pInfo.id === t.captain_id;
                         return `
                         <div class="kadro-table-row ${isCore ? 'is-core-row' : ''}" id="krow-${pInfo.id}">
                             <span class="krow-rank">${i + 1}</span>
-                            <span class="krow-player" onclick="viewPlayerFromTeam('${pInfo.id}')">
-                                <img src="${pInfo.avatar}" class="krow-avatar">
+                            <span class="krow-player" ${isGuest ? '' : `onclick="viewPlayerFromTeam('${pInfo.id}')"`} style="${isGuest ? 'cursor:default' : ''}">
+                                <img src="${pInfo.avatar}" class="krow-avatar" style="opacity:${isGuest?'0.6':'1'}">
                                 <span class="krow-name">
                                     ${pInfo.name}
                                     ${isCap ? '<i class="fa-solid fa-crown" style="color:#ffd700; font-size:0.7rem;" title="Kaptan"></i>' : ''}
+                                    ${isGuest ? '<span style="font-size:0.6rem;color:#ff6b35;border:1px solid rgba(255,107,53,0.35);border-radius:3px;padding:0 4px;margin-left:3px;vertical-align:middle;">Misafir</span>' : ''}
                                 </span>
                             </span>
                             <span class="krow-pos" style="color:${pInfo.col};">
                                 ${posLabels[pInfo.posKey] || pInfo.pos}
                             </span>
-                            <span class="krow-gen" style="color:${gen >= 80 ? 'var(--neon-green)' : gen >= 70 ? '#ffd700' : 'orange'};">
-                                ${gen}
+                            <span class="krow-gen" style="color:#555;">
+                                ${gen != null ? `<span style="color:${gen >= 80 ? 'var(--neon-green)' : gen >= 70 ? '#ffd700' : 'orange'}">${gen}</span>` : '—'}
                             </span>
                             <span class="krow-core">
-                                ${isCapOrAdmin ? `
+                                ${(!isGuest && isCapOrAdmin) ? `
                                 <label class="core-toggle-switch" title="${isCore ? 'Kemik Kadroda' : 'Kemik Kadro Dışı'}">
-                                    <input type="checkbox" ${isCore ? 'checked' : ''} 
+                                    <input type="checkbox" ${isCore ? 'checked' : ''}
                                            onchange="toggleCoreSquad('${p.id}', this.checked)">
                                     <span class="core-toggle-slider"></span>
-                                </label>` : `
-                                <span class="${isCore ? 'core-dot-on' : 'core-dot-off'}" 
-                                      title="${isCore ? 'Kemik Kadro' : 'Yedek'}"></span>`}
+                                </label>` : (!isGuest ? `
+                                <span class="${isCore ? 'core-dot-on' : 'core-dot-off'}"
+                                      title="${isCore ? 'Kemik Kadro' : 'Yedek'}"></span>` : '')}
                             </span>
                             ${isCapOrAdmin ? `
                             <span class="krow-actions">
-                                <button class="btn-icon-sm btn-danger-ghost" 
-                                        onclick="removeFromTeam('${p.id}')"
-                                        title="Takımdan Çıkar" ${isCap ? 'disabled title="Kaptan çıkarılamaz"' : ''}>
+                                <button class="btn-icon-sm btn-danger-ghost"
+                                        onclick="${isGuest ? `_tmRemoveGuestMember('${p._memberId}')` : `removeFromTeam('${p.id}')`}"
+                                        title="${isGuest ? 'Misafiri Çıkar' : 'Takımdan Çıkar'}" ${isCap ? 'disabled' : ''}>
                                     <i class="fa-solid fa-user-minus"></i>
                                 </button>
                             </span>` : ''}
@@ -562,30 +582,145 @@ let pitchDragState = {
     customPositions: {}, // posId -> {x, y}
 };
 
+// ── MOBİL: SEÇ-VE-YERLEŞTİR (tap-to-select / tap-to-place) ──────────────
+// Basit ve güvenli: tıklama olaylarını BOZMAZ, sadece oyuncu ataması yapar.
+let _pitchSelected = null; // { id, srcSlot } — yedekten ya da slottan seçilen oyuncu
+
+window._pitchSelect = function(origin, id, slotId) {
+    const prevId = _pitchSelected ? _pitchSelected.id : null;
+
+    // Görsel seçim temizle
+    document.querySelectorAll('.psn-bench-chip.tap-sel, .psn-card.tap-sel').forEach(el => el.classList.remove('tap-sel'));
+
+    if (origin === 'bench') {
+        if (prevId === id && !_pitchSelected?.srcSlot) {
+            _pitchSelected = null; // aynı yedek chip'e ikinci kez tap → seçimi kaldır
+            return;
+        }
+        _pitchSelected = { id, srcSlot: null };
+        const chip = document.getElementById('bench-' + id);
+        if (chip) chip.classList.add('tap-sel');
+
+    } else if (origin === 'slot') {
+        if (!_pitchSelected) {
+            // Seçim yok: slottaki oyuncuyu seç (taşımak için)
+            if (id) {
+                _pitchSelected = { id, srcSlot: slotId };
+                const card = document.querySelector(`#slot-${slotId} .psn-card`);
+                if (card) card.classList.add('tap-sel');
+            }
+            return;
+        }
+        // Seçili oyuncuyu bu slota yerleştir
+        const playerId = _pitchSelected.id;
+        const srcSlot  = _pitchSelected.srcSlot;
+        const targetId = pitchDragState.assignments[slotId]; // slottaki mevcut oyuncu
+
+        if (srcSlot) {
+            // Slottan slota → swap
+            if (targetId) pitchDragState.assignments[srcSlot] = targetId;
+            else          delete pitchDragState.assignments[srcSlot];
+        }
+        pitchDragState.assignments[slotId] = playerId;
+        _pitchSelected = null;
+
+        savePitchState();
+        if (typeof window.refreshPitchUI === 'function') window.refreshPitchUI();
+        else if (typeof renderSahaTab === 'function') renderSahaTab();
+    }
+};
+
+// 3 kayıt slotu
+let pitchSlots = { slot1: null, slot2: null, slot3: null };
+let currentPitchSlot = 'slot1';
+let _pitchSlotsLoaded = false;
+
+function _slotLsKey() {
+    const tid = window._tmState?.team?.id || 'default';
+    return `ss_pitch_slots_${tid}`;
+}
+
 function loadPitchState() {
-    const saved = localStorage.getItem('ss_pitch_v2');
-    if (saved) {
+    // 1) Slot listesini localStorage'dan yükle (Supabase yüklenmemişse fallback)
+    if (!_pitchSlotsLoaded) {
         try {
-            const data = JSON.parse(saved);
-            pitchDragState.formation    = data.formation    || '3-2-1';
-            pitchDragState.assignments  = data.assignments  || {};
-            pitchDragState.customPositions = data.customPositions || {};
+            const raw = localStorage.getItem(_slotLsKey());
+            if (raw) pitchSlots = JSON.parse(raw);
         } catch(e) {}
+    }
+    // 2) Aktif slotun verisini pitchDragState'e yükle
+    const slotData = pitchSlots[currentPitchSlot];
+    if (slotData) {
+        pitchDragState.formation       = slotData.formation       || '3-2-1';
+        pitchDragState.assignments     = slotData.assignments     || {};
+        pitchDragState.customPositions = slotData.customPositions || {};
+    } else {
+        pitchDragState.formation       = '3-2-1';
+        pitchDragState.assignments     = {};
+        pitchDragState.customPositions = {};
     }
 }
 
 function savePitchState() {
-    localStorage.setItem('ss_pitch_v2', JSON.stringify({
-        formation: pitchDragState.formation,
-        assignments: pitchDragState.assignments,
+    const snapshot = {
+        formation:       pitchDragState.formation,
+        assignments:     pitchDragState.assignments,
         customPositions: pitchDragState.customPositions
-    }));
+    };
+    pitchSlots[currentPitchSlot] = snapshot;
+    localStorage.setItem(_slotLsKey(), JSON.stringify(pitchSlots));
+    // Eski tek-slot key'ini de güncelle (geriye dönük uyum)
+    localStorage.setItem('ss_pitch_v2', JSON.stringify(snapshot));
 }
+
+async function savePitchToSupabase() {
+    const teamId = window._tmState?.team?.id;
+    if (!teamId || !window.DB) return;
+    try {
+        await window.DB.Teams.update(teamId, { formations_json: JSON.stringify(pitchSlots) });
+    } catch(e) { console.warn('Saha Supabase kayıt hatası:', e); }
+}
+
+async function loadPitchFromSupabase() {
+    const teamId = window._tmState?.team?.id;
+    if (!teamId || !window.sbClient) return;
+    try {
+        const { data } = await window.sbClient.from('teams').select('formations_json').eq('id', teamId).single();
+        if (data?.formations_json) {
+            pitchSlots = JSON.parse(data.formations_json);
+            _pitchSlotsLoaded = true;
+            localStorage.setItem(_slotLsKey(), JSON.stringify(pitchSlots));
+        }
+    } catch(e) {}
+}
+
+window.switchPitchSlot = function(slot) {
+    currentPitchSlot = slot;
+    loadPitchState();
+    renderSahaTab();
+};
+
+window.initPitchSlots = async function() {
+    _pitchSlotsLoaded = false;
+    await loadPitchFromSupabase();
+    loadPitchState();
+    renderSahaTab();
+};
 
 window.renderSahaTab = function () {
     const c = document.getElementById('ttab-saha-content');
     if (!c) return;
     try {
+    // Her tam yeniden render'da çizim modunu sıfırla (stale state önleme)
+    _tacticDrawMode = false;
+
+    // İlk açılışta Supabase'den slot verilerini getir ve yeniden render et
+    if (!_pitchSlotsLoaded && window._tmState?.team?.id) {
+        loadPitchFromSupabase().then(() => {
+            loadPitchState();
+            renderSahaTab();
+        });
+    }
 
     // FAZ 2: _tmState.members kullan (Supabase), eski getTeamPlayers() fallback
     const getMembers = () => {
@@ -684,8 +819,19 @@ window.renderSahaTab = function () {
 
       <!-- Formasyon Seçici -->
       <div class="glass-card psn-formation-card">
-        <div class="psn-section-title">
-          <i class="fa-solid fa-sliders" style="color:var(--neon-green)"></i> FORMASYON
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">
+          <div class="psn-section-title" style="margin-bottom:0;">
+            <i class="fa-solid fa-sliders" style="color:var(--neon-green)"></i> FORMASYON
+          </div>
+          <!-- 3 Kayıt Slotu -->
+          <div style="display:flex;gap:0.35rem;">
+            ${['slot1','slot2','slot3'].map((s,i) => `
+            <button class="psn-slot-btn ${currentPitchSlot===s?'active':''}"
+                    data-slot="${s}" onclick="switchPitchSlot('${s}')" title="Düzen ${i+1}">
+              <span>Düzen ${i+1}</span>
+              <span class="slot-saved-dot ${pitchSlots[s]?'visible':''}" style="width:6px;height:6px;border-radius:50%;background:var(--neon-green);display:inline-block;margin-left:3px;${pitchSlots[s]?'':'opacity:0'}"></span>
+            </button>`).join('')}
+          </div>
         </div>
         <div class="psn-formation-row">
           ${Object.keys(FORMATIONS_7V7).map(key => `
@@ -741,6 +887,26 @@ window.renderSahaTab = function () {
 
             <!-- Oyuncu Slotları -->
             ${renderSlots()}
+
+            <!-- Taktik Canvas — sahaya overlay (pointer-events:none + z-index<slot iken sürüklemeye karışmaz) -->
+            <canvas id="tactic-board-canvas"
+              style="position:absolute;inset:0;width:100%;height:100%;border-radius:12px;pointer-events:none;z-index:8;touch-action:auto;">
+            </canvas>
+          </div>
+
+          <!-- Taktik Toolbar (saha ile birlikte çalışır) -->
+          <div class="psn-tactic-toolbar" id="psn-tactic-toolbar">
+            <button class="psn-draw-toggle" id="psn-draw-toggle" onclick="tacticToggleDraw()" title="Çizim modunu aç/kapat">
+              <i class="fa-solid fa-pen-nib"></i> Taktik Çiz
+            </button>
+            <div class="psn-tactic-tools" id="psn-tactic-tools" style="display:none;">
+              <button class="tactic-tool-btn active" id="tbtool-pen" onclick="tacticSetTool('pen')" title="Kalem">✏️</button>
+              <button class="tactic-tool-btn" id="tbtool-arrow" onclick="tacticSetTool('arrow')" title="Ok">➡️</button>
+              <input type="color" id="tactic-color" value="#00ff88" title="Renk"
+                style="width:26px;height:26px;border:none;background:none;cursor:pointer;border-radius:4px;padding:0;">
+              <button class="tactic-tool-btn" onclick="tacticUndo()" title="Geri Al">↩️</button>
+              <button class="tactic-tool-btn" onclick="tacticClear()" title="Temizle" style="color:#ff5555;">🗑️</button>
+            </div>
           </div>
 
           <button class="psn-save-btn" onclick="savePitchAndShowToast()">
@@ -760,38 +926,12 @@ window.renderSahaTab = function () {
 
       </div>
 
-      <!-- Taktik Tahtası -->
-      <div class="glass-card" style="margin-top:1.5rem;padding:1.25rem;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-          <div class="section-label-pill">
-            <i class="fa-solid fa-chalkboard" style="color:var(--neon-cyan);"></i> TAKTİK TAHTASI
-          </div>
-          <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
-            <button class="tactic-tool-btn active" id="tbtool-pen" onclick="tacticSetTool('pen')" title="Kalem">✏️</button>
-            <button class="tactic-tool-btn" id="tbtool-arrow" onclick="tacticSetTool('arrow')" title="Ok">➡️</button>
-            <button class="tactic-tool-btn" id="tbtool-text" onclick="tacticSetTool('text')" title="Not">🔤</button>
-            <input type="color" id="tactic-color" value="#00ff88" title="Renk"
-              style="width:28px;height:28px;border:none;background:none;cursor:pointer;border-radius:4px;padding:0;"
-              onchange="tacticSetColor(this.value)">
-            <button class="tactic-tool-btn" onclick="tacticUndo()" title="Geri Al">↩️</button>
-            <button class="tactic-tool-btn" onclick="tacticClear()" title="Temizle" style="color:#ff5555;">🗑️</button>
-          </div>
-        </div>
-        <canvas id="tactic-board-canvas"
-          style="width:100%;height:320px;background:#1a2e1a;border-radius:10px;border:1px solid rgba(255,255,255,0.07);cursor:crosshair;display:block;touch-action:none;">
-        </canvas>
-        <p style="color:#555;font-size:0.75rem;margin-top:0.5rem;text-align:center;">
-          <i class="fa-solid fa-info-circle"></i> Taktiklerinizi çizin, oklar ve notlar ekleyin
-        </p>
-      </div>
-
     </div>`;
 
     // refreshPitchUI override — yeni sistemle güncelle
     window.refreshPitchUI = function() {
         const slotsContainer = document.getElementById('psn-pitch');
         if (slotsContainer) {
-            // Sadece slotları yeniden çiz
             document.querySelectorAll('.pitch-slot-new').forEach(el => el.remove());
             slotsContainer.insertAdjacentHTML('beforeend', renderSlots());
         }
@@ -800,8 +940,34 @@ window.renderSahaTab = function () {
         const lbl = slotsContainer?.querySelector('.psn-formation-label');
         if (lbl) lbl.textContent = pitchDragState.formation;
     };
-    // Taktik tahtasını başlat
-    requestAnimationFrame(() => initTacticBoard());
+
+    // ── Tıklama delegasyonu: draggable="true" çakışmasını önlemek için onclick YEK olarak burada ──
+    requestAnimationFrame(() => {
+        // Saha slotları — pitch container'ına tek listener
+        const pitchEl = document.getElementById('psn-pitch');
+        if (pitchEl) {
+            pitchEl.addEventListener('click', function(e) {
+                if (_tacticDrawMode) return;
+                const slot = e.target.closest('.pitch-slot-new');
+                if (!slot) return;
+                const posId = slot.dataset.posId;
+                const assignedId = pitchDragState.assignments[posId] || '';
+                window._pitchSelect('slot', assignedId, posId);
+            });
+        }
+        // Yedek kulübesi — bench container'ına tek listener
+        const benchEl = document.getElementById('psn-bench');
+        if (benchEl) {
+            benchEl.addEventListener('click', function(e) {
+                const chip = e.target.closest('.psn-bench-chip');
+                if (!chip) return;
+                const pid = chip.dataset.playerId;
+                if (pid) window._pitchSelect('bench', pid);
+            });
+        }
+        // Taktik tahtasını başlat
+        initTacticBoard();
+    });
 
     } catch(e) {
         c.innerHTML = `<div style="padding:2rem;color:#ff5555;background:#222;border-radius:10px;"><b>Saha Sekmesi Hatası:</b> ${e.message}<br>${e.stack}</div>`;
@@ -891,20 +1057,18 @@ function initTacticBoard() {
     const canvas = document.getElementById('tactic-board-canvas');
     if (!canvas) return;
 
-    // Boyutu gerçek piksel cinsinden ayarla
-    const rect = canvas.getBoundingClientRect();
+    // Canvas pitch div boyutuna göre ayarla
+    const pitch = document.getElementById('psn-pitch');
+    const rect  = pitch ? pitch.getBoundingClientRect() : canvas.getBoundingClientRect();
     canvas.width  = rect.width  || 600;
-    canvas.height = rect.height || 320;
+    canvas.height = rect.height || 300;
 
     _tacticCtx = canvas.getContext('2d');
     _tacticStrokes = _tacticLoad();
     _tacticRedraw();
 
-    const isCA = window._tmIsCapOrAdmin ? window._tmIsCapOrAdmin() : true;
-    if (!isCA) {
-        // Yalnızca görüntüleme — event listener ekleme
-        return;
-    }
+    // isCA kontrolünü kaldır — event listener her zaman ekle,
+    // drawing mode sadece buton tıklamasıyla açılır (tacticToggleDraw)
 
     let currentStroke = null;
 
@@ -987,6 +1151,50 @@ window.tacticClear = function() {
     _tacticSave();
 };
 
+let _tacticDrawMode = false;
+
+window.tacticToggleDraw = function() {
+    _tacticDrawMode = !_tacticDrawMode;
+    const canvas  = document.getElementById('tactic-board-canvas');
+    const toggle  = document.getElementById('psn-draw-toggle');
+    const tools   = document.getElementById('psn-tactic-tools');
+    if (!canvas) return;
+
+    if (_tacticDrawMode) {
+        canvas.style.pointerEvents = 'all';
+        canvas.style.zIndex = '25';
+        canvas.style.touchAction = 'none';
+        canvas.style.cursor = 'crosshair';
+        if (toggle) {
+            toggle.style.background = 'rgba(0,229,255,0.2)';
+            toggle.style.borderColor = 'var(--neon-cyan)';
+            toggle.style.color = 'var(--neon-cyan)';
+            toggle.innerHTML = '<i class="fa-solid fa-hand"></i> Oyuncu Düzenle';
+        }
+        if (tools) tools.style.display = 'flex';
+        // Canvas boyutunu saha ile eşleştir
+        const pitch = document.getElementById('psn-pitch');
+        if (pitch) {
+            const r = pitch.getBoundingClientRect();
+            canvas.width  = r.width;
+            canvas.height = r.height;
+            _tacticRedraw();
+        }
+    } else {
+        canvas.style.pointerEvents = 'none';
+        canvas.style.zIndex = '8';
+        canvas.style.touchAction = 'auto';
+        canvas.style.cursor = 'default';
+        if (toggle) {
+            toggle.style.background = '';
+            toggle.style.borderColor = '';
+            toggle.style.color = '';
+            toggle.innerHTML = '<i class="fa-solid fa-pen-nib"></i> Taktik Çiz';
+        }
+        if (tools) tools.style.display = 'none';
+    }
+};
+
 // ──────────────────────────────────────────────────────
 
 // Yeni auto-fill (Supabase üyelerini destekler)
@@ -1036,7 +1244,9 @@ window.psn_autoFill = function() {
     });
 
     savePitchState();
-    if (typeof refreshPitchUI === 'function') refreshPitchUI();
+    // window.refreshPitchUI: renderSahaTab tarafından set edilen yeni versiyonu çağır
+    if (typeof window.refreshPitchUI === 'function') window.refreshPitchUI();
+    else if (typeof renderSahaTab === 'function') renderSahaTab();
     if (typeof showToast === 'function') showToast('⚡ Formasyon otomatik dolduruldu!');
 };
 
@@ -1084,7 +1294,7 @@ window.startDragFromSlot = function(event, posId, playerId) {
 window.dropOnSlot = function(event, targetPosId) {
     event.preventDefault();
     const slot = document.querySelector(`[data-pos-id="${targetPosId}"]`);
-    if (slot) slot.classList.remove('drag-over');
+    if (slot) slot.classList.remove('drag-over-new');
 
     const playerId = event.dataTransfer.getData('playerId');
     const source = event.dataTransfer.getData('source');
@@ -1179,9 +1389,17 @@ window.clearPitchAssignments = function() {
     refreshPitchUI();
 };
 
-window.savePitchAndShowToast = function() {
+window.savePitchAndShowToast = async function() {
     savePitchState();
-    showToast('✅ Saha düzeni kaydedildi!');
+    showToast('💾 Kaydediliyor…');
+    await savePitchToSupabase();
+    showToast(`✅ Düzen ${currentPitchSlot.replace('slot','')} kaydedildi!`);
+    // Slot butonlarını güncelle
+    document.querySelectorAll('.psn-slot-btn').forEach(b => {
+        const s = b.dataset.slot;
+        b.classList.toggle('active', s === currentPitchSlot);
+        b.querySelector('.slot-saved-dot')?.classList.toggle('visible', !!pitchSlots[s]);
+    });
 };
 
 
@@ -1206,22 +1424,30 @@ window.renderTakimOlusturTab = function() {
     const savedTeams = JSON.parse(localStorage.getItem('ss_balanced_teams') || 'null');
 
     const renderPoolItem = (p, isExternal) => {
-        const pInfo  = _getPInfo(p);
-        const gen    = calcPlayerGEN(p);
-        const inCore = coreSquad.includes(pInfo.id);
+        const pInfo     = _getPInfo(p);
+        const gen       = calcPlayerGEN(p);
+        const inCore    = coreSquad.includes(pInfo.id);
+        const manAssign = (window._manualAssignments || {})[pInfo.id] || 'auto';
         return `
-        <label class="pool-player-item ${inCore ? 'in-core' : ''}" id="pool-item-${pInfo.id}" style="position:relative;">
-            <input type="checkbox" class="pool-checkbox" value="${pInfo.id}" ${inCore ? 'checked' : ''}>
-            <img src="${pInfo.avatar}" class="pool-avatar">
-            <div class="pool-info">
-                <span class="pool-name">${pInfo.name}${isExternal ? ' <span style="font-size:0.6rem;color:#ff6b35;border:1px solid rgba(255,107,53,0.4);border-radius:3px;padding:0 3px;vertical-align:middle;">Dış</span>' : ''}</span>
-                <span class="pool-pos" style="color:${pInfo.col};">${pInfo.pos}</span>
+        <div class="pool-player-item ${inCore ? 'in-core' : ''}" id="pool-item-${pInfo.id}" style="position:relative;">
+            <label style="display:contents;cursor:pointer;">
+                <input type="checkbox" class="pool-checkbox" value="${pInfo.id}" ${inCore ? 'checked' : ''}>
+                <img src="${pInfo.avatar}" class="pool-avatar">
+                <div class="pool-info">
+                    <span class="pool-name">${pInfo.name}${isExternal ? ' <span style="font-size:0.6rem;color:#ff6b35;border:1px solid rgba(255,107,53,0.4);border-radius:3px;padding:0 3px;vertical-align:middle;">Dış</span>' : ''}</span>
+                    <span class="pool-pos" style="color:${pInfo.col};">${pInfo.pos}</span>
+                </div>
+                <span class="pool-gen" style="color:${gen>=80?'var(--neon-green)':'#ffd700'}">${gen}</span>
+            </label>
+            <div class="pool-team-assign" style="display:flex;gap:2px;margin-left:4px;">
+                <button class="pab ${manAssign==='A'?'pab-a':''}" onclick="event.stopPropagation();_setManualTeam('${pInfo.id}','A')" title="A Takımı">A</button>
+                <button class="pab ${manAssign==='B'?'pab-b':''}" onclick="event.stopPropagation();_setManualTeam('${pInfo.id}','B')" title="B Takımı">B</button>
+                <button class="pab ${manAssign==='auto'?'pab-auto':''}" onclick="event.stopPropagation();_setManualTeam('${pInfo.id}','auto')" title="Otomatik">Oto</button>
             </div>
-            <span class="pool-gen" style="color:${gen>=80?'var(--neon-green)':'#ffd700'}">${gen}</span>
-            ${isExternal ? `<button onclick="event.preventDefault();_tmRemoveExternal('${pInfo.id}')" title="Havuzdan Çıkar"
+            ${isExternal ? `<button onclick="event.stopPropagation();_tmRemoveExternal('${pInfo.id}')" title="Havuzdan Çıkar"
                 style="position:absolute;top:2px;right:2px;background:rgba(255,0,127,0.15);border:none;color:#ff007f;border-radius:4px;width:18px;height:18px;font-size:0.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">
                 <i class="fa-solid fa-xmark"></i></button>` : ''}
-        </label>`;
+        </div>`;
     };
 
     c.innerHTML = `
@@ -1346,77 +1572,70 @@ window.selectAllPoolPlayers = function() {
     document.querySelectorAll('.pool-checkbox').forEach(cb => cb.checked = true);
 };
 
+window._setManualTeam = function(playerId, team) {
+    if (!window._manualAssignments) window._manualAssignments = {};
+    window._manualAssignments[playerId] = team;
+    const item = document.getElementById(`pool-item-${playerId}`);
+    if (item) {
+        item.querySelectorAll('.pab').forEach(btn => btn.classList.remove('pab-a','pab-b','pab-auto'));
+        const btns = item.querySelectorAll('.pab');
+        if (team === 'A' && btns[0]) btns[0].classList.add('pab-a');
+        if (team === 'B' && btns[1]) btns[1].classList.add('pab-b');
+        if (team === 'auto' && btns[2]) btns[2].classList.add('pab-auto');
+    }
+};
+
 window.generateBalancedTeams = function() {
     const checked = [...document.querySelectorAll('.pool-checkbox:checked')].map(cb => cb.value);
-    if (checked.length < 4) {
-        showToast('En az 4 oyuncu seçin!');
-        return;
-    }
+    if (checked.length < 4) { showToast('En az 4 oyuncu seçin!'); return; }
 
-    const algo = document.getElementById('algo-type')?.value || 'gen';
     const pool = (window._allPoolPlayers || []).filter(p => checked.includes(p.id));
-    const sorted = [...pool].sort((a, b) => calcPlayerGEN(b) - calcPlayerGEN(a));
+    const assigns = window._manualAssignments || {};
 
-    let teamA = [], teamB = [];
+    // Kaptan elle atananlar ve otomatik havuz
+    const manualA  = pool.filter(p => assigns[p.id] === 'A');
+    const manualB  = pool.filter(p => assigns[p.id] === 'B');
+    const autoPool = pool.filter(p => !['A','B'].includes(assigns[p.id]));
 
-    if (algo === 'snake') {
-        // Snake draft: 1→A, 2→B, 3→B, 4→A, 5→A, 6→B...
-        sorted.forEach((p, i) => {
-            const round = Math.floor(i / 2);
-            const isEvenRound = round % 2 === 0;
-            if (isEvenRound ? i % 2 === 0 : i % 2 !== 0) teamA.push(p);
-            else teamB.push(p);
-        });
-    } else if (algo === 'pos') {
-        // Position-first: alternate by position group
-        const byPos = { KL: [], DEF: [], OS: [], FV: [] };
-        sorted.forEach(p => {
-            const posKey = _getPInfo(p).posKey || 'OS';
-            if (byPos[posKey]) byPos[posKey].push(p);
-        });
-        let toggle = 0;
-        ['KL','DEF','OS','FV'].forEach(pos => {
-            byPos[pos].forEach(p => {
-                (toggle++ % 2 === 0 ? teamA : teamB).push(p);
+    let teamA = [...manualA];
+    let teamB = [...manualB];
+
+    // Otomatik oyuncuları GEN dengesine göre dağıt (mevcut takım GEN'ini hesaba kat)
+    const sorted = [...autoPool].sort((a, b) => calcPlayerGEN(b) - calcPlayerGEN(a));
+    sorted.forEach(p => {
+        const sumA = teamA.reduce((s, x) => s + calcPlayerGEN(x), 0);
+        const sumB = teamB.reduce((s, x) => s + calcPlayerGEN(x), 0);
+        (sumA <= sumB ? teamA : teamB).push(p);
+    });
+
+    // Greedy swap sadece otomatik oyuncular arasında
+    const autoIds = new Set(autoPool.map(p => p.id));
+    for (let iter = 0; iter < 20; iter++) {
+        const genA = teamA.reduce((s, p) => s + calcPlayerGEN(p), 0);
+        const genB = teamB.reduce((s, p) => s + calcPlayerGEN(p), 0);
+        if (Math.abs(genA - genB) < 2) break;
+        let bestSwap = null, bestDiff = Math.abs(genA - genB);
+        teamA.forEach((pa, ia) => {
+            if (!autoIds.has(pa.id)) return;
+            teamB.forEach((pb, ib) => {
+                if (!autoIds.has(pb.id)) return;
+                const d = Math.abs((genA - calcPlayerGEN(pa) + calcPlayerGEN(pb)) - (genB - calcPlayerGEN(pb) + calcPlayerGEN(pa)));
+                if (d < bestDiff) { bestDiff = d; bestSwap = { ia, ib }; }
             });
         });
-    } else {
-        // GEN balance: greedy swap
-        sorted.forEach((p, i) => (i % 2 === 0 ? teamA : teamB).push(p));
-        // Greedy improve balance
-        for (let iter = 0; iter < 20; iter++) {
-            const genA = teamA.reduce((s, p) => s + calcPlayerGEN(p), 0);
-            const genB = teamB.reduce((s, p) => s + calcPlayerGEN(p), 0);
-            if (Math.abs(genA - genB) < 2) break;
-            // Try swapping best mismatch pair
-            let bestSwap = null, bestDiff = Math.abs(genA - genB);
-            teamA.forEach((pa, ia) => {
-                teamB.forEach((pb, ib) => {
-                    const newA = genA - calcPlayerGEN(pa) + calcPlayerGEN(pb);
-                    const newB = genB - calcPlayerGEN(pb) + calcPlayerGEN(pa);
-                    const d = Math.abs(newA - newB);
-                    if (d < bestDiff) { bestDiff = d; bestSwap = { ia, ib }; }
-                });
-            });
-            if (bestSwap) {
-                const tmp = teamA[bestSwap.ia];
-                teamA[bestSwap.ia] = teamB[bestSwap.ib];
-                teamB[bestSwap.ib] = tmp;
-            } else break;
-        }
+        if (bestSwap) {
+            const tmp = teamA[bestSwap.ia];
+            teamA[bestSwap.ia] = teamB[bestSwap.ib];
+            teamB[bestSwap.ib] = tmp;
+        } else break;
     }
 
     const genA = Math.round(teamA.reduce((s, p) => s + calcPlayerGEN(p), 0) / (teamA.length || 1));
     const genB = Math.round(teamB.reduce((s, p) => s + calcPlayerGEN(p), 0) / (teamB.length || 1));
     const diff = Math.abs(genA - genB);
 
-    localStorage.setItem('ss_balanced_teams', JSON.stringify({
-        a: teamA.map(p => p.id), b: teamB.map(p => p.id), diff
-    }));
-
-    document.getElementById('balanced-teams-result').innerHTML = renderBalancedTeamsHTML(
-        teamA.map(p => p.id), teamB.map(p => p.id), diff
-    );
+    localStorage.setItem('ss_balanced_teams', JSON.stringify({ a: teamA.map(p => p.id), b: teamB.map(p => p.id), diff }));
+    document.getElementById('balanced-teams-result').innerHTML = renderBalancedTeamsHTML(teamA.map(p => p.id), teamB.map(p => p.id), diff);
     showToast('⚡ Dengeli takımlar oluşturuldu!');
 };
 

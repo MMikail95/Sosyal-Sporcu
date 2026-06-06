@@ -524,7 +524,7 @@ window.initExplore = async function() {
     try {
         if (window.DB) {
             // Supabase'den oyuncuları çek
-            explorePlayers = await window.DB.Profiles.getAll({ limit: 50 });
+            explorePlayers = await window.DB.Profiles.getAll({ limit: 200 });
         } else {
             // Fallback: localStorage mock
             explorePlayers = (typeof players !== 'undefined') ? players.map(p => ({
@@ -1015,9 +1015,28 @@ window.acceptFriendFromModal = async function(friendshipId, btn) {
 };
 
 
-window.filterExplore = function() {
-    exploreFilter.search   = document.getElementById('explore-search')?.value || '';
+window.filterExplore = async function() {
+    const searchVal = (document.getElementById('explore-search')?.value || '').trim();
+    exploreFilter.search   = searchVal;
     exploreFilter.position = document.getElementById('explore-pos-filter')?.value || '';
+
+    // 2+ karakter arama: DB'ye doğrudan sorgu at (yerel önbellek yetersiz kalmasın)
+    if (searchVal.length >= 2 && window.DB) {
+        try {
+            const fresh = await window.DB.Profiles.getAll({ search: searchVal, limit: 100 });
+            // Yerel dizide olmayanları geçici olarak ekle
+            const freshIds = new Set(fresh.map(p => p.id));
+            const merged = [...fresh, ...explorePlayers.filter(p => !freshIds.has(p.id))];
+            const prev = explorePlayers;
+            explorePlayers = merged;
+            renderExploreGrid();
+            explorePlayers = prev;
+            return;
+        } catch(e) {
+            console.warn('Explore search fallback to local:', e);
+        }
+    }
+
     renderExploreGrid();
 };
 
@@ -1586,12 +1605,11 @@ function renderRealNotifications(notifs) {
                         <button onclick="event.stopPropagation(); handleNotifFriendAction('${n.id}', '${n.actor_id}', false)" style="flex:1; background:transparent; border:1px solid #ff4d4d; color:#ff4d4d; padding:4px; border-radius:4px; cursor:pointer;">Reddet</button>
                     </div>`;
                 } else if (n.type === 'team_invite') {
-                    const match = n.body?.match(/Davet kodu:\s*([A-Z0-9]+)/i);
-                    const slug = match ? match[1] : '';
-                    if (slug) {
+                    const teamId = n.related_id;
+                    if (teamId) {
                         actionsHtml = `
                         <div class="notif-actions" style="margin-top:0.5rem; display:flex; gap:0.5rem;">
-                            <button onclick="event.stopPropagation(); handleNotifTeamAction('${n.id}', '${slug}')" style="flex:1; background:var(--neon-cyan); color:#000; border:none; padding:4px; border-radius:4px; font-weight:bold; cursor:pointer;">Katıl</button>
+                            <button onclick="event.stopPropagation(); handleNotifTeamAction('${n.id}', '${teamId}', true)" style="flex:1; background:var(--neon-cyan); color:#000; border:none; padding:4px; border-radius:4px; font-weight:bold; cursor:pointer;">Katıl</button>
                             <button onclick="event.stopPropagation(); window.DB.Notifications.markRead('${n.id}'); window.initRealNotifications();" style="flex:1; background:transparent; border:1px solid #ff4d4d; color:#ff4d4d; padding:4px; border-radius:4px; cursor:pointer;">Reddet</button>
                         </div>`;
                     }
@@ -1638,13 +1656,16 @@ window.handleNotifFriendAction = async function(notifId, actorId, isAccept) {
     }
 };
 
-window.handleNotifTeamAction = async function(notifId, slug) {
+window.handleNotifTeamAction = async function(notifId, slugOrId, byId = false) {
     const user = window.__AUTH_USER__;
     if (!user || !window.DB) return;
     try {
-        await window.DB.Teams.joinByCode(user.id, slug);
+        if (byId) {
+            await window.DB.Teams.joinById(user.id, slugOrId);
+        } else {
+            await window.DB.Teams.joinByCode(user.id, slugOrId);
+        }
         if (typeof showToast === 'function') showToast('🏆 Takıma başarıyla katıldın!');
-        // Virtual ID'ler için markRead atla
         if (!String(notifId).startsWith('virtual_')) {
             await window.DB.Notifications.markRead(notifId);
         }
@@ -2439,31 +2460,25 @@ function resizeImage(file, maxWidth = 400, maxHeight = 400, quality = 0.85) {
  * Avatar upload işlemini yönetir.
  * Trigger: <input id="avatar-upload" onchange="handleAvatarUpload(this)">
  */
-window.handleAvatarUpload = async function(input) {
+window.handleAvatarUpload = function(input) {
     const file = input.files?.[0];
     if (!file) return;
+    input.value = '';  // reset early so same file can be reselected
 
-    // Dosya tipi kontrolü
     if (!file.type.startsWith('image/')) {
-        showToast('❌ Lütfen bir resim dosyası seçin.');
-        input.value = '';
-        return;
+        showToast('❌ Lütfen bir resim dosyası seçin.'); return;
     }
-
-    // 10 MB limit
     if (file.size > 10 * 1024 * 1024) {
-        showToast('❌ Dosya boyutu 10 MB\'dan büyük olamaz.');
-        input.value = '';
-        return;
+        showToast('❌ Dosya boyutu 10 MB\'dan büyük olamaz.'); return;
     }
-
     const user = window.__AUTH_USER__;
-    if (!user) {
-        showToast('❌ Fotoğraf yüklemek için giriş yapmalısınız.');
-        return;
-    }
+    if (!user) { showToast('❌ Fotoğraf yüklemek için giriş yapmalısınız.'); return; }
 
-    // UI: yükleniyor göster
+    // Kırpma modalını aç
+    openAvatarCropModal(file, user);
+};
+
+async function _doAvatarUpload(croppedBlob, user) {
     const avatarImg = document.getElementById('profile-avatar');
     const cameraOverlay = document.querySelector('.camera-overlay');
     if (cameraOverlay) {
@@ -2472,8 +2487,8 @@ window.handleAvatarUpload = async function(input) {
     }
 
     try {
-        // 1. Resmi yeniden boyutlandır (400x400 max, WebP)
-        const resizedBlob = await resizeImage(file, 400, 400, 0.85);
+        // Resmi yeniden boyutlandır (400x400 max, WebP)
+        const resizedBlob = await resizeImage(croppedBlob, 400, 400, 0.85);
 
         // 2. Supabase Storage'a yükle
         if (!window.sbClient) throw new Error('Supabase bağlantısı yok');
@@ -2549,9 +2564,144 @@ window.handleAvatarUpload = async function(input) {
             cameraOverlay.innerHTML = '<i class="fa-solid fa-camera"></i>';
             cameraOverlay.style.background = '';
         }
-        // Input'u sıfırla (aynı dosyayı tekrar seçmeye izin ver)
-        input.value = '';
     }
+}
+
+// ─── Profil Fotoğrafı Kırpma Modalı ───────────────────
+function openAvatarCropModal(file, user) {
+    const objectUrl = URL.createObjectURL(file);
+    document.getElementById('avatar-crop-modal')?.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'avatar-crop-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:99999;';
+    modal.innerHTML = `
+      <div style="background:#1a1a1a;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:1.5rem;max-width:360px;width:90%;display:flex;flex-direction:column;gap:1rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-weight:700;font-size:1rem;color:#fff;"><i class="fa-solid fa-crop" style="color:var(--neon-green);margin-right:6px;"></i>Fotoğrafı Düzenle</span>
+          <button onclick="document.getElementById('avatar-crop-modal').remove();URL.revokeObjectURL('${objectUrl}')"
+                  style="background:none;border:none;color:#666;font-size:1.2rem;cursor:pointer;">✕</button>
+        </div>
+
+        <!-- Kırpma alanı -->
+        <div id="crop-viewport" style="width:240px;height:240px;border-radius:50%;overflow:hidden;margin:0 auto;border:2px solid rgba(255,255,255,0.2);background:#111;cursor:grab;position:relative;touch-action:none;">
+          <img id="crop-img" src="${objectUrl}" draggable="false"
+               style="position:absolute;transform-origin:0 0;user-select:none;max-width:none;pointer-events:none;">
+        </div>
+
+        <!-- Zoom kaydırıcı -->
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          <i class="fa-solid fa-magnifying-glass-minus" style="color:#666;font-size:0.8rem;"></i>
+          <input type="range" id="crop-zoom" min="0.5" max="3" step="0.01" value="1"
+                 style="flex:1;accent-color:var(--neon-green);" oninput="_cropApplyTransform()">
+          <i class="fa-solid fa-magnifying-glass-plus" style="color:#666;font-size:0.8rem;"></i>
+        </div>
+
+        <div style="display:flex;gap:0.5rem;">
+          <button onclick="document.getElementById('avatar-crop-modal').remove();URL.revokeObjectURL('${objectUrl}')"
+                  style="flex:1;padding:0.6rem;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#888;font-family:Outfit;font-weight:700;cursor:pointer;">
+            İptal
+          </button>
+          <button onclick="_cropAndUpload('${objectUrl}', '${user.id}')"
+                  style="flex:2;padding:0.6rem;border-radius:8px;border:none;background:var(--neon-green);color:#000;font-family:Outfit;font-weight:700;cursor:pointer;">
+            <i class="fa-solid fa-check"></i> Uygula ve Yükle
+          </button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(modal);
+
+    // Görüntüyü yükle ve başlangıç konumunu hesapla
+    const img = document.getElementById('crop-img');
+    img.onload = () => _cropInit();
+}
+
+let _cropState = { offsetX: 0, offsetY: 0, scale: 1, dragging: false, lastX: 0, lastY: 0 };
+
+function _cropInit() {
+    const vp = document.getElementById('crop-viewport');
+    const img = document.getElementById('crop-img');
+    if (!vp || !img) return;
+
+    const vpSize = 240;
+    const nat = img.naturalWidth / img.naturalHeight;
+    // Görüntüyü viewport'u tamamen dolduracak boyuta getir
+    let w, h;
+    if (nat >= 1) { h = vpSize; w = vpSize * nat; }
+    else          { w = vpSize; h = vpSize / nat; }
+    img.style.width  = w + 'px';
+    img.style.height = h + 'px';
+    _cropState.offsetX = (vpSize - w) / 2;
+    _cropState.offsetY = (vpSize - h) / 2;
+    _cropState.scale   = 1;
+    document.getElementById('crop-zoom').value = 1;
+    _cropApplyTransform();
+
+    // Drag olayları
+    const onDown = (e) => {
+        _cropState.dragging = true;
+        const src = e.touches?.[0] || e;
+        _cropState.lastX = src.clientX;
+        _cropState.lastY = src.clientY;
+        vp.style.cursor = 'grabbing';
+        e.preventDefault();
+    };
+    const onMove = (e) => {
+        if (!_cropState.dragging) return;
+        const src = e.touches?.[0] || e;
+        _cropState.offsetX += src.clientX - _cropState.lastX;
+        _cropState.offsetY += src.clientY - _cropState.lastY;
+        _cropState.lastX = src.clientX;
+        _cropState.lastY = src.clientY;
+        _cropApplyTransform();
+        e.preventDefault();
+    };
+    const onUp = () => { _cropState.dragging = false; vp.style.cursor = 'grab'; };
+    vp.addEventListener('mousedown',  onDown);
+    vp.addEventListener('mousemove',  onMove);
+    vp.addEventListener('mouseup',    onUp);
+    vp.addEventListener('mouseleave', onUp);
+    vp.addEventListener('touchstart', onDown, { passive: false });
+    vp.addEventListener('touchmove',  onMove, { passive: false });
+    vp.addEventListener('touchend',   onUp);
+}
+
+window._cropApplyTransform = function() {
+    const img = document.getElementById('crop-img');
+    const zoom = parseFloat(document.getElementById('crop-zoom')?.value || 1);
+    if (!img) return;
+    _cropState.scale = zoom;
+    img.style.transform = `translate(${_cropState.offsetX}px, ${_cropState.offsetY}px) scale(${zoom})`;
+};
+
+window._cropAndUpload = async function(objectUrl, userId) {
+    const img    = document.getElementById('crop-img');
+    const zoom   = _cropState.scale;
+    const vpSize = 240;
+    const outSize = 400;
+
+    const canvas = document.createElement('canvas');
+    canvas.width  = outSize;
+    canvas.height = outSize;
+    const ctx = canvas.getContext('2d');
+
+    // Görüntünün viewport içindeki hangi bölümü görünüyor?
+    const scale = outSize / vpSize;
+    const imgW = parseFloat(img.style.width)  * zoom;
+    const imgH = parseFloat(img.style.height) * zoom;
+    const sx = (-_cropState.offsetX) * (img.naturalWidth  / imgW);
+    const sy = (-_cropState.offsetY) * (img.naturalHeight / imgH);
+    const sw = vpSize * (img.naturalWidth  / imgW);
+    const sh = vpSize * (img.naturalHeight / imgH);
+
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, outSize, outSize);
+
+    canvas.toBlob(async (blob) => {
+        document.getElementById('avatar-crop-modal')?.remove();
+        URL.revokeObjectURL(objectUrl);
+        const user = window.__AUTH_USER__;
+        if (user) await _doAvatarUpload(blob, user);
+    }, 'image/webp', 0.88);
 };
 
 /**
