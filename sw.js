@@ -1,4 +1,4 @@
-const CACHE = 'ss-v1';
+const CACHE = 'ss-v2';
 
 // Works both on localhost (/sw.js) and GitHub Pages (/Sosyal-Sporcu/sw.js)
 const BASE = self.location.pathname.replace(/\/sw\.js$/, '');
@@ -56,8 +56,16 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Statik dosyalar — cache önce
+  // Statik dosyalar — cache'den hemen sun, arka planda güncelle (stale-while-revalidate)
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    caches.open(CACHE).then(cache =>
+      cache.match(e.request).then(cached => {
+        const fetchPromise = fetch(e.request).then(response => {
+          cache.put(e.request, response.clone());
+          return response;
+        });
+        return cached || fetchPromise;
+      })
+    )
   );
 });

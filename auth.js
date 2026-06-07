@@ -12,24 +12,39 @@ let currentUser = null;
 
 // --------- BAŞLANGIÇ: OTURUM KONTROLÜ ---------
 
+// Email kayıt akışı sırasında onAuthStateChange'in yönlendirme yapmasını engeller
+let isEmailRegistrationFlow = false;
+
 async function initAuth() {
   const sb = window.sbClient;
 
-  // Oturum var mı kontrol et
   const { data: { session } } = await sb.auth.getSession();
 
   if (session) {
-    // Zaten giriş yapılmış → ana uygulamaya yönlendir
-    window.location.replace('index.html');
+    // Google OAuth redirect sonrası veya zaten giriş yapılmış
+    // Onboarding tamamlandı mı kontrol et
+    const { data: profile } = await sb.from('profiles')
+      .select('id, onboarding_done')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    if (!profile?.onboarding_done) {
+      // Yeni kullanıcı (Google OAuth) → onboarding göster
+      currentUser = session.user;
+      hideLoading();
+      showOnboarding();
+    } else {
+      window.location.replace('index.html');
+    }
     return;
   }
 
   // Oturum yok → auth sayfasını göster
   hideLoading();
 
-  // Auth state değişikliklerini dinle
   sb.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_IN' && session) {
+      if (isEmailRegistrationFlow) return; // email kayıt akışı kendi yönlendirmesini yapar
       window.location.replace('index.html');
     }
   });
@@ -137,6 +152,7 @@ window.handleRegister = async function(e) {
     if (error) throw error;
 
     // Başarılı kayıt
+    isEmailRegistrationFlow = true;
     currentUser = data.user;
     showOnboarding();
 
@@ -145,6 +161,20 @@ window.handleRegister = async function(e) {
     const msg = translateError(error.message);
     showMessage(`❌ ${msg}`, 'error');
     console.error('Register error:', error);
+  }
+};
+
+// --------- GOOGLE OAuth ---------
+
+window.handleGoogleLogin = async function() {
+  try {
+    const { error } = await window.sbClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + '/auth.html' }
+    });
+    if (error) throw error;
+  } catch (error) {
+    showMessage(`❌ Google ile giriş başarısız: ${translateError(error.message)}`, 'error');
   }
 };
 
@@ -204,13 +234,13 @@ window.completeOnboarding = async function() {
   }
 
   try {
-    // Profili güncelle (position + city)
     await sbClient
       .from('profiles')
       .update({
         position: selectedPosition,
         city: city,
         ana_mevki: getDefaultMevki(selectedPosition),
+        onboarding_done: true,
         updated_at: new Date().toISOString()
       })
       .eq('id', userId);

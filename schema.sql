@@ -581,7 +581,7 @@ CREATE TRIGGER on_venue_rating_change
 -- =====================================================
 
 -- Tam profil + community avg puanı
-CREATE OR REPLACE VIEW profiles_with_ratings AS
+CREATE OR REPLACE VIEW profiles_with_ratings WITH (security_invoker = on) AS
 SELECT
   p.*,
   COALESCE(AVG(cr.rating_teknik), p.rating_teknik) AS community_teknik,
