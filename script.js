@@ -312,7 +312,7 @@ const DEFAULT_PLAYER = {
 function migratePlayerData(player) {
     const d = player.details;
     if (!d) return player;
-    if (!d.anaMevki)      d.anaMevki      = 'Ofansif OS (10 Numara)';
+    if (!d.anaMevki)      d.anaMevki      = null;
     if (!d.altPos)        d.altPos        = '';
     if (!d.oyunTarzi)     d.oyunTarzi     = 'Box-to-Box';
     if (!d.dakiklik)      d.dakiklik      = 'Son Dakika Yetişir';
@@ -539,14 +539,14 @@ async function initSupabaseUser() {
                         height:        profile.height      || null,
                         weight:        profile.weight      || null,
                         city:          profile.city        || null, // #6: boş başlar
-                        ekol:          profile.ekol        || 'Halısaha Gazisi',
-                        sakatlik:      profile.sakatlik    || 'Maç Seçer',
-                        macsatma:      profile.macsatma    || 'Keyfine Bağlı',
-                        mizac:         profile.mizac       || 'Makara Yapıcı',
-                        lojistik:      profile.lojistik    || 'Kendi Gelir',
-                        anaMevki:      profile.ana_mevki   || 'Ofansif OS (10 Numara)',
+                        ekol:          profile.ekol        || null,
+                        sakatlik:      profile.sakatlik    || null,
+                        macsatma:      profile.macsatma    || null,
+                        mizac:         profile.mizac       || null,
+                        lojistik:      profile.lojistik    || null,
+                        anaMevki:      profile.ana_mevki   || null,
                         altPos:        profile.alt_pos     || '',
-                        oyunTarzi:     profile.oyun_tarzi  || 'Box-to-Box',
+                        oyunTarzi:     profile.oyun_tarzi  || null,
                         formStatus:    profile.form_status || 'Orta',
                         dakiklik:      profile.dakiklik       || 'Son Dakika Yetişir',
                         sahaIletisim:  profile.saha_iletisim  || 'Sessiz Oynar',
@@ -1346,10 +1346,6 @@ const FUT_ALL_FIELDS = {
                             text-shadow:0 0 8px ${c.glow}, 0 0 18px ${c.glow};
                             line-height:1; display:inline-block;">${c.arrow}</span>`;
     }},
-    ekol:      { label: 'EKOL',    get: p => p.details?.ekol || '—' },
-    boy:       { label: 'BOY',     get: p => p.details?.height ? `${p.details.height} cm` : '—' },
-    kilo:      { label: 'KİLO',    get: p => p.details?.weight ? `${p.details.weight} kg` : '—' },
-    oyunTarzi: { label: 'TARZI',   get: p => p.details?.oyunTarzi || '—' },
     mac:       { label: 'MAÇ',     get: p => p.total_matches != null ? `${p.total_matches}` : '—' },
     gol:       { label: 'GOL',     get: p => p.total_goals != null ? `${p.total_goals}` : '—' },
     asist:     { label: 'ASİST',   get: p => p.total_assists != null ? `${p.total_assists}` : '—' },
@@ -1360,7 +1356,7 @@ const FUT_LS_KEY = 'ss_fut_fields';
 function getFutFields() {
     try {
         const saved = JSON.parse(localStorage.getItem(FUT_LS_KEY));
-        if (Array.isArray(saved) && saved.length > 0) {
+        if (Array.isArray(saved)) {
             // Eski varsayılan ('ekol' veya 'boy' içeren) — kayıtlı tercihi temizle
             const OLD_DEFAULTS = [
                 ['ayak','ekol','mevki','sehir','takim','yas'],   // v1 — ekol vardı
@@ -1379,13 +1375,30 @@ function getFutFields() {
 
 function getPositionAbbr(anaMevki) {
     const map = {
-        'Kaleci': 'KL', 'Sol Bek': 'SB', 'Sağ Bek': 'SB', 'Stoper': 'STR',
-        'Libero': 'LB', 'Defansif OS': 'DOS', 'Box-to-Box OS': 'BBX',
-        'Ofansif OS (10 Numara)': 'OOS', 'Sol Kanat': 'SK', 'Sağ Kanat': 'SK',
-        'İkinci Forvet': 'İF', 'Santrafor (9 Numara)': 'SF',
+        'Kaleci': 'KL', 'Defans': 'DEF', 'Orta Saha': 'OS', 'Forvet': 'FV',
+        // eski değerler için geriye dönük uyumluluk
+        'Sol Bek': 'DEF', 'Sağ Bek': 'DEF', 'Stoper': 'DEF', 'Libero': 'DEF',
+        'Defansif OS': 'OS', 'Box-to-Box OS': 'OS', 'Ofansif OS (10 Numara)': 'OS',
+        'Sol Kanat': 'OS', 'Sağ Kanat': 'OS',
+        'İkinci Forvet': 'FV', 'Santrafor (9 Numara)': 'FV',
     };
-    return map[anaMevki] || (anaMevki ? anaMevki.substring(0, 2).toUpperCase() : 'OS');
+    return map[anaMevki] || (anaMevki ? anaMevki.substring(0, 2).toUpperCase() : '—');
 }
+
+const ALT_MEVKI_MAP = {
+    'Kaleci':    ['Standart Kaleci', 'Çıkış Yapan Kaleci', 'Pas Yapan Kaleci'],
+    'Defans':    ['Son Adam', 'Libero', 'Atağa Katkı Sağlayan', 'Sweeper'],
+    'Orta Saha': ['Defansif', 'Box-to-Box', 'Ofansif (10 No)', 'Sol Kanat', 'Sağ Kanat'],
+    'Forvet':    ['İkinci Forvet', 'Fırsatçı Golcü', 'Bölge Oyuncusu', 'Pressing Forvet'],
+};
+
+window.updateAltMevkiOptions = function(anaMevki, currentVal) {
+    const sel = document.getElementById('hkm-sel-alt-pos');
+    if (!sel) return;
+    const opts = ALT_MEVKI_MAP[anaMevki] || [];
+    sel.innerHTML = '<option value="">— Seçiniz —</option>' +
+        opts.map(o => `<option value="${o}"${o === currentVal ? ' selected' : ''}>${o}</option>`).join('');
+};
 
 window.populateFutCard = function() {
     let player = players.find(p => p.id === activePlayerId) || players[0];
@@ -1576,7 +1589,7 @@ window.toggleHakkimdaEdit = function(section) {
             }
         } else if (section === 'futbol') {
             _hkmSetVal('hkm-sel-ana-mevki',  d.anaMevki);
-            _hkmSetVal('hkm-inp-alt-pos',    d.altPos);
+            window.updateAltMevkiOptions && window.updateAltMevkiOptions(d.anaMevki, d.altPos);
             _hkmSetVal('hkm-sel-ayak',       d.ayak);
             _hkmSetVal('hkm-sel-oyun-tarzi', d.oyunTarzi);
             _hkmSetVal('hkm-sel-ekol',       d.ekol);
@@ -1611,9 +1624,9 @@ window.saveHakkimdaSection = async function(section) {
             : null;
 
         // Sınır kontrolü
-        if (age    !== null && (age    < 10 || age    > 50))  { showToast('⚠️ Yaş 10–50 arasında olmalıdır.');      return; }
-        if (height !== null && (height < 140 || height > 220)) { showToast('⚠️ Boy 140–220 cm arasında olmalıdır.'); return; }
-        if (weight !== null && (weight < 40  || weight > 120)) { showToast('⚠️ Kilo 40–120 kg arasında olmalıdır.'); return; }
+        if (age    !== null && (age    < 7   || age    > 90))  { showToast('⚠️ Yaş 7–90 arasında olmalıdır.');        return; }
+        if (height !== null && (height < 100 || height > 230)) { showToast('⚠️ Boy 100–230 cm arasında olmalıdır.'); return; }
+        if (weight !== null && (weight < 30  || weight > 200)) { showToast('⚠️ Kilo 30–200 kg arasında olmalıdır.'); return; }
 
         if (!player.details) player.details = {};
         if (username) { player.name = username; player.supabase_username = username; }
@@ -1657,7 +1670,7 @@ window.saveHakkimdaSection = async function(section) {
         }
     } else if (section === 'futbol') {
         const anaMevki  = getV('hkm-sel-ana-mevki');
-        const altPos    = getV('hkm-inp-alt-pos');
+        const altPos    = getV('hkm-sel-alt-pos');
         const ayak      = getV('hkm-sel-ayak');
         const oyunTarzi = getV('hkm-sel-oyun-tarzi');
         const ekol      = getV('hkm-sel-ekol');
@@ -2008,6 +2021,19 @@ window.updateUI = function () {
             usernameRow.style.display = '';
         } else {
             usernameRow.style.display = 'none';
+        }
+    }
+
+    // Bio — adın altında göster
+    const bioRow  = document.getElementById('player-bio-row');
+    const bioDisp = document.getElementById('player-bio-disp');
+    const bioText = player.details?.bio || window.__SUPABASE_PROFILE__?.bio || '';
+    if (bioRow && bioDisp) {
+        if (bioText) {
+            bioDisp.textContent = bioText;
+            bioRow.style.display = '';
+        } else {
+            bioRow.style.display = 'none';
         }
     }
 

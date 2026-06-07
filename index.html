@@ -275,6 +275,9 @@
                         <div id="player-username-row" style="font-size:0.9rem; color:var(--neon-green); font-weight:700; display:none; margin-bottom:0.1rem;">
                             <span id="player-username-disp"></span>
                         </div>
+                        <div id="player-bio-row" style="display:none; font-size:0.88rem; color:#aaa; margin-top:0.25rem; font-style:italic; max-width:480px; line-height:1.4;">
+                            <span id="player-bio-disp"></span>
+                        </div>
                         <div id="player-fullname-row" style="display:none;"></div>
                         <!-- Gizli compat spanlar -->
                         <span id="disp-team-header" style="display:none;"><span id="disp-team-header-name"></span></span>
@@ -503,19 +506,48 @@
                                         </div>
                                         <div class="detail-field">
                                             <label class="detail-label"><i class="fa-solid fa-cake-candles"></i> Yaş</label>
-                                            <input type="number" id="hkm-inp-age" class="profile-input" min="10" max="50">
+                                            <input type="number" id="hkm-inp-age" class="profile-input" min="7" max="90" placeholder="Örn: 22">
                                         </div>
                                         <div class="detail-field">
                                             <label class="detail-label"><i class="fa-solid fa-location-dot" style="color:var(--neon-cyan)"></i> Şehir</label>
-                                            <input type="text" id="hkm-inp-city" class="profile-input" maxlength="50">
+                                            <select id="hkm-inp-city" class="profile-select">
+                                                <option value="">— Seçiniz —</option>
+                                                <option>Adana</option><option>Adıyaman</option><option>Afyonkarahisar</option>
+                                                <option>Ağrı</option><option>Amasya</option><option>Ankara</option>
+                                                <option>Antalya</option><option>Artvin</option><option>Aydın</option>
+                                                <option>Balıkesir</option><option>Bilecik</option><option>Bingöl</option>
+                                                <option>Bitlis</option><option>Bolu</option><option>Burdur</option>
+                                                <option>Bursa</option><option>Çanakkale</option><option>Çankırı</option>
+                                                <option>Çorum</option><option>Denizli</option><option>Diyarbakır</option>
+                                                <option>Edirne</option><option>Elazığ</option><option>Erzincan</option>
+                                                <option>Erzurum</option><option>Eskişehir</option><option>Gaziantep</option>
+                                                <option>Giresun</option><option>Gümüşhane</option><option>Hakkari</option>
+                                                <option>Hatay</option><option>Isparta</option><option>Mersin</option>
+                                                <option>İstanbul</option><option>İzmir</option><option>Kars</option>
+                                                <option>Kastamonu</option><option>Kayseri</option><option>Kırklareli</option>
+                                                <option>Kırşehir</option><option>Kocaeli</option><option>Konya</option>
+                                                <option>Kütahya</option><option>Malatya</option><option>Manisa</option>
+                                                <option>Kahramanmaraş</option><option>Mardin</option><option>Muğla</option>
+                                                <option>Muş</option><option>Nevşehir</option><option>Niğde</option>
+                                                <option>Ordu</option><option>Rize</option><option>Sakarya</option>
+                                                <option>Samsun</option><option>Siirt</option><option>Sinop</option>
+                                                <option>Sivas</option><option>Tekirdağ</option><option>Tokat</option>
+                                                <option>Trabzon</option><option>Tunceli</option><option>Şanlıurfa</option>
+                                                <option>Uşak</option><option>Van</option><option>Yozgat</option>
+                                                <option>Zonguldak</option><option>Aksaray</option><option>Bayburt</option>
+                                                <option>Karaman</option><option>Kırıkkale</option><option>Batman</option>
+                                                <option>Şırnak</option><option>Bartın</option><option>Ardahan</option>
+                                                <option>Iğdır</option><option>Yalova</option><option>Karabük</option>
+                                                <option>Kilis</option><option>Osmaniye</option><option>Düzce</option>
+                                            </select>
                                         </div>
                                         <div class="detail-field">
                                             <label class="detail-label"><i class="fa-solid fa-ruler-vertical"></i> Boy (cm)</label>
-                                            <input type="number" id="hkm-inp-height" class="profile-input" min="140" max="220">
+                                            <input type="number" id="hkm-inp-height" class="profile-input" min="100" max="230" placeholder="Örn: 178">
                                         </div>
                                         <div class="detail-field">
                                             <label class="detail-label"><i class="fa-solid fa-weight-scale"></i> Kilo (kg)</label>
-                                            <input type="number" id="hkm-inp-weight" class="profile-input" min="40" max="120">
+                                            <input type="number" id="hkm-inp-weight" class="profile-input" min="30" max="200" placeholder="Örn: 75">
                                         </div>
                                         <div class="detail-field">
                                             <label class="detail-label"><i class="fa-solid fa-shield-halved" style="color:var(--neon-cyan)"></i> Takım</label>
@@ -589,7 +621,7 @@
                                     </div>
                                     <div class="hakkimda-row">
                                         <i class="fa-solid fa-graduation-cap hakkimda-icon"></i>
-                                        <span class="hakkimda-label">Ekol / Deneyim</span>
+                                        <span class="hakkimda-label">Deneyim</span>
                                         <span class="hakkimda-value" id="hkm-ekol">—</span>
                                     </div>
                                 </div>
@@ -599,32 +631,20 @@
                                     <div class="hakkimda-edit-grid">
                                         <div class="detail-field">
                                             <label class="detail-label"><i class="fa-solid fa-map-pin"></i> Ana Mevki</label>
-                                            <select id="hkm-sel-ana-mevki" class="profile-select">
-                                                <optgroup label="Kale">
-                                                    <option value="Kaleci">🧤 Kaleci (KL)</option>
-                                                </optgroup>
-                                                <optgroup label="Defans">
-                                                    <option value="Sol Bek">⬅️ Sol Bek</option>
-                                                    <option value="Sağ Bek">➡️ Sağ Bek</option>
-                                                    <option value="Stoper">🛡️ Stoper</option>
-                                                    <option value="Libero">🔄 Libero</option>
-                                                </optgroup>
-                                                <optgroup label="Orta Saha">
-                                                    <option value="Defansif OS">🔒 Defansif OS</option>
-                                                    <option value="Box-to-Box OS">⚡ Box-to-Box OS</option>
-                                                    <option value="Ofansif OS (10 Numara)">🎨 Ofansif OS (10 Numara)</option>
-                                                    <option value="Sol Kanat">🏃 Sol Kanat</option>
-                                                    <option value="Sağ Kanat">🏃 Sağ Kanat</option>
-                                                </optgroup>
-                                                <optgroup label="Forvet">
-                                                    <option value="İkinci Forvet">🔗 İkinci Forvet</option>
-                                                    <option value="Santrafor (9 Numara)">⚽ Santrafor (9 Numara)</option>
-                                                </optgroup>
+                                            <select id="hkm-sel-ana-mevki" class="profile-select"
+                                                    onchange="window.updateAltMevkiOptions && window.updateAltMevkiOptions(this.value)">
+                                                <option value="">— Seçiniz —</option>
+                                                <option value="Kaleci">🧤 Kaleci</option>
+                                                <option value="Defans">🛡️ Defans</option>
+                                                <option value="Orta Saha">⚡ Orta Saha</option>
+                                                <option value="Forvet">⚽ Forvet</option>
                                             </select>
                                         </div>
                                         <div class="detail-field">
                                             <label class="detail-label"><i class="fa-solid fa-shuffle"></i> Alt Mevkiler</label>
-                                            <input type="text" id="hkm-inp-alt-pos" class="profile-input" placeholder="Örn: FV, Sol Kanat">
+                                            <select id="hkm-sel-alt-pos" class="profile-select">
+                                                <option value="">— Önce Ana Mevki Seçin —</option>
+                                            </select>
                                         </div>
                                         <div class="detail-field">
                                             <label class="detail-label"><i class="fa-solid fa-shoe-prints" style="color:var(--neon-pink)"></i> Tercih Edilen Ayak</label>
@@ -637,23 +657,23 @@
                                         <div class="detail-field">
                                             <label class="detail-label"><i class="fa-solid fa-chess-knight" style="color:var(--neon-cyan)"></i> Oyun Tarzı</label>
                                             <select id="hkm-sel-oyun-tarzi" class="profile-select">
-                                                <option value="Klasik 10 Numara">🎩 Klasik 10 Numara</option>
-                                                <option value="Box-to-Box">⚡ Box-to-Box</option>
-                                                <option value="İkinci Forvet">🔗 İkinci Forvet</option>
-                                                <option value="Kanat Oyuncusu">💨 Kanat Oyuncusu</option>
-                                                <option value="Goalgetter">🎯 Goalgetter</option>
-                                                <option value="Organizatör">🧠 Organizatör</option>
-                                                <option value="Sweeper">🧹 Sweeper</option>
-                                                <option value="Sweeper Keeper">🧤 Sweeper Keeper</option>
-                                                <option value="Libero">🔓 Libero</option>
+                                                <option value="">— Seçiniz —</option>
+                                                <option value="Her Yerde Koşarım">🏃 Her Yerde Koşarım</option>
+                                                <option value="Topla Oynarım">🎨 Topla Oynarım</option>
+                                                <option value="Gol Peşindeyim">🎯 Gol Peşindeyim</option>
+                                                <option value="Pas Veririm">🧠 Pas Veririm</option>
+                                                <option value="Kanat Oynarım">💨 Kanat Oynarım</option>
+                                                <option value="Defans Yaparım">🛡️ Defans Yaparım</option>
+                                                <option value="Her İşi Yaparım">⚡ Her İşi Yaparım</option>
                                             </select>
                                         </div>
                                         <div class="detail-field">
-                                            <label class="detail-label"><i class="fa-solid fa-graduation-cap"></i> Ekol / Deneyim</label>
+                                            <label class="detail-label"><i class="fa-solid fa-graduation-cap"></i> Deneyim</label>
                                             <select id="hkm-sel-ekol" class="profile-select">
+                                                <option value="">— Seçiniz —</option>
                                                 <option value="Eski Lisanslı">🏅 Eski Lisanslı</option>
-                                                <option value="Halısaha Gazisi">⚡ Halısaha Gazisi</option>
                                                 <option value="Sokak Futbolu">🛣️ Sokak Futbolu</option>
+                                                <option value="Top Nereye Biz Oraya">⚽ Top Nereye Biz Oraya</option>
                                             </select>
                                         </div>
                                     </div>

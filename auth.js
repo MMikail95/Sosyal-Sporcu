@@ -239,7 +239,6 @@ window.completeOnboarding = async function() {
       .update({
         position: selectedPosition,
         city: city,
-        ana_mevki: getDefaultMevki(selectedPosition),
         onboarding_done: true,
         updated_at: new Date().toISOString()
       })
