@@ -29,8 +29,8 @@
     function buildSidebarHTML() {
         return '<nav class="sidebar" id="sidebar">' +
             '<div class="logo">' +
-                '<i class="fa-solid fa-gamepad"></i>' +
-                '<span>MANAGER++</span>' +
+                '<i class="fa-solid fa-futbol"></i>' +
+                '<span>SOSYAL SPORCU</span>' +
             '</div>' +
             '<ul class="nav-menu">' +
                 '<li class="nav-item" data-target="dashboard" id="nav-dashboard">' +
