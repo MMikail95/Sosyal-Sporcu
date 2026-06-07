@@ -696,12 +696,14 @@ function addLogoutButton(profile) {
 
     // ── Gerçek kullanıcı bilgilerini güncelle ──
     const nameEl = document.getElementById('current-account-name');
-    if (nameEl) nameEl.textContent = profile.username || profile.full_name || 'Oyuncu';
+    if (nameEl) {
+        const raw = profile.full_name || profile.username || '';
+        const firstName = raw.split(' ')[0];
+        nameEl.textContent = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+    }
 
     const roleEl = document.getElementById('current-account-role');
-    if (roleEl) {
-        roleEl.textContent = profile.is_admin ? '⚡ Admin' : '🎮 Oyuncu';
-    }
+    if (roleEl) roleEl.style.display = 'none';
 
     const avatarEl = document.getElementById('current-account-avatar');
     if (avatarEl) {
@@ -3574,8 +3576,19 @@ window.handleAvatarUpload = async function(input) {
             savePlayers();
         }
 
+        // __SUPABASE_PROFILE__ g\u00fcncelle
+        if (window.__SUPABASE_PROFILE__) window.__SUPABASE_PROFILE__.avatar_url = publicUrl;
+
         // Avatar element'i kesin URL ile g\u00fcncelle
         if (avatarEl) avatarEl.src = publicUrl;
+
+        // Sidebar avatar\u0131n\u0131 g\u00fcncelle
+        const sidebarAvatar = document.getElementById('current-account-avatar');
+        if (sidebarAvatar) sidebarAvatar.src = publicUrl;
+
+        // FUT kart\u0131n\u0131 g\u00fcncelle
+        const futAvatarEl = document.getElementById('fut-avatar');
+        if (futAvatarEl) { futAvatarEl.src = publicUrl; futAvatarEl.style.opacity = '1'; }
 
         showToast('\u2705 Avatar ba\u015far\u0131yla g\u00fcncellendi!');
     } catch(e) {
