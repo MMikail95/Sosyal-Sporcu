@@ -335,7 +335,7 @@ function _tmRenderNoTeamScreen() {
           <button class="btn-outline ntc-cancel-btn" onclick="_tmCloseFlows()">İptal</button>
           <button class="ntc-submit-btn ntc-submit-join" id="ntc-join-btn"
                   onclick="_tmSubmitJoin()" disabled>
-            <i class="fa-solid fa-right-to-bracket"></i> Takıma Katıl
+            <i class="fa-solid fa-paper-plane"></i> Katılma İsteği Gönder
           </button>
         </div>
       </div>
@@ -501,48 +501,45 @@ window._tmSubmitJoin = async function() {
   if (!_ntcFoundTeam) { window.showToast?.('Önce takımı sorgula', 'error'); return; }
 
   const btn = document.getElementById('ntc-join-btn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Katılıyor…'; }
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gönderiliyor…'; }
 
   try {
-    const currentCount = await DB.Teams.getMemberCount(_ntcFoundTeam.id);
-    if (currentCount >= 7) {
-      window.showToast?.('Bu takım dolu (maksimum 7 oyuncu)', 'error');
-      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Takıma Katıl'; }
+    // Kaptan kendi takımına geri dönüyorsa direkt katıl
+    if (_ntcFoundTeam.captain_id === _tmState.userId) {
+      await DB.Teams.addMember(_ntcFoundTeam.id, _tmState.userId, 'captain');
+      await window.sbClient.from('profiles')
+        .update({ current_team_id: _ntcFoundTeam.id })
+        .eq('id', _tmState.userId);
+      if (!_tmState.myTeams.find(t => t.id === _ntcFoundTeam.id)) {
+        _tmState.myTeams.push({ id: _ntcFoundTeam.id, name: _ntcFoundTeam.name, slug: _ntcFoundTeam.slug, city: _ntcFoundTeam.city, color: _ntcFoundTeam.color, role: 'captain' });
+      }
+      document.getElementById('tm-new-team-modal')?.remove();
+      _tmState.myRole = 'captain';
+      await _tmLoadTeam(_ntcFoundTeam.id);
+      _tmShowSubtabs();
+      window.showToast?.(`✅ "${_ntcFoundTeam.name}" takımına geri döndün!`, 'success');
       return;
     }
-    // Kaptan kendi takımına geri katılıyorsa 'captain' rolü ver
-    const joinRole = _ntcFoundTeam.captain_id === _tmState.userId ? 'captain' : 'player';
-    await DB.Teams.addMember(_ntcFoundTeam.id, _tmState.userId, joinRole);
-    await window.sbClient.from('profiles')
-      .update({ current_team_id: _ntcFoundTeam.id })
-      .eq('id', _tmState.userId);
 
-    window.showToast?.(`✅ "${_ntcFoundTeam.name}" takımına katıldın!`, 'success');
+    // Normal oyuncu: katılma isteği gönder
+    await DB.TeamRequests.send(_ntcFoundTeam.id, _tmState.userId);
 
-    // myTeams listesine ekle (zaten yoksa)
-    if (!_tmState.myTeams.find(t => t.id === _ntcFoundTeam.id)) {
-      _tmState.myTeams.push({
-        id:   _ntcFoundTeam.id,
-        name: _ntcFoundTeam.name,
-        slug: _ntcFoundTeam.slug,
-        city: _ntcFoundTeam.city,
-        color: _ntcFoundTeam.color,
-        role: joinRole,
-      });
-    }
-
-    // Modal kapat
+    window.showToast?.(`📨 "${_ntcFoundTeam.name}" takımına katılma isteği gönderildi! Kaptan onayladığında takıma ekleneceksin.`, 'success');
     document.getElementById('tm-new-team-modal')?.remove();
 
-    // Takım verilerini ve üye listesini Supabase'den çek, sonra render et
-    _tmState.myRole = joinRole;
-    await _tmLoadTeam(_ntcFoundTeam.id);
-    _tmShowSubtabs();
+    // Paneli kapat ve butonu güncelle
+    _tmCloseFlows();
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-clock"></i> İstek Gönderildi'; }
 
   } catch (e) {
     console.error('❌ _tmSubmitJoin error:', e);
-    window.showToast?.('❌ Katılım hatası: ' + (e.message || 'Hata'), 'error');
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Takıma Katıl'; }
+    const msg = e.message || 'Hata';
+    if (msg.includes('duplicate') || msg.includes('unique')) {
+      window.showToast?.('⚠️ Bu takıma zaten katılma isteği göndermişsin.', 'warning');
+    } else {
+      window.showToast?.('❌ İstek gönderilemedi: ' + msg, 'error');
+    }
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Katılma İsteği Gönder'; }
   }
 };
 
@@ -560,14 +557,9 @@ function _tmRenderTeamSelector() {
     hdr.parentNode.insertBefore(strip, hdr);
   }
 
-  if (_tmState.myTeams.length <= 1) {
-    strip.style.display = 'none';
-    return;
-  }
-
   strip.className = 'team-selector-strip';
   strip.style.display = '';
-  strip.innerHTML = _tmState.myTeams.map(t => {
+  strip.innerHTML = (_tmState.myTeams.length <= 1 ? [] : _tmState.myTeams).map(t => {
     const isActive  = t.id === _tmState.team?.id;
     const isCaptain = t.role === 'captain';
     const chipClass = `ts-chip ${isActive ? 'ts-chip-active' : ''} ${isCaptain ? 'ts-chip-captain' : ''}`;
@@ -670,7 +662,7 @@ window._tmNewTeamModal = function() {
           <button class="btn-outline" onclick="document.getElementById('tm-new-team-modal').remove()">İptal</button>
           <button class="ntc-submit-btn ntc-submit-join" id="ntc-join-btn"
                   onclick="_tmSubmitJoin()" disabled>
-            <i class="fa-solid fa-right-to-bracket"></i> Takıma Katıl
+            <i class="fa-solid fa-paper-plane"></i> Katılma İsteği Gönder
           </button>
         </div>
       </div>
@@ -953,9 +945,6 @@ window._tmOpenInviteModal = function() {
             <i class="fa-solid fa-copy"></i> Kopyala
           </button>
         </div>
-        <button class="tm-inv-share-btn" onclick="_tmShareInvite('${slug}','${shareUrl}')">
-          <i class="fa-solid fa-share-nodes"></i> Linki Paylaş
-        </button>
       </div>
 
       <!-- Oyuncu Arama Tab -->
@@ -1269,11 +1258,7 @@ function renderCoreSquadSection() {
       .filter(Boolean)
       .map(m => ({ ...m, _gen: _tmPlayerGEN(m.player) }));
   } else {
-    // Kilit kadro seçilmemişse top 7 by GEN otomatik
-    squadMembers = [..._tmState.members]
-      .map(m => ({ ...m, _gen: _tmPlayerGEN(m.player) }))
-      .sort((a, b) => b._gen - a._gen)
-      .slice(0, 7);
+    squadMembers = [];
   }
 
   const posColors = { KL:'#ffd700', DEF:'#00e5ff', OS:'#00ff88', FV:'#ff007f' };
@@ -1287,6 +1272,12 @@ function renderCoreSquadSection() {
       <span class="core-gen-total">Ort. GEN: <b style="color:var(--neon-green);">${_tmTeamGEN() ?? '—'}</b></span>
     </div>
     <div class="core-squad-grid">
+      ${squadMembers.length === 0 ? `
+        <div style="grid-column:1/-1;text-align:center;padding:1.5rem;color:#555;font-size:0.85rem;">
+          <i class="fa-solid fa-users-slash" style="font-size:1.5rem;display:block;margin-bottom:0.5rem;opacity:0.4;"></i>
+          Kaptan henüz kemik kadro seçmedi.<br>
+          <span style="font-size:0.75rem;color:#444;">Kadro &amp; Davet sekmesinden oyuncular seçilebilir.</span>
+        </div>` : ''}
       ${squadMembers.map((m, i) => {
         const p   = m.player || {};
         const col = posColors[p.position] || '#aaa';

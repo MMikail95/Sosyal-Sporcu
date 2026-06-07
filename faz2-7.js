@@ -34,7 +34,8 @@ window.getTeamPlayers = window.getTeamPlayers || function() {
 window._getPInfo = function(p) {
     if (!p) return { id:'', name:'', pos:'OS', posKey:'OS', col:'#aaa', avatar:'', details:{} };
     const id = p.id || p.supabase_id;
-    const name = p.username || p.name || 'Oyuncu';
+    const _safeStr = v => (v && v !== 'null' && v !== 'undefined') ? v : null;
+    const name = _safeStr(p.username) || _safeStr(p.name) || 'Oyuncu';
     const rawPos = p.ana_mevki || p.position || p.details?.pos || 'OS';
     const posKey = rawPos.includes('Kaleci') || rawPos === 'KL' ? 'KL' : 
                    rawPos.includes('Stoper') || rawPos.includes('Bek') || rawPos === 'DEF' ? 'DEF' : 
@@ -688,10 +689,10 @@ async function loadPitchFromSupabase() {
         const { data } = await window.sbClient.from('teams').select('formations_json').eq('id', teamId).single();
         if (data?.formations_json) {
             pitchSlots = JSON.parse(data.formations_json);
-            _pitchSlotsLoaded = true;
             localStorage.setItem(_slotLsKey(), JSON.stringify(pitchSlots));
         }
     } catch(e) {}
+    _pitchSlotsLoaded = true; // Her durumda işaretle — sonsuz döngüyü önler
 }
 
 window.switchPitchSlot = function(slot) {
@@ -1455,11 +1456,11 @@ window.renderTakimOlusturTab = function() {
             <div class="glass-card olustur-config-card">
                 <div class="section-label-pill" style="margin-bottom:1.2rem;">
                     <i class="fa-solid fa-scale-balanced" style="color:var(--neon-cyan);"></i>
-                    7V7 ADİL DAĞITIM OLUŞTURUCU
+                    ADİL DAĞITIM OLUŞTURUCU
                 </div>
                 <p style="color:#888; font-size:0.9rem; margin-bottom:1.5rem;">
                     Oyuncu havuzundan GEN değerlerine göre dengeli iki takım oluşturur.
-                    Takım dışından oyuncu ekleyebilirsiniz.
+                    A/B butonlarıyla oyuncuları sabit bir takıma atayabilir, geri kalanları otomatik dağıtabilirsiniz.
                 </p>
 
                 <div class="olustur-pool-header">
