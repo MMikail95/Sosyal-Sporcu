@@ -1133,11 +1133,17 @@ window.populateHakkimdaView = function() {
         if (d.bio) { bioEl.textContent = d.bio; bioEl.style.fontStyle = 'italic'; }
         else { bioEl.textContent = '—'; bioEl.style.fontStyle = 'normal'; }
     }
-    _hkmSetText('hkm-ana-mevki',    d.anaMevki);
-    _hkmSetText('hkm-alt-pos',      d.altPos || null);
-    _hkmSetText('hkm-ayak',         d.ayak);
-    _hkmSetText('hkm-oyun-tarzi',   d.oyunTarzi);
-    _hkmSetText('hkm-ekol',         d.ekol);
+    _hkmSetText('hkm-ana-mevki',        d.anaMevki);
+    _hkmSetText('hkm-alt-pos',          d.altPos || null);
+    _hkmSetText('hkm-ayak',             d.ayak);
+    _hkmSetText('hkm-oyun-tarzi',       d.oyunTarzi);
+    _hkmSetText('hkm-futbol-gecmisi',   d.futbolGecmisi);
+    _hkmSetText('hkm-sakatlik-durumu',  d.sakatlikDurumu);
+    _hkmSetText('hkm-antrenman',        d.antrenmanAliskanlik);
+    _hkmSetText('hkm-mac-gunu',         d.macGunuTercihi);
+    _hkmSetText('hkm-ayakkabi',         d.ayakkabiTercihi);
+    _hkmSetText('hkm-forma-no',         d.formaNumarasi != null ? `#${d.formaNumarasi}` : null);
+    _hkmSetText('hkm-idol',             d.idol);
 
     // Renk vurguları
     const mevkiEl = document.getElementById('hkm-ana-mevki');
@@ -1413,7 +1419,14 @@ window.populateFutCard = function() {
             details: {
                 anaMevki: sp.ana_mevki || sp.position,
                 age: sp.age, city: sp.city, ayak: sp.ayak,
-                height: sp.height, weight: sp.weight, ekol: sp.ekol, oyunTarzi: sp.oyun_tarzi
+                height: sp.height, weight: sp.weight, oyunTarzi: sp.oyun_tarzi,
+                futbolGecmisi:       sp.futbol_gecmisi      || null,
+                sakatlikDurumu:      sp.sakatlik_durumu     || null,
+                antrenmanAliskanlik: sp.antrenman_aliskanlik || null,
+                macGunuTercihi:      sp.mac_gunu_tercihi    || null,
+                ayakkabiTercihi:     sp.ayakkabi_tercihi    || null,
+                formaNumarasi:       sp.forma_numarasi      ?? null,
+                idol:                sp.idol                || null,
             },
             ratings: {
                 teknik: sp.rating_teknik, sut: sp.rating_sut, pas: sp.rating_pas,
@@ -1588,11 +1601,17 @@ window.toggleHakkimdaEdit = function(section) {
                 }).catch(() => {});
             }
         } else if (section === 'futbol') {
-            _hkmSetVal('hkm-sel-ana-mevki',  d.anaMevki);
+            _hkmSetVal('hkm-sel-ana-mevki',       d.anaMevki);
             window.updateAltMevkiOptions && window.updateAltMevkiOptions(d.anaMevki, d.altPos);
-            _hkmSetVal('hkm-sel-ayak',       d.ayak);
-            _hkmSetVal('hkm-sel-oyun-tarzi', d.oyunTarzi);
-            _hkmSetVal('hkm-sel-ekol',       d.ekol);
+            _hkmSetVal('hkm-sel-ayak',            d.ayak);
+            _hkmSetVal('hkm-sel-oyun-tarzi',      d.oyunTarzi);
+            _hkmSetVal('hkm-sel-futbol-gecmisi',  d.futbolGecmisi);
+            _hkmSetVal('hkm-sel-sakatlik-durumu', d.sakatlikDurumu);
+            _hkmSetVal('hkm-sel-antrenman',       d.antrenmanAliskanlik);
+            _hkmSetVal('hkm-sel-mac-gunu',        d.macGunuTercihi);
+            _hkmSetVal('hkm-sel-ayakkabi',        d.ayakkabiTercihi);
+            _hkmSetVal('hkm-inp-forma-no',        d.formaNumarasi);
+            _hkmSetVal('hkm-inp-idol',            d.idol);
         }
 
         viewEl.style.display = 'none';
@@ -1669,18 +1688,30 @@ window.saveHakkimdaSection = async function(section) {
             } catch(e) { showToast('❌ Kayıt hatası: ' + e.message); }
         }
     } else if (section === 'futbol') {
-        const anaMevki  = getV('hkm-sel-ana-mevki');
-        const altPos    = getV('hkm-sel-alt-pos');
-        const ayak      = getV('hkm-sel-ayak');
-        const oyunTarzi = getV('hkm-sel-oyun-tarzi');
-        const ekol      = getV('hkm-sel-ekol');
+        const anaMevki          = getV('hkm-sel-ana-mevki');
+        const altPos            = getV('hkm-sel-alt-pos');
+        const ayak              = getV('hkm-sel-ayak');
+        const oyunTarzi         = getV('hkm-sel-oyun-tarzi');
+        const futbolGecmisi     = getV('hkm-sel-futbol-gecmisi');
+        const sakatlikDurumu    = getV('hkm-sel-sakatlik-durumu');
+        const antrenman         = getV('hkm-sel-antrenman');
+        const macGunu           = getV('hkm-sel-mac-gunu');
+        const ayakkabi          = getV('hkm-sel-ayakkabi');
+        const formaNo           = parseInt(getV('hkm-inp-forma-no')) || null;
+        const idol              = getV('hkm-inp-idol');
 
         if (!player.details) player.details = {};
-        if (anaMevki)  player.details.anaMevki  = anaMevki;
-        player.details.altPos    = altPos;
-        if (ayak)      player.details.ayak      = ayak;
-        if (oyunTarzi) player.details.oyunTarzi = oyunTarzi;
-        if (ekol)      player.details.ekol      = ekol;
+        if (anaMevki)       player.details.anaMevki           = anaMevki;
+        player.details.altPos                                  = altPos;
+        if (ayak)           player.details.ayak               = ayak;
+        if (oyunTarzi)      player.details.oyunTarzi          = oyunTarzi;
+        if (futbolGecmisi)  player.details.futbolGecmisi      = futbolGecmisi;
+        if (sakatlikDurumu) player.details.sakatlikDurumu     = sakatlikDurumu;
+        if (antrenman)      player.details.antrenmanAliskanlik = antrenman;
+        if (macGunu)        player.details.macGunuTercihi     = macGunu;
+        if (ayakkabi)       player.details.ayakkabiTercihi    = ayakkabi;
+        player.details.formaNumarasi = formaNo;
+        player.details.idol          = idol || null;
 
         savePlayers();
         updateUI();
@@ -1688,10 +1719,16 @@ window.saveHakkimdaSection = async function(section) {
         const user = window.__AUTH_USER__;
         if (user && window.DB) {
             const upd = { alt_pos: altPos };
-            if (anaMevki)  upd.ana_mevki  = anaMevki;
-            if (ayak)      upd.ayak       = ayak;
-            if (oyunTarzi) upd.oyun_tarzi = oyunTarzi;
-            if (ekol)      upd.ekol       = ekol;
+            if (anaMevki)       upd.ana_mevki          = anaMevki;
+            if (ayak)           upd.ayak               = ayak;
+            if (oyunTarzi)      upd.oyun_tarzi         = oyunTarzi;
+            if (futbolGecmisi)  upd.futbol_gecmisi     = futbolGecmisi;
+            if (sakatlikDurumu) upd.sakatlik_durumu    = sakatlikDurumu;
+            if (antrenman)      upd.antrenman_aliskanlik = antrenman;
+            if (macGunu)        upd.mac_gunu_tercihi   = macGunu;
+            if (ayakkabi)       upd.ayakkabi_tercihi   = ayakkabi;
+            upd.forma_numarasi = formaNo;
+            upd.idol           = idol || null;
             try {
                 await window.DB.Profiles.update(user.id, upd);
                 showToast('✅ Futbol profili kaydedildi!');
@@ -3579,11 +3616,14 @@ window.handleAvatarUpload = async function(input) {
         return;
     }
 
-    // \u00d6nizleme: hemen g\u00f6ster
+    // \u00d6nizleme: hemen g\u00f6ster (profile-avatar + fut-avatar)
     const avatarEl = document.getElementById('profile-avatar');
     const reader = new FileReader();
     reader.onload = (e) => {
         if (avatarEl) avatarEl.src = e.target.result;
+        // FUT kart\u0131nda da anl\u0131k \u00f6nizleme
+        const futPrev = document.getElementById('fut-avatar');
+        if (futPrev) { futPrev.src = e.target.result; futPrev.style.opacity = '1'; }
     };
     reader.readAsDataURL(file);
 
@@ -3612,9 +3652,8 @@ window.handleAvatarUpload = async function(input) {
         const sidebarAvatar = document.getElementById('current-account-avatar');
         if (sidebarAvatar) sidebarAvatar.src = publicUrl;
 
-        // FUT kart\u0131n\u0131 g\u00fcncelle
-        const futAvatarEl = document.getElementById('fut-avatar');
-        if (futAvatarEl) { futAvatarEl.src = publicUrl; futAvatarEl.style.opacity = '1'; }
+        // FUT kart\u0131n\u0131 tam olarak yeniden render et
+        if (typeof populateFutCard === 'function') populateFutCard();
 
         showToast('\u2705 Avatar ba\u015far\u0131yla g\u00fcncellendi!');
     } catch(e) {

@@ -620,9 +620,39 @@
                                         <span class="hakkimda-value" id="hkm-oyun-tarzi">—</span>
                                     </div>
                                     <div class="hakkimda-row">
-                                        <i class="fa-solid fa-graduation-cap hakkimda-icon"></i>
-                                        <span class="hakkimda-label">Deneyim</span>
-                                        <span class="hakkimda-value" id="hkm-ekol">—</span>
+                                        <i class="fa-solid fa-trophy hakkimda-icon" style="color:var(--neon-green)"></i>
+                                        <span class="hakkimda-label">Futbol Geçmişi</span>
+                                        <span class="hakkimda-value" id="hkm-futbol-gecmisi">—</span>
+                                    </div>
+                                    <div class="hakkimda-row">
+                                        <i class="fa-solid fa-band-aid hakkimda-icon" style="color:#ff9800"></i>
+                                        <span class="hakkimda-label">Sakatlık Durumu</span>
+                                        <span class="hakkimda-value" id="hkm-sakatlik-durumu">—</span>
+                                    </div>
+                                    <div class="hakkimda-row">
+                                        <i class="fa-solid fa-dumbbell hakkimda-icon" style="color:var(--neon-cyan)"></i>
+                                        <span class="hakkimda-label">Antrenman</span>
+                                        <span class="hakkimda-value" id="hkm-antrenman">—</span>
+                                    </div>
+                                    <div class="hakkimda-row">
+                                        <i class="fa-solid fa-calendar-check hakkimda-icon" style="color:var(--neon-pink)"></i>
+                                        <span class="hakkimda-label">Maç Günü</span>
+                                        <span class="hakkimda-value" id="hkm-mac-gunu">—</span>
+                                    </div>
+                                    <div class="hakkimda-row">
+                                        <i class="fa-solid fa-shoe-prints hakkimda-icon" style="color:#ff9800"></i>
+                                        <span class="hakkimda-label">Ayakkabı</span>
+                                        <span class="hakkimda-value" id="hkm-ayakkabi">—</span>
+                                    </div>
+                                    <div class="hakkimda-row">
+                                        <i class="fa-solid fa-hashtag hakkimda-icon" style="color:var(--neon-green)"></i>
+                                        <span class="hakkimda-label">Forma Numarası</span>
+                                        <span class="hakkimda-value" id="hkm-forma-no">—</span>
+                                    </div>
+                                    <div class="hakkimda-row">
+                                        <i class="fa-solid fa-star hakkimda-icon" style="color:gold"></i>
+                                        <span class="hakkimda-label">İdol</span>
+                                        <span class="hakkimda-value" id="hkm-idol">—</span>
                                     </div>
                                 </div>
 
@@ -649,6 +679,7 @@
                                         <div class="detail-field">
                                             <label class="detail-label"><i class="fa-solid fa-shoe-prints" style="color:var(--neon-pink)"></i> Tercih Edilen Ayak</label>
                                             <select id="hkm-sel-ayak" class="profile-select">
+                                                <option value="">— Seçiniz —</option>
                                                 <option value="Sağ">👟 Sağ Ayak</option>
                                                 <option value="Sol">👟 Sol Ayak</option>
                                                 <option value="Her İkisi">✨ Her İkisi</option>
@@ -668,13 +699,58 @@
                                             </select>
                                         </div>
                                         <div class="detail-field">
-                                            <label class="detail-label"><i class="fa-solid fa-graduation-cap"></i> Deneyim</label>
-                                            <select id="hkm-sel-ekol" class="profile-select">
+                                            <label class="detail-label"><i class="fa-solid fa-trophy" style="color:var(--neon-green)"></i> Futbol Geçmişi</label>
+                                            <select id="hkm-sel-futbol-gecmisi" class="profile-select">
                                                 <option value="">— Seçiniz —</option>
-                                                <option value="Eski Lisanslı">🏅 Eski Lisanslı</option>
-                                                <option value="Sokak Futbolu">🛣️ Sokak Futbolu</option>
-                                                <option value="Top Nereye Biz Oraya">⚽ Top Nereye Biz Oraya</option>
+                                                <option value="Hiç Lisanslı Olmadım">⚽ Hiç Lisanslı Olmadım</option>
+                                                <option value="Amatör Lisanslı">📋 Amatör Lisanslı</option>
+                                                <option value="Altyapı Deneyimim Var">🏅 Altyapı Deneyimim Var</option>
                                             </select>
+                                        </div>
+                                        <div class="detail-field">
+                                            <label class="detail-label"><i class="fa-solid fa-band-aid" style="color:#ff9800"></i> Sakatlık Durumu</label>
+                                            <select id="hkm-sel-sakatlik-durumu" class="profile-select">
+                                                <option value="">— Seçiniz —</option>
+                                                <option value="Sağlamım">💪 Sağlamım</option>
+                                                <option value="Arada Zorluk Çıkıyor">⚠️ Arada Zorluk Çıkıyor</option>
+                                                <option value="Kronik Sakat">🩹 Kronik Sakat</option>
+                                            </select>
+                                        </div>
+                                        <div class="detail-field">
+                                            <label class="detail-label"><i class="fa-solid fa-dumbbell" style="color:var(--neon-cyan)"></i> Antrenman Alışkanlığı</label>
+                                            <select id="hkm-sel-antrenman" class="profile-select">
+                                                <option value="">— Seçiniz —</option>
+                                                <option value="Sadece Maç Oynarım">🏃 Sadece Maç Oynarım</option>
+                                                <option value="Ara Sıra Çalışırım">🔄 Ara Sıra Çalışırım</option>
+                                                <option value="Düzenli Antrenman Yaparım">💪 Düzenli Antrenman Yaparım</option>
+                                            </select>
+                                        </div>
+                                        <div class="detail-field">
+                                            <label class="detail-label"><i class="fa-solid fa-calendar-check" style="color:var(--neon-pink)"></i> Maç Günü Tercihi</label>
+                                            <select id="hkm-sel-mac-gunu" class="profile-select">
+                                                <option value="">— Seçiniz —</option>
+                                                <option value="Hafta İçi">📅 Hafta İçi</option>
+                                                <option value="Hafta Sonu">🎉 Hafta Sonu</option>
+                                                <option value="Fark Etmez">✅ Fark Etmez</option>
+                                            </select>
+                                        </div>
+                                        <div class="detail-field">
+                                            <label class="detail-label"><i class="fa-solid fa-shoe-prints" style="color:#ff9800"></i> Ayakkabı Tercihi</label>
+                                            <select id="hkm-sel-ayakkabi" class="profile-select">
+                                                <option value="">— Seçiniz —</option>
+                                                <option value="Halısaha Ayakkabısı">👟 Halısaha Ayakkabısı</option>
+                                                <option value="Krampon">⚡ Krampon</option>
+                                                <option value="İkisi de Var">✨ İkisi de Var</option>
+                                                <option value="Ne Bulursam">🤷 Ne Bulursam</option>
+                                            </select>
+                                        </div>
+                                        <div class="detail-field">
+                                            <label class="detail-label"><i class="fa-solid fa-hashtag" style="color:var(--neon-green)"></i> Forma Numarası</label>
+                                            <input type="number" id="hkm-inp-forma-no" class="profile-input" min="1" max="99" placeholder="Örn: 10">
+                                        </div>
+                                        <div class="detail-field" style="grid-column:1/-1;">
+                                            <label class="detail-label"><i class="fa-solid fa-star" style="color:gold"></i> İdol</label>
+                                            <input type="text" id="hkm-inp-idol" class="profile-input" maxlength="50" placeholder="Örn: Ronaldinho, Totti...">
                                         </div>
                                     </div>
                                     <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
