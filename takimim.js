@@ -1280,18 +1280,20 @@ function renderCoreSquadSection() {
         </div>` : ''}
       ${squadMembers.map((m, i) => {
         const p   = m.player || {};
-        const col = posColors[p.position] || '#aaa';
+        const rawMevki = p.ana_mevki || p.position || 'OS';
+        const posKey = typeof window._normalizePosKey === 'function' ? window._normalizePosKey(rawMevki) : 'OS';
+        const col = posColors[posKey] || '#aaa';
         const isCap = m.role === 'captain';
         return `
         <div class="core-player-card ${isCap ? 'is-core' : ''}">
           <div class="core-rank">${i + 1}</div>
           <div class="core-avatar-wrap">
             <img src="${p.avatar_url || _tmAvatar(p.username)}" class="core-avatar">
-            <div class="core-pos-dot" style="background:${col};" title="${p.position || ''}"></div>
+            <div class="core-pos-dot" style="background:${col};" title="${posKey}"></div>
           </div>
           <div class="core-info">
             <span class="core-name">${p.username || '—'}</span>
-            <span class="core-pos" style="color:${col};">${p.ana_mevki || p.position || '—'}</span>
+            <span class="core-pos" style="color:${col};">${posKey}</span>
           </div>
           <div class="core-gen-chip" style="border-color:${m._gen!=null&&m._gen>=8?'var(--neon-green)':m._gen!=null&&m._gen>=7?'var(--neon-cyan)':'#555'};">${m._gen ?? '—'}</div>
           ${isCap ? '<i class="fa-solid fa-crown core-bone-icon" style="color:#ffd700;" title="Kaptan"></i>' : ''}
@@ -1377,7 +1379,10 @@ function renderTeamMemberGrid() {
   const byPos = { KL:[], DEF:[], OS:[], FV:[], 'Diğer':[] };
 
   _tmState.members.forEach(m => {
-    const pos = (m.player?.position || 'OS').toUpperCase();
+    const rawMevki = m.player?.ana_mevki || m.player?.position || 'OS';
+    const pos = typeof window._normalizePosKey === 'function'
+      ? window._normalizePosKey(rawMevki)
+      : rawMevki.toUpperCase();
     if (byPos[pos]) byPos[pos].push(m);
     else byPos['Diğer'].push(m);
   });

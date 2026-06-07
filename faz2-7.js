@@ -31,18 +31,32 @@ window.getTeamPlayers = window.getTeamPlayers || function() {
     return [];
 };
 
+// Mevki normalizer — DB'deki Türkçe tam adları ve kısa kodları standartlaştırır
+window._normalizePosKey = function(raw) {
+    if (!raw) return 'OS';
+    const p = String(raw).trim();
+    if (p === 'KL' || p.includes('Kaleci')) return 'KL';
+    if (p === 'DEF' || p === 'Defans' || p.includes('Stoper') || p.includes('Bek') ||
+        p.includes('Libero') || p.includes('Defan')) return 'DEF';
+    if (p === 'FV' || p.includes('Forvet') || p.includes('Santrafor') ||
+        p.includes('Kanat') && !p.includes('Orta')) return 'FV';
+    return 'OS';
+};
+const _POS_SHORT = { KL: 'KL', DEF: 'DEF', OS: 'OS', FV: 'FV' };
+
 window._getPInfo = function(p) {
     if (!p) return { id:'', name:'', pos:'OS', posKey:'OS', col:'#aaa', avatar:'', details:{} };
     const id = p.id || p.supabase_id;
     const _safeStr = v => (v && v !== 'null' && v !== 'undefined') ? v : null;
     const name = _safeStr(p.username) || _safeStr(p.name) || 'Oyuncu';
     const rawPos = p.ana_mevki || p.position || p.details?.pos || 'OS';
-    const posKey = rawPos.includes('Kaleci') || rawPos === 'KL' ? 'KL' : 
-                   rawPos.includes('Stoper') || rawPos.includes('Bek') || rawPos === 'DEF' ? 'DEF' : 
-                   rawPos.includes('Forvet') || rawPos === 'FV' ? 'FV' : 'OS';
+    const posKey = window._normalizePosKey(rawPos);
     const posColors = { KL: '#ffd700', DEF: '#00e5ff', OS: '#00ff88', FV: '#ff007f' };
     return {
-        id, name, pos: rawPos, posKey, col: posColors[posKey] || '#aaa',
+        id, name,
+        pos: _POS_SHORT[posKey] || posKey, // Standart kısa kod (DEF / OS / KL / FV)
+        posKey,
+        col: posColors[posKey] || '#aaa',
         avatar: p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
         details: p.details || {}
     };
@@ -796,9 +810,10 @@ window.renderSahaTab = function () {
             const pid = p.id || p.supabase_id;
             const name = p.username || p.name || 'Oyuncu';
             const avatar = p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
-            const pos = p.ana_mevki || p.position || (p.details && p.details.pos) || 'OS';
+            const rawPos = p.ana_mevki || p.position || (p.details && p.details.pos) || 'OS';
             const posColors = { KL: '#ffd700', DEF: '#4fc3f7', OS: '#69f0ae', FV: '#ff5252' };
-            const posKey = pos.includes('Kaleci') ? 'KL' : pos.includes('Stoper') || pos.includes('Bek') ? 'DEF' : pos.includes('Forvet') || pos.includes('Santrafor') ? 'FV' : 'OS';
+            const posKey = window._normalizePosKey(rawPos);
+            const pos = { KL:'KL', DEF:'DEF', OS:'OS', FV:'FV' }[posKey] || posKey;
             const col = posColors[posKey] || '#aaa';
             const genColor = gen >= 80 ? 'var(--neon-green)' : gen >= 70 ? '#ffd700' : '#ff6b35';
             return `
@@ -1224,13 +1239,10 @@ window.psn_autoFill = function() {
     const sorted = [...teamPlayers].sort((a, b) => getGenFn(b) - getGenFn(a));
     pitchDragState.assignments = {};
 
-    // Mevki eşleştirme
+    // Mevki eşleştirme — merkezi normalizer kullan
     const mapPos = (p) => {
         const pos = p.ana_mevki || p.position || (p.details && p.details.pos) || 'OS';
-        if (pos.includes('Kaleci') || pos === 'KL') return 'KL';
-        if (pos.includes('Stoper') || pos.includes('Bek') || pos.includes('Libero') || pos === 'DEF') return 'DEF';
-        if (pos.includes('Forvet') || pos.includes('Santrafor') || pos === 'FV') return 'FV';
-        return 'OS';
+        return window._normalizePosKey(pos);
     };
 
     const byPos = { KL: [], DEF: [], OS: [], FV: [] };
