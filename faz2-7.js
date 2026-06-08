@@ -1672,7 +1672,13 @@ window.resetBalancedTeams = function() {
 
 window._setManualTeam = function(playerId, team) {
     if (!window._manualAssignments) window._manualAssignments = {};
-    window._manualAssignments[String(playerId)] = team;
+    if (team === 'auto') {
+        delete window._manualAssignments[String(playerId)];
+    } else {
+        window._manualAssignments[String(playerId)] = team;
+    }
+    // Atama değişince eski dağıtım sonucunu temizle
+    localStorage.removeItem('ss_balanced_teams');
     // Canlı önizleme için tab'ı yeniden render et
     renderTakimOlusturTab();
 };
@@ -1769,10 +1775,20 @@ function renderBalancedTeamsHTML(aIds, bIds, diff) {
 
     return `
         <div class="glass-card balanced-result-card">
-            <div class="bal-result-header">
-                <i class="fa-solid fa-scale-balanced" style="color:var(--neon-green);"></i>
-                <span>GEN FARKI: <b style="color:${diff<=3?'var(--neon-green)':diff<=8?'#ffd700':'#ff007f'}">${diff}</b> 
-                    ${diff<=3?'— Mükemmel Denge!':diff<=8?'— Kabul Edilebilir':'— Dengesiz'}</span>
+            <div class="bal-result-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <i class="fa-solid fa-scale-balanced" style="color:var(--neon-green);"></i>
+                    <span>GEN FARKI: <b style="color:${diff<=3?'var(--neon-green)':diff<=8?'#ffd700':'#ff007f'}">${diff}</b>
+                        ${diff<=3?'— Mükemmel Denge!':diff<=8?'— Kabul Edilebilir':'— Dengesiz'}</span>
+                </div>
+                <div style="display:flex;gap:0.5rem;">
+                    <button onclick="generateBalancedTeams()" style="background:rgba(0,255,136,0.12);border:1px solid rgba(0,255,136,0.3);color:var(--neon-green);border-radius:8px;padding:0.3rem 0.8rem;font-size:0.78rem;cursor:pointer;">
+                        <i class="fa-solid fa-rotate"></i> Yenile
+                    </button>
+                    <button onclick="resetBalancedTeams()" style="background:rgba(255,0,127,0.12);border:1px solid rgba(255,0,127,0.3);color:#ff007f;border-radius:8px;padding:0.3rem 0.8rem;font-size:0.78rem;cursor:pointer;">
+                        <i class="fa-solid fa-trash"></i> Temizle
+                    </button>
+                </div>
             </div>
             <div class="balanced-teams-grid">
                 ${renderTeamCol(teamA, '🟢 Takım A', genA, '#00ff88')}
