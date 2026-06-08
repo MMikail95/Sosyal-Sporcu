@@ -29,7 +29,7 @@
     function buildSidebarHTML() {
         return '<nav class="sidebar" id="sidebar">' +
             '<div class="logo">' +
-                '<i class="fa-solid fa-futbol"></i>' +
+                '<div class="logo-ball"><i class="fa-solid fa-futbol"></i></div>' +
                 '<span>SOSYAL SPORCU</span>' +
             '</div>' +
             '<ul class="nav-menu">' +

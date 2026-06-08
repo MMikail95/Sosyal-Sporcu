@@ -1487,59 +1487,91 @@ window.renderTakimOlusturTab = function() {
     const renderPoolItem = (p, isExternal) => {
         const pInfo     = _getPInfo(p);
         const gen       = calcPlayerGEN(p);
-        const inCore    = coreSquad.includes(pInfo.id);
-        const manAssign = (window._manualAssignments || {})[pInfo.id] || 'auto';
-        const cbId      = `pcb-${pInfo.id.toString().replace(/[^a-z0-9]/gi,'_')}`;
+        const manAssign = (window._manualAssignments || {})[String(pInfo.id)] || 'auto';
+        const teamColor = manAssign === 'A' ? 'rgba(0,255,136,0.15)' : manAssign === 'B' ? 'rgba(0,229,255,0.15)' : 'transparent';
+        const teamBorder = manAssign === 'A' ? 'rgba(0,255,136,0.4)' : manAssign === 'B' ? 'rgba(0,229,255,0.4)' : 'rgba(255,255,255,0.07)';
         return `
-        <div class="pool-player-item ${inCore ? 'in-core' : ''}" id="pool-item-${pInfo.id}" style="position:relative;">
-            <input type="checkbox" id="${cbId}" class="pool-checkbox" value="${pInfo.id}" ${inCore ? 'checked' : ''} style="flex-shrink:0;cursor:pointer;">
-            <label for="${cbId}" style="display:flex;align-items:center;gap:0.4rem;flex:1;min-width:0;cursor:pointer;">
-                <img src="${pInfo.avatar}" class="pool-avatar">
-                <div class="pool-info" style="min-width:0;flex:1;">
-                    <span class="pool-name" style="color:#ddd;">${pInfo.name}${isExternal ? ' <span style="font-size:0.6rem;color:#ff6b35;border:1px solid rgba(255,107,53,0.4);border-radius:3px;padding:0 3px;vertical-align:middle;">Dış</span>' : ''}</span>
-                    <span class="pool-pos" style="color:${pInfo.col};">${pInfo.pos}</span>
+        <div id="pool-item-${pInfo.id}"
+             style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.6rem;
+                    background:${teamColor};border:1px solid ${teamBorder};
+                    border-radius:8px;transition:all 0.2s;">
+            <img src="${pInfo.avatar}" style="width:30px;height:30px;border-radius:50%;flex-shrink:0;">
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:0.82rem;font-weight:600;color:#e0e0e0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                    ${pInfo.name}${isExternal ? ' <span style="font-size:0.6rem;color:#ff6b35;border:1px solid rgba(255,107,53,0.4);border-radius:3px;padding:0 3px;">Dış</span>' : ''}
                 </div>
-                <span class="pool-gen" style="color:${gen!=null&&gen>=80?'var(--neon-green)':'#ffd700'};flex-shrink:0;">${gen != null ? gen : '—'}</span>
-            </label>
-            <div class="pool-team-assign" style="display:flex;gap:2px;margin-left:4px;flex-shrink:0;">
-                <button class="pab ${manAssign==='A'?'pab-a':''}" onclick="event.stopPropagation();_setManualTeam('${pInfo.id}','A')" title="A Takımı">A</button>
-                <button class="pab ${manAssign==='B'?'pab-b':''}" onclick="event.stopPropagation();_setManualTeam('${pInfo.id}','B')" title="B Takımı">B</button>
-                <button class="pab ${manAssign==='auto'?'pab-auto':''}" onclick="event.stopPropagation();_setManualTeam('${pInfo.id}','auto')" title="Otomatik">Oto</button>
+                <div style="font-size:0.7rem;color:${pInfo.col};">${pInfo.pos} ${gen != null ? '· <span style="color:#ffd700;">'+gen+'</span>' : ''}</div>
             </div>
-            ${isExternal ? `<button onclick="event.stopPropagation();_tmRemoveExternal('${pInfo.id}')" title="Havuzdan Çıkar"
-                style="position:absolute;top:2px;right:2px;background:rgba(255,0,127,0.15);border:none;color:#ff007f;border-radius:4px;width:18px;height:18px;font-size:0.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+            <div style="display:flex;gap:3px;flex-shrink:0;">
+                <button class="pab ${manAssign==='A'?'pab-a':''}" onclick="_setManualTeam('${pInfo.id}','A')" title="A Takımına Sabitle">A</button>
+                <button class="pab ${manAssign==='B'?'pab-b':''}" onclick="_setManualTeam('${pInfo.id}','B')" title="B Takımına Sabitle">B</button>
+                <button class="pab ${manAssign==='auto'?'pab-auto':''}" onclick="_setManualTeam('${pInfo.id}','auto')" title="Otomatik Dağıt">Oto</button>
+            </div>
+            ${isExternal ? `<button onclick="_tmRemoveExternal('${pInfo.id}')" title="Havuzdan Çıkar"
+                style="background:rgba(255,0,127,0.15);border:none;color:#ff007f;border-radius:4px;width:20px;height:20px;font-size:0.6rem;cursor:pointer;flex-shrink:0;">
                 <i class="fa-solid fa-xmark"></i></button>` : ''}
+        </div>`;
+    };
+
+    // Anlık takım önizlemesi — manuel atamalar
+    const manualA = window._allPoolPlayers.filter(p => (window._manualAssignments||{})[p.id||p.supabase_id] === 'A');
+    const manualB = window._allPoolPlayers.filter(p => (window._manualAssignments||{})[p.id||p.supabase_id] === 'B');
+    const autoPlayers = window._allPoolPlayers.filter(p => !['A','B'].includes((window._manualAssignments||{})[p.id||p.supabase_id]));
+
+    const renderLivePreviewPlayer = (p) => {
+        const pInfo = _getPInfo(p);
+        const gen   = calcPlayerGEN(p);
+        return `<div style="display:flex;align-items:center;gap:0.4rem;padding:0.3rem 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <img src="${pInfo.avatar}" style="width:22px;height:22px;border-radius:50%;">
+            <span style="flex:1;font-size:0.8rem;color:#ddd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${pInfo.name}</span>
+            <span style="font-size:0.7rem;color:${pInfo.col};">${pInfo.pos}</span>
+            <span style="font-size:0.72rem;color:#ffd700;min-width:20px;text-align:right;">${gen != null ? gen : '—'}</span>
         </div>`;
     };
 
     c.innerHTML = `
         <div class="olustur-tab-wrapper">
             <div class="glass-card olustur-config-card">
-                <div class="section-label-pill" style="margin-bottom:1.2rem;">
-                    <i class="fa-solid fa-scale-balanced" style="color:var(--neon-cyan);"></i>
-                    ADİL DAĞITIM OLUŞTURUCU
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;">
+                    <div class="section-label-pill" style="margin-bottom:0;">
+                        <i class="fa-solid fa-scale-balanced" style="color:var(--neon-cyan);"></i>
+                        ADİL DAĞITIM OLUŞTURUCU
+                    </div>
+                    <button onclick="resetBalancedTeams()" style="background:rgba(255,0,127,0.12);border:1px solid rgba(255,0,127,0.3);color:#ff007f;border-radius:8px;padding:0.3rem 0.8rem;font-size:0.78rem;cursor:pointer;">
+                        <i class="fa-solid fa-rotate-left"></i> Sıfırla
+                    </button>
                 </div>
-                <p style="color:#888; font-size:0.9rem; margin-bottom:1.5rem;">
-                    Oyuncu havuzundan GEN değerlerine göre dengeli iki takım oluşturur.
-                    A/B butonlarıyla oyuncuları sabit bir takıma atayabilir, geri kalanları otomatik dağıtabilirsiniz.
+                <p style="color:#888; font-size:0.85rem; margin-bottom:1.2rem;">
+                    A/B butonlarıyla oyuncuları sabit bir takıma sabitle. Oto olanlar "ADİL DAĞITIM" ile otomatik dağıtılır.
                 </p>
 
-                <div class="olustur-pool-header">
-                    <span class="section-label-pill" style="margin-bottom:0.5rem;">
-                        <i class="fa-solid fa-people-group"></i>
-                        OYUNCU HAVUZU (${window._allPoolPlayers.length} oyuncu)
-                    </span>
-                    <button class="btn-sm btn-accent" onclick="selectAllPoolPlayers()">Tümünü Seç</button>
+                <!-- OYUNCU HAVUZU -->
+                <div style="font-size:0.75rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;">
+                    <i class="fa-solid fa-people-group" style="color:var(--neon-green);"></i>
+                    OYUNCU HAVUZU (${window._allPoolPlayers.length} oyuncu)
                 </div>
-                <div class="pool-player-grid" id="pool-player-grid">
+                <div style="display:flex;flex-direction:column;gap:0.4rem;margin-bottom:1rem;max-height:280px;overflow-y:auto;padding-right:0.2rem;">
                     ${teamPlayers.map(p => renderPoolItem(p, false)).join('')}
                     ${externalOnly.map(p => renderPoolItem(p, true)).join('')}
-                    ${window._allPoolPlayers.length === 0 ? '<div style="color:#444;font-size:0.85rem;padding:1rem;text-align:center;"><i class="fa-solid fa-users-slash"></i> Takımda oyuncu yok. Aşağıdan dışarıdan ekleyin.</div>' : ''}
+                    ${window._allPoolPlayers.length === 0 ? '<div style="color:#444;font-size:0.85rem;padding:1rem;text-align:center;"><i class="fa-solid fa-users-slash"></i> Takımda oyuncu yok.</div>' : ''}
                 </div>
 
+                <!-- ANLIK ÖNİZLEME -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1.2rem;">
+                    <div style="background:rgba(0,255,136,0.06);border:1px solid rgba(0,255,136,0.2);border-radius:8px;padding:0.6rem;">
+                        <div style="font-size:0.75rem;color:var(--neon-green);font-weight:700;margin-bottom:0.4rem;">🟢 Takım A (${manualA.length})</div>
+                        ${manualA.length ? manualA.map(renderLivePreviewPlayer).join('') : '<div style="color:#444;font-size:0.75rem;text-align:center;padding:0.4rem;">Henüz atama yok</div>'}
+                    </div>
+                    <div style="background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.2);border-radius:8px;padding:0.6rem;">
+                        <div style="font-size:0.75rem;color:var(--neon-cyan);font-weight:700;margin-bottom:0.4rem;">🔵 Takım B (${manualB.length})</div>
+                        ${manualB.length ? manualB.map(renderLivePreviewPlayer).join('') : '<div style="color:#444;font-size:0.75rem;text-align:center;padding:0.4rem;">Henüz atama yok</div>'}
+                    </div>
+                </div>
+                ${autoPlayers.length ? `<div style="font-size:0.75rem;color:#666;margin-bottom:0.8rem;"><i class="fa-solid fa-shuffle" style="color:#888;"></i> Otomatik dağıtılacak: ${autoPlayers.map(p => _getPInfo(p).name).join(', ')}</div>` : ''}
+
                 <!-- Dışarıdan Oyuncu Ekleme -->
-                <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.07);">
-                    <div style="font-size:0.75rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;">
+                <div style="padding-top:0.8rem;border-top:1px solid rgba(255,255,255,0.07);margin-bottom:1rem;">
+                    <div style="font-size:0.75rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.4rem;">
                         <i class="fa-solid fa-user-plus" style="color:var(--neon-cyan);"></i> Dışarıdan Oyuncu Ekle
                     </div>
                     <input id="pool-ext-search" class="profile-input" placeholder="Kullanıcı adı ara..."
@@ -1548,17 +1580,14 @@ window.renderTakimOlusturTab = function() {
                     <div id="pool-ext-results" style="margin-top:0.5rem;"></div>
                 </div>
 
-                <div class="olustur-algo-row" style="margin-top:1.2rem;">
-                    <div class="algo-option">
-                        <label>Algoritma</label>
-                        <select id="algo-type" class="profile-select" style="max-width:220px;">
-                            <option value="gen">GEN Dengesi (Adil Dağıtım)</option>
-                            <option value="pos">Mevki Öncelikli</option>
-                            <option value="snake">Snake Draft (Serpme)</option>
-                        </select>
-                    </div>
-                    <button class="btn-primary" onclick="generateBalancedTeams()"
-                            style="background:linear-gradient(135deg,var(--neon-green),var(--neon-cyan));color:black;">
+                <div style="display:flex;align-items:center;justify-content:flex-end;gap:0.8rem;">
+                    <select id="algo-type" class="profile-select" style="max-width:200px;font-size:0.82rem;">
+                        <option value="gen">GEN Dengesi (Adil)</option>
+                        <option value="pos">Mevki Öncelikli</option>
+                        <option value="snake">Snake Draft</option>
+                    </select>
+                    <button onclick="generateBalancedTeams()"
+                            style="background:linear-gradient(135deg,var(--neon-green),var(--neon-cyan));color:#000;border:none;border-radius:10px;padding:0.55rem 1.4rem;font-weight:700;font-size:0.9rem;cursor:pointer;white-space:nowrap;">
                         <i class="fa-solid fa-scale-balanced"></i> ADİL DAĞITIM
                     </button>
                 </div>
@@ -1634,30 +1663,31 @@ window.selectAllPoolPlayers = function() {
     document.querySelectorAll('.pool-checkbox').forEach(cb => cb.checked = true);
 };
 
+window.resetBalancedTeams = function() {
+    window._manualAssignments = {};
+    localStorage.removeItem('ss_balanced_teams');
+    renderTakimOlusturTab();
+    showToast('Takımlar sıfırlandı.');
+};
+
 window._setManualTeam = function(playerId, team) {
     if (!window._manualAssignments) window._manualAssignments = {};
-    window._manualAssignments[playerId] = team;
-    const item = document.getElementById(`pool-item-${playerId}`);
-    if (item) {
-        item.querySelectorAll('.pab').forEach(btn => btn.classList.remove('pab-a','pab-b','pab-auto'));
-        const btns = item.querySelectorAll('.pab');
-        if (team === 'A' && btns[0]) btns[0].classList.add('pab-a');
-        if (team === 'B' && btns[1]) btns[1].classList.add('pab-b');
-        if (team === 'auto' && btns[2]) btns[2].classList.add('pab-auto');
-    }
+    window._manualAssignments[String(playerId)] = team;
+    // Canlı önizleme için tab'ı yeniden render et
+    renderTakimOlusturTab();
 };
 
 window.generateBalancedTeams = function() {
-    const checked = [...document.querySelectorAll('.pool-checkbox:checked')].map(cb => cb.value);
-    if (checked.length < 2) { showToast('En az 2 oyuncu seçin!'); return; }
+    const pool = window._allPoolPlayers || [];
+    if (pool.length < 2) { showToast('En az 2 oyuncu gerekli!'); return; }
 
-    const pool = (window._allPoolPlayers || []).filter(p => checked.includes(p.id));
     const assigns = window._manualAssignments || {};
+    const pid = (p) => String(p.id || p.supabase_id || '');
 
     // Kaptan elle atananlar ve otomatik havuz
-    const manualA  = pool.filter(p => assigns[p.id] === 'A');
-    const manualB  = pool.filter(p => assigns[p.id] === 'B');
-    const autoPool = pool.filter(p => !['A','B'].includes(assigns[p.id]));
+    const manualA  = pool.filter(p => assigns[pid(p)] === 'A');
+    const manualB  = pool.filter(p => assigns[pid(p)] === 'B');
+    const autoPool = pool.filter(p => !['A','B'].includes(assigns[pid(p)]));
 
     let teamA = [...manualA];
     let teamB = [...manualB];
@@ -1678,16 +1708,16 @@ window.generateBalancedTeams = function() {
     });
 
     // Greedy swap sadece otomatik oyuncular arasında
-    const autoIds = new Set(autoPool.map(p => p.id));
+    const autoIds = new Set(autoPool.map(p => pid(p)));
     for (let iter = 0; iter < 20; iter++) {
         const sumA = teamA.reduce((s, p) => s + safeGen(p), 0);
         const sumB = teamB.reduce((s, p) => s + safeGen(p), 0);
         if (Math.abs(sumA - sumB) < 2) break;
         let bestSwap = null, bestDiff = Math.abs(sumA - sumB);
         teamA.forEach((pa, ia) => {
-            if (!autoIds.has(pa.id)) return;
+            if (!autoIds.has(pid(pa))) return;
             teamB.forEach((pb, ib) => {
-                if (!autoIds.has(pb.id)) return;
+                if (!autoIds.has(pid(pb))) return;
                 const d = Math.abs((sumA - safeGen(pa) + safeGen(pb)) - (sumB - safeGen(pb) + safeGen(pa)));
                 if (d < bestDiff) { bestDiff = d; bestSwap = { ia, ib }; }
             });
