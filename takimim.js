@@ -1280,7 +1280,7 @@ function renderCoreSquadSection() {
         </div>` : ''}
       ${squadMembers.map((m, i) => {
         const p   = m.player || {};
-        const rawMevki = p.ana_mevki || p.position || 'OS';
+        const rawMevki = p.ana_mevki || p.position || p.details?.anaMevki || p.details?.pos || 'OS';
         const posKey = typeof window._normalizePosKey === 'function' ? window._normalizePosKey(rawMevki) : 'OS';
         const col = posColors[posKey] || '#aaa';
         const isCap = m.role === 'captain';
@@ -1379,7 +1379,7 @@ function renderTeamMemberGrid() {
   const byPos = { KL:[], DEF:[], OS:[], FV:[], 'Diğer':[] };
 
   _tmState.members.forEach(m => {
-    const rawMevki = m.player?.ana_mevki || m.player?.position || 'OS';
+    const rawMevki = m.player?.ana_mevki || m.player?.position || m.player?.details?.anaMevki || m.player?.details?.pos || 'OS';
     const pos = typeof window._normalizePosKey === 'function'
       ? window._normalizePosKey(rawMevki)
       : rawMevki.toUpperCase();

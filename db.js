@@ -365,7 +365,7 @@ const Teams = {
       .from('team_members')
       .select(`
         *,
-        player:player_id(id, username, avatar_url, position, ana_mevki, ayak,
+        player:player_id(id, username, avatar_url, position, ana_mevki, ayak, details,
                         gen_score, total_matches, total_goals, total_assists,
                         rating_teknik, rating_sut, rating_pas, rating_hiz, rating_fizik, rating_kondisyon)
       `)

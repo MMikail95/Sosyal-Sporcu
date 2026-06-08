@@ -51,7 +51,7 @@ window._getPInfo = function(p) {
     const id = p.id || p.supabase_id;
     const _safeStr = v => (v && v !== 'null' && v !== 'undefined') ? v : null;
     const name = _safeStr(p.username) || _safeStr(p.name) || 'Oyuncu';
-    const rawPos = p.ana_mevki || p.position || p.details?.pos || 'OS';
+    const rawPos = p.ana_mevki || p.position || p.details?.anaMevki || p.details?.pos || 'OS';
     const posKey = window._normalizePosKey(rawPos);
     const posColors = { KL: '#ffd700', DEF: '#00e5ff', OS: '#00ff88', FV: '#ff007f' };
     return {
@@ -764,13 +764,17 @@ window.renderSahaTab = function () {
     };
 
     const getPlayerGenFromMember = (p) => {
-        if (!p) return 70;
-        if (p.rating_teknik !== undefined) {
-            const vals = [p.rating_teknik, p.rating_sut, p.rating_pas,
-                          p.rating_hiz, p.rating_fizik, p.rating_kondisyon].map(v => v || 70);
-            return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+        if (!p) return null;
+        // gen_score öncelikli — null veya 0 değilse kullan
+        if (p.gen_score != null && p.gen_score > 0) return p.gen_score;
+        // rating alanları varsa ve en az biri > 0 ise ortalama hesapla
+        const ratingFields = [p.rating_teknik, p.rating_sut, p.rating_pas,
+                              p.rating_hiz, p.rating_fizik, p.rating_kondisyon];
+        if (ratingFields.some(v => v != null)) {
+            const vals = ratingFields.filter(v => v != null && v > 0);
+            if (vals.length > 0) return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
         }
-        return typeof calcPlayerGEN === 'function' ? calcPlayerGEN(p) : 70;
+        return null; // Henüz puan yok — mock 70 gösterme
     };
 
     const teamPlayers = getMembers();
@@ -789,7 +793,7 @@ window.renderSahaTab = function () {
             const col = posColors[pos.pos] || '#aaa';
             const name = p ? (p.username || p.name || 'Oyuncu') : '';
             const avatar = p ? (p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`) : '';
-            const genColor = gen >= 80 ? '#00ff88' : gen >= 70 ? '#ffd700' : '#ff6b35';
+            const genColor = gen != null ? (gen >= 80 ? '#00ff88' : gen >= 70 ? '#ffd700' : '#ff6b35') : '#555';
 
             return `
             <div class="pitch-slot-new ${p ? 'filled' : 'empty'}"
@@ -803,7 +807,7 @@ window.renderSahaTab = function () {
               ${p ? `
                 <div class="psn-card" draggable="true"
                      ondragstart="startDragFromSlot(event,'${pos.id}','${assignedId}')">
-                  <div class="psn-gen" style="background:${genColor}; color:#000">${gen}</div>
+                  ${gen != null ? `<div class="psn-gen" style="background:${genColor}; color:#000">${gen}</div>` : ''}
                   <img src="${avatar}" class="psn-avatar" alt="${name}">
                   <div class="psn-name">${name.split(' ')[0].substring(0, 8)}</div>
                   <div class="psn-pos" style="color:${col}">${pos.label}</div>
@@ -828,7 +832,7 @@ window.renderSahaTab = function () {
             const pid = p.id || p.supabase_id;
             const name = p.username || p.name || 'Oyuncu';
             const avatar = p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
-            const rawPos = p.ana_mevki || p.position || (p.details && p.details.pos) || 'OS';
+            const rawPos = p.ana_mevki || p.position || (p.details && (p.details.anaMevki || p.details.pos)) || 'OS';
             const posColors = { KL: '#ffd700', DEF: '#4fc3f7', OS: '#69f0ae', FV: '#ff5252' };
             const posKey = window._normalizePosKey(rawPos);
             const pos = { KL:'KL', DEF:'DEF', OS:'OS', FV:'FV' }[posKey] || posKey;
@@ -1273,20 +1277,32 @@ window.psn_autoFill = function() {
 
     // Mevki eşleştirme — merkezi normalizer kullan
     const mapPos = (p) => {
-        const pos = p.ana_mevki || p.position || (p.details && p.details.pos) || 'OS';
+        const pos = p.ana_mevki || p.position || (p.details && (p.details.anaMevki || p.details.pos)) || 'OS';
         return window._normalizePosKey(pos);
     };
 
     const byPos = { KL: [], DEF: [], OS: [], FV: [] };
     sorted.forEach(p => { byPos[mapPos(p)].push(p.id || p.supabase_id); });
 
+    const newAssignments = {};
+
+    // 1. Geçiş: Her oyuncuyu kendi mevkisine ata
     formation.positions.forEach(pos => {
         const group = byPos[pos.pos];
-        const available = group?.find(id => !Object.values(pitchDragState.assignments).includes(id));
-        if (available) { pitchDragState.assignments[pos.id] = available; return; }
-        const any = sorted.find(p => !Object.values(pitchDragState.assignments).includes(p.id || p.supabase_id));
-        if (any) pitchDragState.assignments[pos.id] = any.id || any.supabase_id;
+        if (!group || group.length === 0) return;
+        const available = group.find(id => !Object.values(newAssignments).includes(id));
+        if (available) newAssignments[pos.id] = available;
     });
+
+    // 2. Geçiş: Eşleşemeyen oyuncuları kalan boş slotlara koy (GEN sırasına göre)
+    const assignedIds = new Set(Object.values(newAssignments));
+    const leftover = sorted.filter(p => !assignedIds.has(p.id || p.supabase_id));
+    const emptySlots = formation.positions.filter(pos => !newAssignments[pos.id]);
+    leftover.forEach((p, i) => {
+        if (emptySlots[i]) newAssignments[emptySlots[i].id] = p.id || p.supabase_id;
+    });
+
+    pitchDragState.assignments = newAssignments;
 
     savePitchState();
     // window.refreshPitchUI: renderSahaTab tarafından set edilen yeni versiyonu çağır
@@ -1473,18 +1489,19 @@ window.renderTakimOlusturTab = function() {
         const gen       = calcPlayerGEN(p);
         const inCore    = coreSquad.includes(pInfo.id);
         const manAssign = (window._manualAssignments || {})[pInfo.id] || 'auto';
+        const cbId      = `pcb-${pInfo.id.toString().replace(/[^a-z0-9]/gi,'_')}`;
         return `
         <div class="pool-player-item ${inCore ? 'in-core' : ''}" id="pool-item-${pInfo.id}" style="position:relative;">
-            <label style="display:contents;cursor:pointer;">
-                <input type="checkbox" class="pool-checkbox" value="${pInfo.id}" ${inCore ? 'checked' : ''}>
+            <input type="checkbox" id="${cbId}" class="pool-checkbox" value="${pInfo.id}" ${inCore ? 'checked' : ''} style="flex-shrink:0;cursor:pointer;">
+            <label for="${cbId}" style="display:flex;align-items:center;gap:0.4rem;flex:1;min-width:0;cursor:pointer;">
                 <img src="${pInfo.avatar}" class="pool-avatar">
-                <div class="pool-info">
-                    <span class="pool-name">${pInfo.name}${isExternal ? ' <span style="font-size:0.6rem;color:#ff6b35;border:1px solid rgba(255,107,53,0.4);border-radius:3px;padding:0 3px;vertical-align:middle;">Dış</span>' : ''}</span>
+                <div class="pool-info" style="min-width:0;flex:1;">
+                    <span class="pool-name" style="color:#ddd;">${pInfo.name}${isExternal ? ' <span style="font-size:0.6rem;color:#ff6b35;border:1px solid rgba(255,107,53,0.4);border-radius:3px;padding:0 3px;vertical-align:middle;">Dış</span>' : ''}</span>
                     <span class="pool-pos" style="color:${pInfo.col};">${pInfo.pos}</span>
                 </div>
-                <span class="pool-gen" style="color:${gen>=80?'var(--neon-green)':'#ffd700'}">${gen != null ? gen : '—'}</span>
+                <span class="pool-gen" style="color:${gen!=null&&gen>=80?'var(--neon-green)':'#ffd700'};flex-shrink:0;">${gen != null ? gen : '—'}</span>
             </label>
-            <div class="pool-team-assign" style="display:flex;gap:2px;margin-left:4px;">
+            <div class="pool-team-assign" style="display:flex;gap:2px;margin-left:4px;flex-shrink:0;">
                 <button class="pab ${manAssign==='A'?'pab-a':''}" onclick="event.stopPropagation();_setManualTeam('${pInfo.id}','A')" title="A Takımı">A</button>
                 <button class="pab ${manAssign==='B'?'pab-b':''}" onclick="event.stopPropagation();_setManualTeam('${pInfo.id}','B')" title="B Takımı">B</button>
                 <button class="pab ${manAssign==='auto'?'pab-auto':''}" onclick="event.stopPropagation();_setManualTeam('${pInfo.id}','auto')" title="Otomatik">Oto</button>
@@ -1645,26 +1662,33 @@ window.generateBalancedTeams = function() {
     let teamA = [...manualA];
     let teamB = [...manualB];
 
-    // Otomatik oyuncuları GEN dengesine göre dağıt (mevcut takım GEN'ini hesaba kat)
-    const sorted = [...autoPool].sort((a, b) => calcPlayerGEN(b) - calcPlayerGEN(a));
+    // GEN null-safe getter — puan yoksa 0 kullan (dağıtım için)
+    const safeGen = (p) => calcPlayerGEN(p) ?? 0;
+
+    // Otomatik oyuncuları GEN dengesine göre dağıt
+    const sorted = [...autoPool].sort((a, b) => safeGen(b) - safeGen(a));
     sorted.forEach(p => {
-        const sumA = teamA.reduce((s, x) => s + calcPlayerGEN(x), 0);
-        const sumB = teamB.reduce((s, x) => s + calcPlayerGEN(x), 0);
-        (sumA <= sumB ? teamA : teamB).push(p);
+        const sumA = teamA.reduce((s, x) => s + safeGen(x), 0);
+        const sumB = teamB.reduce((s, x) => s + safeGen(x), 0);
+        // Eşit GEN'de: daha küçük takıma at (sıralı dağılım için)
+        if (sumA < sumB) teamA.push(p);
+        else if (sumB < sumA) teamB.push(p);
+        else if (teamA.length <= teamB.length) teamA.push(p);
+        else teamB.push(p);
     });
 
     // Greedy swap sadece otomatik oyuncular arasında
     const autoIds = new Set(autoPool.map(p => p.id));
     for (let iter = 0; iter < 20; iter++) {
-        const genA = teamA.reduce((s, p) => s + calcPlayerGEN(p), 0);
-        const genB = teamB.reduce((s, p) => s + calcPlayerGEN(p), 0);
-        if (Math.abs(genA - genB) < 2) break;
-        let bestSwap = null, bestDiff = Math.abs(genA - genB);
+        const sumA = teamA.reduce((s, p) => s + safeGen(p), 0);
+        const sumB = teamB.reduce((s, p) => s + safeGen(p), 0);
+        if (Math.abs(sumA - sumB) < 2) break;
+        let bestSwap = null, bestDiff = Math.abs(sumA - sumB);
         teamA.forEach((pa, ia) => {
             if (!autoIds.has(pa.id)) return;
             teamB.forEach((pb, ib) => {
                 if (!autoIds.has(pb.id)) return;
-                const d = Math.abs((genA - calcPlayerGEN(pa) + calcPlayerGEN(pb)) - (genB - calcPlayerGEN(pb) + calcPlayerGEN(pa)));
+                const d = Math.abs((sumA - safeGen(pa) + safeGen(pb)) - (sumB - safeGen(pb) + safeGen(pa)));
                 if (d < bestDiff) { bestDiff = d; bestSwap = { ia, ib }; }
             });
         });
@@ -1675,8 +1699,8 @@ window.generateBalancedTeams = function() {
         } else break;
     }
 
-    const genA = Math.round(teamA.reduce((s, p) => s + calcPlayerGEN(p), 0) / (teamA.length || 1));
-    const genB = Math.round(teamB.reduce((s, p) => s + calcPlayerGEN(p), 0) / (teamB.length || 1));
+    const genA = teamA.length ? Math.round(teamA.reduce((s, p) => s + safeGen(p), 0) / teamA.length) : 0;
+    const genB = teamB.length ? Math.round(teamB.reduce((s, p) => s + safeGen(p), 0) / teamB.length) : 0;
     const diff = Math.abs(genA - genB);
 
     localStorage.setItem('ss_balanced_teams', JSON.stringify({ a: teamA.map(p => p.id), b: teamB.map(p => p.id), diff }));
@@ -1688,14 +1712,15 @@ function renderBalancedTeamsHTML(aIds, bIds, diff) {
     const allPool = window._allPoolPlayers || [];
     const teamA = allPool.filter(p => aIds.includes(p.id));
     const teamB = allPool.filter(p => bIds.includes(p.id));
-    const genA = Math.round(teamA.reduce((s, p) => s + calcPlayerGEN(p), 0) / (teamA.length || 1));
-    const genB = Math.round(teamB.reduce((s, p) => s + calcPlayerGEN(p), 0) / (teamB.length || 1));
+    const _sg = (p) => calcPlayerGEN(p) ?? 0;
+    const genA = teamA.length ? Math.round(teamA.reduce((s, p) => s + _sg(p), 0) / teamA.length) : 0;
+    const genB = teamB.length ? Math.round(teamB.reduce((s, p) => s + _sg(p), 0) / teamB.length) : 0;
 
     const renderTeamCol = (team, name, genAvg, color) => `
         <div class="balanced-team-col glass-card" style="border-color:${color}33;">
             <div class="bal-team-header" style="border-bottom:1px solid ${color}44; margin-bottom:1rem;">
                 <span class="bal-team-name" style="color:${color};">${name}</span>
-                <span class="bal-gen-badge" style="border-color:${color}; color:${color};">${genAvg} GEN</span>
+                <span class="bal-gen-badge" style="border-color:${color}; color:${color};">${genAvg > 0 ? genAvg + ' GEN' : '— GEN'}</span>
             </div>
             ${team.map(p => {
                 const pInfo = _getPInfo(p);
@@ -1707,7 +1732,7 @@ function renderBalancedTeamsHTML(aIds, bIds, diff) {
                         <span class="bal-player-name">${pInfo.name}</span>
                         <span style="color:${pInfo.col}; font-size:0.75rem;">${pInfo.pos}</span>
                     </div>
-                    <span class="bal-player-gen" style="color:${gen>=80?'var(--neon-green)':'#ffd700'}">${gen}</span>
+                    <span class="bal-player-gen" style="color:${gen!=null&&gen>=80?'var(--neon-green)':'#ffd700'}">${gen != null ? gen : '—'}</span>
                 </div>`;
             }).join('')}
         </div>`;
