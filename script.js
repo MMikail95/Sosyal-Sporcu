@@ -611,6 +611,8 @@ async function initSupabaseUser() {
                     activePlayerId  = existingPlayer.id;
                 }
                 // Supabase'den gelen TÜM verileri override et (localStorage'da eski değerler kalıyor)
+                // supabase_id her zaman set et (yeni player branch'ında var ama existing'de eksikti)
+                existingPlayer.supabase_id = userId;
                 // İsim ve avatar her zaman Supabase'den gelsin
                 if (profile.username)   { existingPlayer.name = profile.username; existingPlayer.supabase_username = profile.username; }
                 if (profile.full_name)  { existingPlayer.full_name = profile.full_name; }
@@ -1957,8 +1959,9 @@ window.updateUI = function () {
     const avatarEl = document.getElementById('profile-avatar');
     if (avatarEl) {
         const sbp = window.__SUPABASE_PROFILE__;
-        // player.supabase_id = giriş yapan kullanıcının UUID'si (her zaman mevcut)
-        const isViewingOther = sbp && player.supabase_id && sbp.id !== player.supabase_id;
+        // ss_view_player_id varsa ve __SUPABASE_PROFILE__ o kişiye aitse → başkasının profili
+        const viewedSessionId = sessionStorage.getItem('ss_view_player_id');
+        const isViewingOther  = sbp && viewedSessionId && sbp.id === viewedSessionId;
         const avatarUrl = isViewingOther
             ? (sbp.avatar_url || '')
             : (player.avatar_url || player.details?.avatar_url || '');
