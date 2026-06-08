@@ -83,8 +83,8 @@ const Profiles = {
   // Tüm profilleri getir (Keşfet sayfası için)
   async getAll({ city, position, search, limit = 200 } = {}) {
     let query = sb()
-      .from('profiles_with_ratings')
-      .select('*')
+      .from('profiles')
+      .select('id, username, full_name, avatar_url, city, position, ana_mevki, ayak, gen_score, total_matches, total_goals, total_assists')
       .order('gen_score', { ascending: false, nullsFirst: false })
       .limit(limit);
 
@@ -164,8 +164,8 @@ const Friends = {
       .from('friendships')
       .select(`
         *,
-        requester:requester_id(id, username, avatar_url, gen_score, position),
-        addressee:addressee_id(id, username, avatar_url, gen_score, position)
+        requester:requester_id(id, username, avatar_url, gen_score, position, city, total_matches, total_goals, total_assists),
+        addressee:addressee_id(id, username, avatar_url, gen_score, position, city, total_matches, total_goals, total_assists)
       `)
       .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
       .eq('status', 'accepted');

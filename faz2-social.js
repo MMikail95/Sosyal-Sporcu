@@ -578,8 +578,7 @@ window.renderExploreGrid = function() {
     }
 
     grid.innerHTML = filtered.map(p => {
-        const avatarSeed = p.username || p.id;
-        const avatarUrl  = p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(avatarSeed)}`;
+        const avatarUrl  = p.avatar_url || '';
         const gen        = p.gen_score || p.community_gen || null;
         const genColor   = gen >= 8 ? 'var(--neon-green)' : gen >= 7 ? 'var(--neon-cyan)' : 'orange';
         const posIcon    = { KL:'🧤', DEF:'🛡️', OS:'⚡', FV:'⚽' }[p.position] || '⚽';
@@ -589,7 +588,7 @@ window.renderExploreGrid = function() {
         <div class="explore-player-card" id="epc-${p.id}">
             <div class="epc-header">
                 <div class="epc-avatar-wrap">
-                    <img src="${avatarUrl}" class="epc-avatar" alt="${p.username}" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'">
+                    <img src="${avatarUrl}" class="epc-avatar" alt="${p.username}" onerror="this.src='';this.onerror=null;">
                     <div class="epc-gen-badge" style="color:${genColor}; border-color:${genColor};">${Math.round(gen)}</div>
                 </div>
                 <div class="epc-info">
@@ -796,8 +795,7 @@ async function showProfileModal(playerId, username, context = 'explore') {
             return;
         }
 
-        const avatarSeed = profile.username || profile.id;
-        const avatarUrl  = profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(avatarSeed)}`;
+        const avatarUrl  = profile.avatar_url || '';
         const gen        = Math.round(profile.gen_score || profile.community_gen || 0) || null;
         const genColor   = gen >= 8 ? 'var(--neon-green)' : gen >= 7 ? 'var(--neon-cyan)' : 'orange';
         const posIcon    = { KL:'\uD83E\uDDE4', DEF:'\uD83D\uDEE1\uFE0F', OS:'\u26A1', FV:'\u26BD' }[profile.position] || '\u26BD';
@@ -821,7 +819,7 @@ async function showProfileModal(playerId, username, context = 'explore') {
                 <div style="position:relative; display:inline-block;">
                     <img src="${avatarUrl}" style="width:80px; height:80px; border-radius:50%;
                                                   border:3px solid ${genColor}; filter:brightness(0.9);"
-                         onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fb'">
+                         onerror="this.src='';this.onerror=null;">
                     <div style="position:absolute; bottom:-4px; right:-4px; background:#0a0a0f;
                                 border:1px solid ${genColor}; border-radius:8px; font-size:0.7rem;
                                 font-weight:800; color:${genColor}; padding:2px 6px;">
@@ -896,7 +894,7 @@ async function showProfileModal(playerId, username, context = 'explore') {
         <div style="display:flex; flex-direction:column; align-items:center; gap:0.75rem; margin-bottom:1.5rem;">
             <div style="position:relative; display:inline-block;">
                 <img src="${avatarUrl}" style="width:80px; height:80px; border-radius:50%; border:3px solid ${genColor};"
-                     onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fb'">
+                     onerror="this.src='';this.onerror=null;">
                 <div style="position:absolute; bottom:-4px; right:-4px; background:#0a0a0f; border:1px solid ${genColor};
                             border-radius:8px; font-size:0.7rem; font-weight:800; color:${genColor}; padding:2px 6px;">
                     ${gen} GEN
@@ -1303,7 +1301,7 @@ function buildCommentHtml(c) {
     return `
     <div class="comment-item">
         <img src="${avatar}" class="comment-avatar" alt="${name}"
-             onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fb'">
+             onerror="this.src='';this.onerror=null;">
         <div class="comment-body">
             <span class="comment-author">${name}</span>
             <span class="comment-text">${escapeHtml(c.content)}</span>
@@ -2224,7 +2222,7 @@ window.loadFriendsList = async function() {
             <div class="explore-player-card" style="border-color:rgba(173,255,47,0.2);">
                 <div class="epc-header">
                     <div class="epc-avatar-wrap">
-                        <img src="${avatar}" class="epc-avatar" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fb'">
+                        <img src="${avatar}" class="epc-avatar" onerror="this.src='';this.onerror=null;">
                     </div>
                     <div class="epc-info">
                         <h4 class="epc-name">${name}</h4>
@@ -2249,8 +2247,7 @@ window.loadFriendsList = async function() {
             const friendId = f.requester_id === user.id ? f.addressee_id : f.requester_id;
             const friend   = f.requester_id === user.id ? (f.addressee || {}) : (f.requester || {});
             const name     = friend.username || 'Oyuncu';
-            const seed     = friend.username || friendId;
-            const avatar   = friend.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
+            const avatar   = friend.avatar_url || '';
             const gen      = friend.gen_score || null;
             const genColor = gen >= 8 ? 'var(--neon-green)' : gen >= 7 ? 'var(--neon-cyan)' : 'orange';
             const posIcon  = { KL:'🧤', DEF:'🛡️', OS:'⚡', FV:'⚽' }[friend.position] || '⚽';
@@ -2258,7 +2255,7 @@ window.loadFriendsList = async function() {
             <div class="explore-player-card">
                 <div class="epc-header">
                     <div class="epc-avatar-wrap">
-                        <img src="${avatar}" class="epc-avatar" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fb'">
+                        <img src="${avatar}" class="epc-avatar" onerror="this.src='';this.onerror=null;">
                         <div class="epc-gen-badge" style="color:${genColor}; border-color:${genColor};">${Math.round(gen)}</div>
                     </div>
                     <div class="epc-info">

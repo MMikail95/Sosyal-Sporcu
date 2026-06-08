@@ -1488,8 +1488,8 @@ window.renderTakimOlusturTab = function() {
         const pInfo     = _getPInfo(p);
         const gen       = calcPlayerGEN(p);
         const manAssign = (window._manualAssignments || {})[String(pInfo.id)] || 'auto';
-        const teamColor = manAssign === 'A' ? 'rgba(0,255,136,0.15)' : manAssign === 'B' ? 'rgba(0,229,255,0.15)' : 'transparent';
-        const teamBorder = manAssign === 'A' ? 'rgba(0,255,136,0.4)' : manAssign === 'B' ? 'rgba(0,229,255,0.4)' : 'rgba(255,255,255,0.07)';
+        const teamColor  = manAssign === 'A' ? 'rgba(0,255,136,0.15)' : manAssign === 'B' ? 'rgba(0,229,255,0.15)' : 'rgba(255,200,0,0.06)';
+        const teamBorder = manAssign === 'A' ? 'rgba(0,255,136,0.4)'  : manAssign === 'B' ? 'rgba(0,229,255,0.4)'  : 'rgba(255,200,0,0.25)';
         return `
         <div id="pool-item-${pInfo.id}"
              style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.6rem;
@@ -1686,8 +1686,8 @@ window._setManualTeam = function(playerId, team) {
     // ── Sadece bu satırın stilini güncelle (tam re-render yok) ──
     const item = document.getElementById('pool-item-' + playerId);
     if (item) {
-        const teamColor  = team === 'A' ? 'rgba(0,255,136,0.15)' : team === 'B' ? 'rgba(0,229,255,0.15)' : 'transparent';
-        const teamBorder = team === 'A' ? 'rgba(0,255,136,0.4)'  : team === 'B' ? 'rgba(0,229,255,0.4)'  : 'rgba(255,255,255,0.07)';
+        const teamColor  = team === 'A' ? 'rgba(0,255,136,0.15)' : team === 'B' ? 'rgba(0,229,255,0.15)' : 'rgba(255,200,0,0.06)';
+        const teamBorder = team === 'A' ? 'rgba(0,255,136,0.4)'  : team === 'B' ? 'rgba(0,229,255,0.4)'  : 'rgba(255,200,0,0.25)';
         item.style.background   = teamColor;
         item.style.borderColor  = teamBorder;
         const btns = item.querySelectorAll('.pab');
@@ -1787,8 +1787,19 @@ window.generateBalancedTeams = function() {
     const genB = teamB.length ? Math.round(teamB.reduce((s, p) => s + safeGen(p), 0) / teamB.length) : 0;
     const diff = Math.abs(genA - genB);
 
-    localStorage.setItem('ss_balanced_teams', JSON.stringify({ a: teamA.map(p => p.id), b: teamB.map(p => p.id), diff }));
-    document.getElementById('balanced-teams-result').innerHTML = renderBalancedTeamsHTML(teamA.map(p => p.id), teamB.map(p => p.id), diff);
+    localStorage.setItem('ss_balanced_teams', JSON.stringify({ a: teamA.map(p => pid(p)), b: teamB.map(p => pid(p)), diff }));
+    document.getElementById('balanced-teams-result').innerHTML = renderBalancedTeamsHTML(teamA.map(p => pid(p)), teamB.map(p => pid(p)), diff);
+
+    // Havuz satırlarının renklerini dağıtım sonucuna göre güncelle
+    teamA.forEach(p => {
+        const el = document.getElementById('pool-item-' + pid(p));
+        if (el) { el.style.background = 'rgba(0,255,136,0.15)'; el.style.borderColor = 'rgba(0,255,136,0.4)'; }
+    });
+    teamB.forEach(p => {
+        const el = document.getElementById('pool-item-' + pid(p));
+        if (el) { el.style.background = 'rgba(0,229,255,0.15)'; el.style.borderColor = 'rgba(0,229,255,0.4)'; }
+    });
+
     showToast('⚡ Dengeli takımlar oluşturuldu!');
 };
 

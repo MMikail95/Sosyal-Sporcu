@@ -1028,6 +1028,14 @@ window.toggleProfileEditPanel = function() {
     }
 };
 
+function anaMevkiToPosition(anaMevki) {
+    if (!anaMevki) return null;
+    if (anaMevki.includes('Kaleci')) return 'KL';
+    if (['Sol Bek','Sağ Bek','Stoper','Libero'].some(v => anaMevki.includes(v))) return 'DEF';
+    if (['Forvet','Santrafor'].some(v => anaMevki.includes(v))) return 'FV';
+    return 'OS';
+}
+
 /**
  * Genel Bakış düzenleme panelinden hızlı kayıt
  */
@@ -1085,7 +1093,7 @@ window.saveQuickProfile = async function() {
         if (height)    updates.height          = height;
         if (weight)    updates.weight          = weight;
         if (ayak)      updates.ayak            = ayak;
-        if (anaMevki)  updates.ana_mevki       = anaMevki;
+        if (anaMevki) { updates.ana_mevki = anaMevki; updates.position = anaMevkiToPosition(anaMevki); }
         if (teamId)    updates.current_team_id = teamId;
 
         try {
@@ -1339,12 +1347,13 @@ function renderHighlights(player) {
 // ─── FUT Oyuncu Kartı ──────────────────────────────────────────────────────
 
 const FUT_ALL_FIELDS = {
-    mevki:     { label: 'MEVKİ',   get: p => p.details?.anaMevki || '—' },
-    takim:     { label: 'TAKIM',   get: p => p._sbTeamName || p.current_team_name || '—' },
-    yas:       { label: 'YAŞ',     get: p => p.details?.age ? `${p.details.age}` : '—' },
-    sehir:     { label: 'ŞEHİR',   get: p => p.details?.city || p.city || '—' },
-    ayak:      { label: 'AYAK',    get: p => p.details?.ayak || '—' },
-    form:      { label: 'FORM',    get: _p => {
+    // ── Temel bilgiler ──────────────────────────────────────────
+    mevki:     { label: 'MEVKİ',    get: p => p.details?.anaMevki || '—' },
+    takim:     { label: 'TAKIM',    get: p => p._sbTeamName || p.current_team_name || '—' },
+    yas:       { label: 'YAŞ',      get: p => p.details?.age ? `${p.details.age}` : '—' },
+    sehir:     { label: 'ŞEHİR',    get: p => p.details?.city || p.city || '—' },
+    ayak:      { label: 'AYAK',     get: p => p.details?.ayak || '—' },
+    form:      { label: 'FORM',     get: _p => {
         const c = window.__LIVE_CONDITION__;
         if (!c) return '<span style="color:#555;">—</span>';
         return `<span title="${c.label} · Son 3 maç"
@@ -1352,9 +1361,17 @@ const FUT_ALL_FIELDS = {
                             text-shadow:0 0 8px ${c.glow}, 0 0 18px ${c.glow};
                             line-height:1; display:inline-block;">${c.arrow}</span>`;
     }},
-    mac:       { label: 'MAÇ',     get: p => p.total_matches != null ? `${p.total_matches}` : '—' },
-    gol:       { label: 'GOL',     get: p => p.total_goals != null ? `${p.total_goals}` : '—' },
-    asist:     { label: 'ASİST',   get: p => p.total_assists != null ? `${p.total_assists}` : '—' },
+    mac:       { label: 'MAÇ',      get: p => p.total_matches != null ? `${p.total_matches}` : '—' },
+    gol:       { label: 'GOL',      get: p => p.total_goals != null ? `${p.total_goals}` : '—' },
+    asist:     { label: 'ASİST',    get: p => p.total_assists != null ? `${p.total_assists}` : '—' },
+    // ── Futbol Profili (yeni 7 alan) ────────────────────────────
+    futbolGecmisi:      { label: 'GEÇMİŞ',    get: p => p.details?.futbolGecmisi || '—' },
+    sakatlikDurumu:     { label: 'SAĞLIK',     get: p => p.details?.sakatlikDurumu || '—' },
+    antrenmanAliskanlik:{ label: 'ANTRENMAN',  get: p => p.details?.antrenmanAliskanlik || '—' },
+    macGunuTercihi:     { label: 'MAÇ GÜNÜ',  get: p => p.details?.macGunuTercihi || '—' },
+    ayakkabiTercihi:    { label: 'KRAMPON',    get: p => p.details?.ayakkabiTercihi || '—' },
+    formaNumarasi:      { label: 'FORMA',      get: p => p.details?.formaNumarasi != null ? `#${p.details.formaNumarasi}` : '—' },
+    idol:               { label: 'İDOL',       get: p => p.details?.idol || '—' },
 };
 const FUT_FIELDS_DEFAULT = ['mevki', 'ayak', 'yas', 'sehir', 'takim', 'form'];
 const FUT_LS_KEY = 'ss_fut_fields';
@@ -1719,7 +1736,7 @@ window.saveHakkimdaSection = async function(section) {
         const user = window.__AUTH_USER__;
         if (user && window.DB) {
             const upd = { alt_pos: altPos };
-            if (anaMevki)       upd.ana_mevki          = anaMevki;
+            if (anaMevki) { upd.ana_mevki = anaMevki; upd.position = anaMevkiToPosition(anaMevki); }
             if (ayak)           upd.ayak               = ayak;
             if (oyunTarzi)      upd.oyun_tarzi         = oyunTarzi;
             if (futbolGecmisi)  upd.futbol_gecmisi     = futbolGecmisi;
@@ -1936,12 +1953,15 @@ window.updateUI = function () {
     const nameEl = document.getElementById('player-name');
     if (nameEl) nameEl.textContent = player.full_name || player.details?.full_name || player.name;
 
-    // Avatar — önce Supabase URL, yoksa boş (Dicebear kaldırıldı #4)
+    // Avatar — başkasının profiline bakıyorsak __SUPABASE_PROFILE__'dan al
     const avatarEl = document.getElementById('profile-avatar');
     if (avatarEl) {
-        const avatarUrl = player.avatar_url || player.details?.avatar_url || '';
+        const sbp = window.__SUPABASE_PROFILE__;
+        const isViewingOther = sbp && window.__AUTH_USER__ && sbp.id !== window.__AUTH_USER__.id;
+        const avatarUrl = isViewingOther
+            ? (sbp.avatar_url || '')
+            : (player.avatar_url || player.details?.avatar_url || '');
         avatarEl.src = avatarUrl;
-        // Hata durumunda boş bırak
         avatarEl.onerror = () => { avatarEl.src = ''; };
     }
 
@@ -2064,11 +2084,15 @@ window.updateUI = function () {
     // Bio — adın altında göster
     const bioRow  = document.getElementById('player-bio-row');
     const bioDisp = document.getElementById('player-bio-disp');
-    const bioText = player.details?.bio || window.__SUPABASE_PROFILE__?.bio || '';
+    const sp = window.__SUPABASE_PROFILE__ || {};
+    const bioText = player.details?.bio
+        || sp.bio
+        || sp.details?.bio
+        || '';
     if (bioRow && bioDisp) {
         if (bioText) {
             bioDisp.textContent = bioText;
-            bioRow.style.display = '';
+            bioRow.style.display = 'block';
         } else {
             bioRow.style.display = 'none';
         }
