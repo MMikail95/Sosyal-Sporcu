@@ -32,14 +32,16 @@ window.getTeamPlayers = window.getTeamPlayers || function() {
 };
 
 // Mevki normalizer — DB'deki Türkçe tam adları ve kısa kodları standartlaştırır
+// Büyük/küçük harf duyarsız karşılaştırma kullanır
 window._normalizePosKey = function(raw) {
     if (!raw) return 'OS';
     const p = String(raw).trim();
-    if (p === 'KL' || p.includes('Kaleci')) return 'KL';
-    if (p === 'DEF' || p === 'Defans' || p.includes('Stoper') || p.includes('Bek') ||
-        p.includes('Libero') || p.includes('Defan')) return 'DEF';
-    if (p === 'FV' || p.includes('Forvet') || p.includes('Santrafor') ||
-        p.includes('Kanat') && !p.includes('Orta')) return 'FV';
+    const pl = p.toLowerCase();
+    if (pl === 'kl' || pl.includes('kaleci') || pl.includes('kale')) return 'KL';
+    if (pl === 'def' || pl.includes('defan') || pl.includes('stoper') || pl.includes('bek') ||
+        pl.includes('libero')) return 'DEF';
+    if (pl === 'fv' || pl.includes('forvet') || pl.includes('santrafor') ||
+        (pl.includes('kanat') && !pl.includes('orta'))) return 'FV';
     return 'OS';
 };
 const _POS_SHORT = { KL: 'KL', DEF: 'DEF', OS: 'OS', FV: 'FV' };
@@ -738,9 +740,25 @@ window.renderSahaTab = function () {
     }
 
     // FAZ 2: _tmState.members kullan (Supabase), eski getTeamPlayers() fallback
+    // Misafir oyuncuları da dahil et
     const getMembers = () => {
         if (window._tmState && _tmState.members && _tmState.members.length) {
-            return _tmState.members.map(m => m.player).filter(Boolean);
+            return _tmState.members.map(m => {
+                if (!m.player && m.guest_name) {
+                    return {
+                        id: 'guest_' + m.id,
+                        _isGuest: true,
+                        username: m.guest_name,
+                        name: m.guest_name,
+                        position: m.guest_position || 'OS',
+                        ana_mevki: m.guest_position || 'OS',
+                        gen_score: null,
+                        avatar_url: null,
+                        details: { pos: m.guest_position || 'OS' }
+                    };
+                }
+                return m.player || null;
+            }).filter(Boolean);
         }
         return typeof getTeamPlayers === 'function' ? getTeamPlayers() : [];
     };
@@ -825,7 +843,7 @@ window.renderSahaTab = function () {
                 <span class="psn-bench-name">${name}</span>
                 <span class="psn-bench-pos" style="color:${col}">${pos}</span>
               </div>
-              <span class="psn-bench-gen" style="color:${genColor}">${gen}</span>
+              <span class="psn-bench-gen" style="color:${genColor}">${gen != null ? gen : '—'}</span>
             </div>`;
         }).join('');
     };
@@ -1220,7 +1238,21 @@ window.psn_autoFill = function() {
 
     const getMembers = () => {
         if (window._tmState && _tmState.members && _tmState.members.length) {
-            return _tmState.members.map(m => m.player).filter(Boolean);
+            return _tmState.members.map(m => {
+                if (!m.player && m.guest_name) {
+                    return {
+                        id: 'guest_' + m.id,
+                        _isGuest: true,
+                        username: m.guest_name,
+                        name: m.guest_name,
+                        position: m.guest_position || 'OS',
+                        ana_mevki: m.guest_position || 'OS',
+                        gen_score: null,
+                        details: { pos: m.guest_position || 'OS' }
+                    };
+                }
+                return m.player || null;
+            }).filter(Boolean);
         }
         return typeof getTeamPlayers === 'function' ? getTeamPlayers() : [];
     };
@@ -1284,7 +1316,7 @@ function renderBenchPlayers() {
                 <span class="bench-name">${pInfo.name}</span>
                 <span class="bench-pos" style="color:${pInfo.col};">${pInfo.pos}</span>
             </div>
-            <span class="bench-gen" style="color:${gen>=80?'var(--neon-green)':'orange'}">${gen}</span>
+            <span class="bench-gen" style="color:${gen>=80?'var(--neon-green)':'orange'}">${gen != null ? gen : '—'}</span>
         </div>`;
     }).join('');
 }
@@ -1450,7 +1482,7 @@ window.renderTakimOlusturTab = function() {
                     <span class="pool-name">${pInfo.name}${isExternal ? ' <span style="font-size:0.6rem;color:#ff6b35;border:1px solid rgba(255,107,53,0.4);border-radius:3px;padding:0 3px;vertical-align:middle;">Dış</span>' : ''}</span>
                     <span class="pool-pos" style="color:${pInfo.col};">${pInfo.pos}</span>
                 </div>
-                <span class="pool-gen" style="color:${gen>=80?'var(--neon-green)':'#ffd700'}">${gen}</span>
+                <span class="pool-gen" style="color:${gen>=80?'var(--neon-green)':'#ffd700'}">${gen != null ? gen : '—'}</span>
             </label>
             <div class="pool-team-assign" style="display:flex;gap:2px;margin-left:4px;">
                 <button class="pab ${manAssign==='A'?'pab-a':''}" onclick="event.stopPropagation();_setManualTeam('${pInfo.id}','A')" title="A Takımı">A</button>
@@ -1600,7 +1632,7 @@ window._setManualTeam = function(playerId, team) {
 
 window.generateBalancedTeams = function() {
     const checked = [...document.querySelectorAll('.pool-checkbox:checked')].map(cb => cb.value);
-    if (checked.length < 4) { showToast('En az 4 oyuncu seçin!'); return; }
+    if (checked.length < 2) { showToast('En az 2 oyuncu seçin!'); return; }
 
     const pool = (window._allPoolPlayers || []).filter(p => checked.includes(p.id));
     const assigns = window._manualAssignments || {};
