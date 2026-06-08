@@ -1557,17 +1557,17 @@ window.renderTakimOlusturTab = function() {
                 </div>
 
                 <!-- ANLIK ÖNİZLEME -->
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1.2rem;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:0.6rem;">
                     <div style="background:rgba(0,255,136,0.06);border:1px solid rgba(0,255,136,0.2);border-radius:8px;padding:0.6rem;">
-                        <div style="font-size:0.75rem;color:var(--neon-green);font-weight:700;margin-bottom:0.4rem;">🟢 Takım A (${manualA.length})</div>
-                        ${manualA.length ? manualA.map(renderLivePreviewPlayer).join('') : '<div style="color:#444;font-size:0.75rem;text-align:center;padding:0.4rem;">Henüz atama yok</div>'}
+                        <div id="lp-header-a" style="font-size:0.75rem;color:var(--neon-green);font-weight:700;margin-bottom:0.4rem;">🟢 Takım A (${manualA.length})</div>
+                        <div id="lp-body-a">${manualA.length ? manualA.map(renderLivePreviewPlayer).join('') : '<div style="color:#444;font-size:0.75rem;text-align:center;padding:0.4rem;">Henüz atama yok</div>'}</div>
                     </div>
                     <div style="background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.2);border-radius:8px;padding:0.6rem;">
-                        <div style="font-size:0.75rem;color:var(--neon-cyan);font-weight:700;margin-bottom:0.4rem;">🔵 Takım B (${manualB.length})</div>
-                        ${manualB.length ? manualB.map(renderLivePreviewPlayer).join('') : '<div style="color:#444;font-size:0.75rem;text-align:center;padding:0.4rem;">Henüz atama yok</div>'}
+                        <div id="lp-header-b" style="font-size:0.75rem;color:var(--neon-cyan);font-weight:700;margin-bottom:0.4rem;">🔵 Takım B (${manualB.length})</div>
+                        <div id="lp-body-b">${manualB.length ? manualB.map(renderLivePreviewPlayer).join('') : '<div style="color:#444;font-size:0.75rem;text-align:center;padding:0.4rem;">Henüz atama yok</div>'}</div>
                     </div>
                 </div>
-                ${autoPlayers.length ? `<div style="font-size:0.75rem;color:#666;margin-bottom:0.8rem;"><i class="fa-solid fa-shuffle" style="color:#888;"></i> Otomatik dağıtılacak: ${autoPlayers.map(p => _getPInfo(p).name).join(', ')}</div>` : ''}
+                <div id="lp-auto" style="font-size:0.75rem;color:#666;margin-bottom:0.8rem;${autoPlayers.length ? '' : 'display:none;'}"><i class="fa-solid fa-shuffle" style="color:#888;"></i> Otomatik dağıtılacak: <span id="lp-auto-names">${autoPlayers.map(p => _getPInfo(p).name).join(', ')}</span></div>
 
                 <!-- Dışarıdan Oyuncu Ekleme -->
                 <div style="padding-top:0.8rem;border-top:1px solid rgba(255,255,255,0.07);margin-bottom:1rem;">
@@ -1672,15 +1672,63 @@ window.resetBalancedTeams = function() {
 
 window._setManualTeam = function(playerId, team) {
     if (!window._manualAssignments) window._manualAssignments = {};
+    const key = String(playerId);
     if (team === 'auto') {
-        delete window._manualAssignments[String(playerId)];
+        delete window._manualAssignments[key];
     } else {
-        window._manualAssignments[String(playerId)] = team;
+        window._manualAssignments[key] = team;
     }
-    // Atama değişince eski dağıtım sonucunu temizle
+    // Eski dağıtım sonucunu temizle
     localStorage.removeItem('ss_balanced_teams');
-    // Canlı önizleme için tab'ı yeniden render et
-    renderTakimOlusturTab();
+    const resultEl = document.getElementById('balanced-teams-result');
+    if (resultEl) resultEl.innerHTML = '';
+
+    // ── Sadece bu satırın stilini güncelle (tam re-render yok) ──
+    const item = document.getElementById('pool-item-' + playerId);
+    if (item) {
+        const teamColor  = team === 'A' ? 'rgba(0,255,136,0.15)' : team === 'B' ? 'rgba(0,229,255,0.15)' : 'transparent';
+        const teamBorder = team === 'A' ? 'rgba(0,255,136,0.4)'  : team === 'B' ? 'rgba(0,229,255,0.4)'  : 'rgba(255,255,255,0.07)';
+        item.style.background   = teamColor;
+        item.style.borderColor  = teamBorder;
+        const btns = item.querySelectorAll('.pab');
+        btns.forEach(b => b.classList.remove('pab-a','pab-b','pab-auto'));
+        if (team === 'A' && btns[0])    btns[0].classList.add('pab-a');
+        else if (team === 'B' && btns[1]) btns[1].classList.add('pab-b');
+        else if (btns[2])               btns[2].classList.add('pab-auto');
+    }
+
+    // ── Canlı önizleme bölümünü güncelle ──
+    const allPool = window._allPoolPlayers || [];
+    const assigns = window._manualAssignments || {};
+    const pid2    = p => String(p.id || p.supabase_id || '');
+    const manA    = allPool.filter(p => assigns[pid2(p)] === 'A');
+    const manB    = allPool.filter(p => assigns[pid2(p)] === 'B');
+    const autoP   = allPool.filter(p => !['A','B'].includes(assigns[pid2(p)]));
+
+    const rpRow = p => {
+        const pInfo = _getPInfo(p);
+        const gen   = calcPlayerGEN(p);
+        return `<div style="display:flex;align-items:center;gap:0.4rem;padding:0.3rem 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <img src="${pInfo.avatar}" style="width:22px;height:22px;border-radius:50%;">
+            <span style="flex:1;font-size:0.8rem;color:#ddd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${pInfo.name}</span>
+            <span style="font-size:0.7rem;color:${pInfo.col};">${pInfo.pos}</span>
+            <span style="font-size:0.72rem;color:#ffd700;min-width:20px;text-align:right;">${gen != null ? gen : '—'}</span>
+        </div>`;
+    };
+
+    const hA = document.getElementById('lp-header-a');
+    const hB = document.getElementById('lp-header-b');
+    const bA = document.getElementById('lp-body-a');
+    const bB = document.getElementById('lp-body-b');
+    const lAuto = document.getElementById('lp-auto');
+    const lAutoNames = document.getElementById('lp-auto-names');
+
+    if (hA) hA.textContent = `🟢 Takım A (${manA.length})`;
+    if (hB) hB.textContent = `🔵 Takım B (${manB.length})`;
+    if (bA) bA.innerHTML = manA.length ? manA.map(rpRow).join('') : '<div style="color:#444;font-size:0.75rem;text-align:center;padding:0.4rem;">Henüz atama yok</div>';
+    if (bB) bB.innerHTML = manB.length ? manB.map(rpRow).join('') : '<div style="color:#444;font-size:0.75rem;text-align:center;padding:0.4rem;">Henüz atama yok</div>';
+    if (lAuto) lAuto.style.display = autoP.length ? 'block' : 'none';
+    if (lAutoNames) lAutoNames.textContent = autoP.map(p => _getPInfo(p).name).join(', ');
 };
 
 window.generateBalancedTeams = function() {

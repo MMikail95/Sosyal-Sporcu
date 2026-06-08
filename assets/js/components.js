@@ -29,7 +29,24 @@
     function buildSidebarHTML() {
         return '<nav class="sidebar" id="sidebar">' +
             '<div class="logo">' +
-                '<div class="logo-ball"><i class="fa-solid fa-futbol"></i></div>' +
+                '<svg class="logo-ball-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="34" height="34">' +
+                '<defs>' +
+                '<radialGradient id="sball-g" cx="36%" cy="30%" r="65%">' +
+                '<stop offset="0%" stop-color="#ffffff"/>' +
+                '<stop offset="55%" stop-color="#eaeaea"/>' +
+                '<stop offset="100%" stop-color="#b5b5b5"/>' +
+                '</radialGradient>' +
+                '<clipPath id="sball-c"><circle cx="50" cy="50" r="46"/></clipPath>' +
+                '</defs>' +
+                '<circle cx="50" cy="50" r="47" fill="url(#sball-g)" stroke="#cccccc" stroke-width="1.5"/>' +
+                '<polygon points="50,34 65,45 59,62 41,62 35,45" fill="#1a1a1a" clip-path="url(#sball-c)"/>' +
+                '<polygon points="50,4 64,9 59,26 41,26 36,9"    fill="#1a1a1a" clip-path="url(#sball-c)"/>' +
+                '<polygon points="88,24 95,38 88,52 76,50 76,32" fill="#1a1a1a" clip-path="url(#sball-c)"/>' +
+                '<polygon points="80,72 70,87 57,88 53,74 65,62" fill="#1a1a1a" clip-path="url(#sball-c)"/>' +
+                '<polygon points="20,72 30,87 43,88 47,74 35,62" fill="#1a1a1a" clip-path="url(#sball-c)"/>' +
+                '<polygon points="12,24 5,38 12,52 24,50 24,32"  fill="#1a1a1a" clip-path="url(#sball-c)"/>' +
+                '<ellipse cx="37" cy="28" rx="13" ry="7" fill="white" opacity="0.28" transform="rotate(-30 37 28)" clip-path="url(#sball-c)"/>' +
+                '</svg>' +
                 '<span>SOSYAL SPORCU</span>' +
             '</div>' +
             '<ul class="nav-menu">' +

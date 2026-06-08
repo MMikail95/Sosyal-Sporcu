@@ -1861,65 +1861,68 @@ body {
    ────────────────────────────────────────────────────────────── */
 #profile .gb-card-col {
     display: flex !important;
-    align-items: center !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
     justify-content: center !important;
     background: rgba(255,255,255,0.02) !important;
     border: 1px solid rgba(255,255,255,0.06) !important;
     border-radius: 16px !important;
     padding: 1.5rem 1rem !important;
-    min-height: 420px !important;
+}
+
+/* FUT kartı dikey olarak uzat */
+#profile .gb-card-col .fut-card {
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Avatar orta bölümü büyüt — fazla yüksekliği buraya ver */
+#profile .gb-card-col .fut-card-avatar-wrap {
+    flex: 1 !important;
+    min-height: 130px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 8px 0 !important;
+}
+
+/* Avatar görselini biraz büyüt */
+#profile .gb-card-col .fut-card-avatar {
+    width: 150px !important;
+    height: 150px !important;
 }
 
 /* ──────────────────────────────────────────────────────────────
-   LOGO TOPU — Sidebar + Auth logo futbol topu badge'i
+   LOGO TOPU SVG — Sidebar + Auth
    ────────────────────────────────────────────────────────────── */
-.logo .logo-ball,
-.auth-logo .logo-ball {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 36% 32%, #ffffff 0%, #e8e8e8 55%, #c8c8c8 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow:
-        0 0 0 2px rgba(173,255,47,0.35),
-        0 0 18px rgba(173,255,47,0.4),
-        0 3px 10px rgba(0,0,0,0.6);
+.logo-ball-svg {
     flex-shrink: 0;
-    position: relative;
-    transition: box-shadow 0.3s ease, transform 0.3s ease;
+    filter:
+        drop-shadow(0 0 6px rgba(173,255,47,0.55))
+        drop-shadow(0 0 14px rgba(173,255,47,0.2));
+    transition: filter 0.3s ease, transform 0.3s ease;
 }
-.logo .logo-ball:hover,
-.auth-logo .logo-ball:hover {
-    box-shadow:
-        0 0 0 2px rgba(173,255,47,0.6),
-        0 0 28px rgba(173,255,47,0.6),
-        0 3px 12px rgba(0,0,0,0.7);
-    transform: scale(1.08);
+.logo:hover .logo-ball-svg,
+.auth-logo:hover .logo-ball-svg {
+    filter:
+        drop-shadow(0 0 10px rgba(173,255,47,0.85))
+        drop-shadow(0 0 22px rgba(173,255,47,0.35));
+    transform: scale(1.1) rotate(15deg);
 }
-.logo .logo-ball i,
-.auth-logo .logo-ball i {
-    color: #111 !important;
-    font-size: 1.4rem !important;
-    text-shadow: none !important;
-    /* Cancel any neon-green color from parent */
+[data-theme="light"] .logo-ball-svg {
+    filter: drop-shadow(0 0 5px rgba(61,139,0,0.45));
 }
-/* Auth logo spinning ball */
-.auth-logo .logo-ball i.fa-spin {
-    animation: spin 4s linear infinite;
+/* Spinning ball on auth page */
+.auth-logo .logo-ball-svg {
+    animation: ball-spin 6s linear infinite;
 }
-@keyframes spin {
+@keyframes ball-spin {
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
 }
-/* Aydınlık mod */
-[data-theme="light"] .logo .logo-ball,
-[data-theme="light"] .auth-logo .logo-ball {
-    box-shadow:
-        0 0 0 2px rgba(61,139,0,0.4),
-        0 0 14px rgba(61,139,0,0.3),
-        0 3px 8px rgba(0,0,0,0.2);
+.auth-logo:hover .logo-ball-svg {
+    animation-play-state: paused;
 }
 
 /* ──────────────────────────────────────────────────────────────
