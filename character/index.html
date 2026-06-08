@@ -728,6 +728,16 @@ document.addEventListener('supabaseUserReady', async function onSupabaseReady() 
     }
 
     if (typeof updateUI === 'function') updateUI();
+
+    // updateUI() içindeki zamanlama sorununu aşmak için avatarı doğrudan set et
+    if (viewedId && viewedId !== loggedInId) {
+        const sbp = window.__SUPABASE_PROFILE__;
+        const headerAvatar = document.getElementById('profile-avatar');
+        if (headerAvatar && sbp) {
+            headerAvatar.src = sbp.avatar_url || '';
+            headerAvatar.onerror = () => { headerAvatar.src = ''; };
+        }
+    }
     if (typeof updateChart === 'function' && typeof players !== 'undefined' && players.length) {
         var p = players.find(function(pl){ return pl.id === activePlayerId; }) || players[0];
         updateChart(p);

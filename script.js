@@ -1957,7 +1957,8 @@ window.updateUI = function () {
     const avatarEl = document.getElementById('profile-avatar');
     if (avatarEl) {
         const sbp = window.__SUPABASE_PROFILE__;
-        const isViewingOther = sbp && window.__AUTH_USER__ && sbp.id !== window.__AUTH_USER__.id;
+        // player.supabase_id = giriş yapan kullanıcının UUID'si (her zaman mevcut)
+        const isViewingOther = sbp && player.supabase_id && sbp.id !== player.supabase_id;
         const avatarUrl = isViewingOther
             ? (sbp.avatar_url || '')
             : (player.avatar_url || player.details?.avatar_url || '');

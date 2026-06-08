@@ -578,7 +578,7 @@ window.renderExploreGrid = function() {
     }
 
     grid.innerHTML = filtered.map(p => {
-        const avatarUrl  = p.avatar_url || '';
+        const avatarUrl  = (p.avatar_url && !p.avatar_url.includes('dicebear.com')) ? p.avatar_url : '';
         const gen        = p.gen_score || p.community_gen || null;
         const genColor   = gen >= 8 ? 'var(--neon-green)' : gen >= 7 ? 'var(--neon-cyan)' : 'orange';
         const posIcon    = { KL:'🧤', DEF:'🛡️', OS:'⚡', FV:'⚽' }[p.position] || '⚽';
@@ -795,7 +795,7 @@ async function showProfileModal(playerId, username, context = 'explore') {
             return;
         }
 
-        const avatarUrl  = profile.avatar_url || '';
+        const avatarUrl  = (profile.avatar_url && !profile.avatar_url.includes('dicebear.com')) ? profile.avatar_url : '';
         const gen        = Math.round(profile.gen_score || profile.community_gen || 0) || null;
         const genColor   = gen >= 8 ? 'var(--neon-green)' : gen >= 7 ? 'var(--neon-cyan)' : 'orange';
         const posIcon    = { KL:'\uD83E\uDDE4', DEF:'\uD83D\uDEE1\uFE0F', OS:'\u26A1', FV:'\u26BD' }[profile.position] || '\u26BD';
@@ -2247,7 +2247,7 @@ window.loadFriendsList = async function() {
             const friendId = f.requester_id === user.id ? f.addressee_id : f.requester_id;
             const friend   = f.requester_id === user.id ? (f.addressee || {}) : (f.requester || {});
             const name     = friend.username || 'Oyuncu';
-            const avatar   = friend.avatar_url || '';
+            const avatar   = (friend.avatar_url && !friend.avatar_url.includes('dicebear.com')) ? friend.avatar_url : '';
             const gen      = friend.gen_score || null;
             const genColor = gen >= 8 ? 'var(--neon-green)' : gen >= 7 ? 'var(--neon-cyan)' : 'orange';
             const posIcon  = { KL:'🧤', DEF:'🛡️', OS:'⚡', FV:'⚽' }[friend.position] || '⚽';
