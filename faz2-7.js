@@ -2830,6 +2830,12 @@ function _mcEsc(str) {
         .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// onclick içindeki tek-tırnaklı JS string argümanları için backslash kaçırma
+function _mcJsStr(str) {
+    if (!str) return '';
+    return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
 // Supabase auth > localStorage account > null
 function _mcGetUserId() {
     const authId = window.__AUTH_USER__?.id;
@@ -3170,13 +3176,10 @@ function _mcMatchCard(row, ratingStatuses, userId, playerCounts) {
     }
 
     const matchType  = m.match_type ? `<span class="mc-match-type">${_mcEsc(m.match_type)}</span>` : '';
-    const playerBadge = `<button class="mc-player-count mc-player-count-btn" onclick="mcToggleParticipants('${_mcEsc(mid)}')">
-        <i class="fa-solid fa-user-group"></i> ${pCount} oyuncu
-    </button>`;
 
     // İstatistik butonu (creator, tamamlanmış maç)
     const statsBtn = isCreator && m.status === 'finished'
-        ? `<button class="btn-sm mc-stats-btn" onclick="openStatsModal('${_mcEsc(mid)}', ${m.home_score ?? 0}, ${m.away_score ?? 0}, '${_mcEsc(homeTeam)}', '${_mcEsc(awayTeam)}')">
+        ? `<button class="btn-sm mc-stats-btn" onclick="openStatsModal('${_mcEsc(mid)}', ${m.home_score ?? 0}, ${m.away_score ?? 0}, '${_mcJsStr(homeTeam)}', '${_mcJsStr(awayTeam)}')">
                <i class="fa-solid fa-chart-bar"></i> İstatistik
            </button>`
         : '';
@@ -3681,6 +3684,9 @@ function _mcOpenMatchCard(m, playerCounts) {
         : '—';
     const pCount    = playerCounts[mid] || 0;
     const matchType = m.match_type ? `<span class="mc-match-type">${_mcEsc(m.match_type)}</span>` : '';
+    // Kullanıcının takımının hangi tarafta olduğunu belirle
+    const myTeamIds = new Set((_mcMyTeams || []).map(t => t.id));
+    const userSide  = myTeamIds.has(m.home_team_id) ? 'home' : 'away';
 
     return `
     <div class="mc-match-card mc-open-card glass-card">
@@ -3693,7 +3699,7 @@ function _mcOpenMatchCard(m, playerCounts) {
                 </button>
                 <span class="mc-card-date"><i class="fa-regular fa-calendar"></i> ${date}</span>
             </div>
-            <button class="btn-sm mc-join-btn" onclick="mcJoinOpen('${_mcEsc(mid)}')">
+            <button class="btn-sm mc-join-btn" onclick="mcJoinOpen('${_mcEsc(mid)}', '${userSide}')">
                 <i class="fa-solid fa-right-to-bracket"></i> Katıl
             </button>
         </div>
@@ -3723,13 +3729,13 @@ window.mcToggleOpenParticipants = async function (matchId) {
     }
 };
 
-window.mcJoinOpen = async function (matchId) {
-    const btn = document.querySelector(`[onclick="mcJoinOpen('${matchId}')"]`);
+window.mcJoinOpen = async function (matchId, teamSide = 'home') {
+    const btn = document.querySelector(`[onclick*="mcJoinOpen('${matchId}'"]`);
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
     try {
         const userId = _mcGetUserId();
         if (!userId) throw new Error('Oturum açmanız gerekiyor.');
-        await DB.Matches.joinMatch(matchId, userId, 'home');
+        await DB.Matches.joinMatch(matchId, userId, teamSide);
         if (typeof showToast === 'function') showToast('Maça katıldınız!');
         await Promise.all([_mcLoadMatches(), window.mcLoadOpenMatches()]);
         // Katıldıktan sonra "Maçlarım" sekmesine geç
@@ -3918,7 +3924,7 @@ window.mcSearchAwayTeam = function (query) {
             resultsEl.innerHTML = '<div class="mc-away-no-results"><i class="fa-solid fa-magnifying-glass"></i> Takım bulunamadı</div>';
         } else {
             resultsEl.innerHTML = filtered.map(t => `
-                <div class="mc-away-result-item" onclick="mcSelectAwayTeam('${_mcEsc(t.id)}','${_mcEsc(t.name)}','${_mcEsc(t.captain?.id || '')}','${_mcEsc(t.captain?.username || '')}')">
+                <div class="mc-away-result-item" onclick="mcSelectAwayTeam('${_mcEsc(t.id)}','${_mcJsStr(t.name)}','${_mcEsc(t.captain?.id || '')}','${_mcJsStr(t.captain?.username || '')}')">
                     <i class="fa-solid fa-shield" style="color:var(--neon-cyan);font-size:0.8rem;"></i>
                     <span class="mc-away-result-name">${_mcEsc(t.name)}</span>
                     ${t.captain ? `<span class="mc-away-result-cap">Kpt: ${_mcEsc(t.captain.username)}</span>` : ''}
