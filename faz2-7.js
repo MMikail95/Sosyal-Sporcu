@@ -3766,30 +3766,48 @@ window.mcSwitchTab = function (tab, btn) {
 
 // Maç oluşturma formunda tarih input'unu bugün + 1 saat olarak ayarla
 window._mcInitDateInput = function () {
-    const el = document.getElementById('mc-date-input');
-    if (!el) return;
-    if (el.value) return;
+    const dateEl = document.getElementById('mc-date-input');
+    const timeEl = document.getElementById('mc-time-input');
+    if (!dateEl) return;
+
     const pad = n => String(n).padStart(2, '0');
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
 
-    // Varsayılan: şu andan 1 saat sonra, en yakın 30 dakikaya yuvarla (:00 veya :30)
-    const def = new Date();
-    def.setHours(def.getHours() + 1, 0, 0, 0);
-    const defMin = def.getMinutes() < 15 ? 0 : def.getMinutes() < 45 ? 30 : 0;
-    if (def.getMinutes() >= 45) def.setHours(def.getHours() + 1);
-    def.setMinutes(defMin, 0, 0);
-    el.value = `${def.getFullYear()}-${pad(def.getMonth()+1)}-${pad(def.getDate())}T${pad(def.getHours())}:${pad(def.getMinutes())}`;
+    // Tarih inputu — min bugün, max 2030
+    dateEl.min = todayStr;
+    dateEl.max = '2030-12-31';
+    if (!dateEl.value) dateEl.value = todayStr;
 
-    // min: şu anki zaman, 30 dakikaya aşağı yuvarla (step uyumu için)
-    const minNow = new Date();
-    minNow.setMinutes(minNow.getMinutes() < 30 ? 0 : 30, 0, 0);
-    el.min = `${minNow.getFullYear()}-${pad(minNow.getMonth()+1)}-${pad(minNow.getDate())}T${pad(minNow.getHours())}:${pad(minNow.getMinutes())}`;
-    el.max = '2030-12-31T23:30';
+    // Saat seçici — 30'ar dakikalık seçenekler (00:00 → 23:30)
+    if (timeEl && !timeEl.options.length) {
+        for (let h = 0; h < 24; h++) {
+            for (const m of [0, 30]) {
+                const opt = document.createElement('option');
+                opt.value = `${pad(h)}:${pad(m)}`;
+                opt.textContent = `${pad(h)}:${pad(m)}`;
+                timeEl.appendChild(opt);
+            }
+        }
+    }
+
+    // Varsayılan saat: şu andan 1 saat sonra, :00 veya :30
+    if (timeEl && !timeEl.dataset.userPicked) {
+        const def = new Date();
+        def.setHours(def.getHours() + 1, 0, 0, 0);
+        const defHour = pad(def.getHours() > 23 ? 0 : def.getHours());
+        const defMin  = def.getMinutes() < 30 ? '00' : '30';
+        const defVal  = `${defHour}:${defMin}`;
+        if ([...timeEl.options].some(o => o.value === defVal)) timeEl.value = defVal;
+        timeEl.addEventListener('change', () => { timeEl.dataset.userPicked = '1'; }, { once: true });
+    }
 };
 
 window.mcSubmitCreate = async function () {
     const btn = document.getElementById('mc-submit-btn');
     const venueText  = (document.getElementById('mc-venue-input')?.value || '').trim();
-    const dateVal    = document.getElementById('mc-date-input')?.value;
+    const dateVal    = document.getElementById('mc-date-input')?.value;   // YYYY-MM-DD
+    const timeVal    = document.getElementById('mc-time-input')?.value;   // HH:mm
     const matchType  = document.getElementById('mc-type-select')?.value || '5v5';
     const homeTeamId = document.getElementById('mc-home-team-select')?.value || null;
     const notes      = (document.getElementById('mc-notes-input')?.value || '').trim();
@@ -3798,7 +3816,7 @@ window.mcSubmitCreate = async function () {
         if (typeof showToast === 'function') showToast('Saha adı en fazla 60 karakter olabilir.');
         return;
     }
-    if (!dateVal) {
+    if (!dateVal || !timeVal) {
         if (typeof showToast === 'function') showToast('Lütfen tarih ve saat girin.');
         return;
     }
@@ -3819,11 +3837,8 @@ window.mcSubmitCreate = async function () {
             : null;
         const fullNotes = [notes, awayFallback ? 'Rakip: ' + awayFallback : ''].filter(Boolean).join('\n') || null;
 
-        // datetime-local değeri 'YYYY-MM-DDTHH:mm' formatında gelir.
-        // new Date() doğrudan bu string'i UTC'den parse eder ama local timezone
-        // farkı nedeniyle yanlış tarih üretebilir.
-        // Güvenli parse: string'i direkt ISO formatına dönüştür.
-        const safeDateStr = dateVal.includes('T') ? dateVal + ':00' : dateVal;
+        // Tarih (YYYY-MM-DD) + saat (HH:mm) birleştir — local timezone'da parse et
+        const safeDateStr = `${dateVal}T${timeVal}:00`;
         const parsedDate = new Date(safeDateStr);
         if (isNaN(parsedDate.getTime())) {
             showToast?.('Geçersiz tarih formatı. Lütfen takvimden seçin.');
@@ -3891,6 +3906,8 @@ window.mcSubmitCreate = async function () {
 
         // Formu sıfırla
         document.getElementById('mc-date-input').value = '';
+        const timeInp = document.getElementById('mc-time-input');
+        if (timeInp) { delete timeInp.dataset.userPicked; }
         const venueInp = document.getElementById('mc-venue-input');
         if (venueInp) venueInp.value = '';
         document.getElementById('mc-away-team-input').value = '';
