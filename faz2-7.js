@@ -3768,19 +3768,22 @@ window.mcSwitchTab = function (tab, btn) {
 window._mcInitDateInput = function () {
     const el = document.getElementById('mc-date-input');
     if (!el) return;
-    // Zaten dolu ise dokunma
     if (el.value) return;
-    // Yerel saat: YYYY-MM-DDTHH:mm formatı
-    const now = new Date();
-    now.setHours(now.getHours() + 1, 0, 0, 0); // +1 saat, saniyeleri sıfırla
     const pad = n => String(n).padStart(2, '0');
-    const localStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
-    el.value = localStr;
-    // min değerini bugün olarak ayarla (geçmiş tarih seçimi engelle)
+
+    // Varsayılan: şu andan 1 saat sonra, en yakın 30 dakikaya yuvarla (:00 veya :30)
+    const def = new Date();
+    def.setHours(def.getHours() + 1, 0, 0, 0);
+    const defMin = def.getMinutes() < 15 ? 0 : def.getMinutes() < 45 ? 30 : 0;
+    if (def.getMinutes() >= 45) def.setHours(def.getHours() + 1);
+    def.setMinutes(defMin, 0, 0);
+    el.value = `${def.getFullYear()}-${pad(def.getMonth()+1)}-${pad(def.getDate())}T${pad(def.getHours())}:${pad(def.getMinutes())}`;
+
+    // min: şu anki zaman, 30 dakikaya aşağı yuvarla (step uyumu için)
     const minNow = new Date();
-    const minStr = `${minNow.getFullYear()}-${pad(minNow.getMonth()+1)}-${pad(minNow.getDate())}T${pad(minNow.getHours())}:${pad(minNow.getMinutes())}`;
-    el.min = minStr;
-    el.max = '2030-12-31T23:59';
+    minNow.setMinutes(minNow.getMinutes() < 30 ? 0 : 30, 0, 0);
+    el.min = `${minNow.getFullYear()}-${pad(minNow.getMonth()+1)}-${pad(minNow.getDate())}T${pad(minNow.getHours())}:${pad(minNow.getMinutes())}`;
+    el.max = '2030-12-31T23:30';
 };
 
 window.mcSubmitCreate = async function () {
@@ -3791,6 +3794,10 @@ window.mcSubmitCreate = async function () {
     const homeTeamId = document.getElementById('mc-home-team-select')?.value || null;
     const notes      = (document.getElementById('mc-notes-input')?.value || '').trim();
 
+    if (venueText.length > 60) {
+        if (typeof showToast === 'function') showToast('Saha adı en fazla 60 karakter olabilir.');
+        return;
+    }
     if (!dateVal) {
         if (typeof showToast === 'function') showToast('Lütfen tarih ve saat girin.');
         return;
