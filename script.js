@@ -1897,37 +1897,49 @@ function applyProfileViewMode() {
     applyFriendshipTabRestriction(viewingOther);
 }
 
+// ── Sekme görünürlük ayarları ─────────────────────────────────────────────
+// Hangi rol hangi sekmeleri görebilir. İleride değiştirmek için
+// sadece bu nesneyi güncelle — mantık koda dokunmadan çalışır.
+const PROFILE_TAB_PERMISSIONS = {
+    own:       ['tab-genel', 'tab-hakkimda', 'tab-kariyer', 'tab-maclar', 'tab-arkadaslarim'],
+    friend:    ['tab-genel', 'tab-maclar', 'tab-arkadaslarim'],
+    nonFriend: ['tab-genel', 'tab-maclar', 'tab-arkadaslarim'],
+};
+
+// Sadece profil sahibine gösterilen bloklar (rozet / onur şeritleri vb.)
+const PROFILE_OWN_ONLY_ELEMENTS = ['badge-strip-container', 'honor-showcase-container'];
+// ─────────────────────────────────────────────────────────────────────────
+
 function applyFriendshipTabRestriction(viewingOther) {
-    const restrictedTabs = ['tab-kariyer', 'tab-maclar'];
     const allTabBtns = document.querySelectorAll('.tab-btn[data-tab]');
 
-    // window.viewingAsFriend === false → kesinlikle arkadaş değil
-    const isNonFriend = viewingOther && window.viewingAsFriend === false;
-
-    if (isNonFriend) {
-        // Sadece Genel Bakış görünsün
-        allTabBtns.forEach(btn => {
-            const tabId = btn.getAttribute('data-tab');
-            btn.style.display = (tabId === 'tab-genel') ? '' : 'none';
-        });
-        // Diğer sekme içeriklerine kilitli mesaj koy
-        restrictedTabs.forEach(tabId => {
-            const el = document.getElementById(tabId);
-            if (el) {
-                el.style.display = 'none';
-                el.innerHTML = `<div class="glass-card tab-locked-msg">
-                    <i class="fa-solid fa-lock"></i>
-                    <h3>Bu sekme sadece arkadaşlara açık</h3>
-                    <p>Arkadaş ekle ve tüm profil bilgilerine eriş.</p>
-                </div>`;
-            }
-        });
-        // Genel Bakış aktif yap
-        switchProfileTab('tab-genel');
+    let visibleTabs;
+    if (!viewingOther) {
+        visibleTabs = PROFILE_TAB_PERMISSIONS.own;
+    } else if (window.viewingAsFriend === false) {
+        visibleTabs = PROFILE_TAB_PERMISSIONS.nonFriend;
     } else {
-        // Tüm tab butonlarını göster
-        allTabBtns.forEach(btn => { btn.style.display = ''; });
+        visibleTabs = PROFILE_TAB_PERMISSIONS.friend;
     }
+
+    // Sekme butonlarını göster / gizle
+    allTabBtns.forEach(btn => {
+        const tabId = btn.getAttribute('data-tab');
+        btn.style.display = visibleTabs.includes(tabId) ? '' : 'none';
+    });
+
+    // Aktif sekme artık gizlendiyse Genel Bakış'a geç
+    const activeBtn = document.querySelector('.tab-btn.active');
+    if (activeBtn && !visibleTabs.includes(activeBtn.getAttribute('data-tab'))) {
+        switchProfileTab('tab-genel');
+    }
+
+    // Rozet / onur bloklarını sadece profil sahibine göster
+    const isOwn = !viewingOther;
+    PROFILE_OWN_ONLY_ELEMENTS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = isOwn ? '' : 'none';
+    });
 }
 
 
@@ -2010,11 +2022,17 @@ window.updateUI = function () {
         // ss_view_player_id varsa ve __SUPABASE_PROFILE__ o kişiye aitse → başkasının profili
         const viewedSessionId = sessionStorage.getItem('ss_view_player_id');
         const isViewingOther  = sbp && viewedSessionId && sbp.id === viewedSessionId;
-        const avatarUrl = isViewingOther
-            ? (sbp.avatar_url || '')
-            : (player.avatar_url || player.details?.avatar_url || '');
-        avatarEl.src = avatarUrl;
-        avatarEl.onerror = () => { avatarEl.src = ''; };
+        // Race condition fix: viewedSessionId var ama henüz doğru profil yüklenmediyse kendi avatarımızı gösterme
+        if (viewedSessionId && !isViewingOther) {
+            // Bakılan kullanıcının profili henüz yüklenmedi — avatara dokunma
+        } else {
+            const diceSeed = isViewingOther ? (sbp.username || sbp.id || 'u') : (player.username || player.name || 'u');
+            const avatarUrl = isViewingOther
+                ? (sbp.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(diceSeed)}`)
+                : (player.avatar_url || player.details?.avatar_url || '');
+            avatarEl.src = avatarUrl;
+            avatarEl.onerror = () => { avatarEl.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(diceSeed)}`; avatarEl.onerror = null; };
+        }
     }
 
     // ── Sidebar senkronizasyonu: SADECE giriş yapmış kullanıcının kendi profilinde güncelle ──

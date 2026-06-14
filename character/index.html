@@ -733,16 +733,18 @@ document.addEventListener('supabaseUserReady', async function onSupabaseReady() 
     if (viewedId && viewedId !== loggedInId) {
         const sbp = window.__SUPABASE_PROFILE__;
         if (sbp) {
+            const _diceSeed = encodeURIComponent(sbp.username || sbp.id || 'u');
+            const _fallbackAv = `https://api.dicebear.com/7.x/avataaars/svg?seed=${_diceSeed}`;
             const headerAvatar = document.getElementById('profile-avatar');
             if (headerAvatar) {
-                headerAvatar.src = sbp.avatar_url || '';
-                headerAvatar.onerror = () => { headerAvatar.src = ''; };
+                headerAvatar.src = sbp.avatar_url || _fallbackAv;
+                headerAvatar.onerror = () => { headerAvatar.onerror = null; headerAvatar.src = _fallbackAv; };
             }
             const futAvatar = document.getElementById('fut-avatar');
             if (futAvatar) {
-                futAvatar.src = sbp.avatar_url || '';
-                futAvatar.style.opacity = sbp.avatar_url ? '1' : '0.25';
-                futAvatar.onerror = () => { futAvatar.src = ''; futAvatar.style.opacity = '0.25'; };
+                futAvatar.src = sbp.avatar_url || _fallbackAv;
+                futAvatar.style.opacity = '1';
+                futAvatar.onerror = () => { futAvatar.onerror = null; futAvatar.src = _fallbackAv; futAvatar.style.opacity = '0.8'; };
             }
         }
     }
