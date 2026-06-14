@@ -676,8 +676,12 @@ async function initSupabaseUser() {
                     filter: `id=eq.${userId}`
                 }, payload => {
                     if (payload.new) {
-                        window.__SUPABASE_PROFILE__ = { ...(window.__SUPABASE_PROFILE__ || {}), ...payload.new };
-                        if (typeof window.updateUI === 'function') window.updateUI();
+                        const _viewedId = sessionStorage.getItem('ss_view_player_id');
+                        const _isViewingOther = _viewedId && _viewedId !== userId;
+                        if (!_isViewingOther) {
+                            window.__SUPABASE_PROFILE__ = { ...(window.__SUPABASE_PROFILE__ || {}), ...payload.new };
+                            if (typeof window.updateUI === 'function') window.updateUI();
+                        }
                     }
                 })
                 .subscribe();

@@ -56,6 +56,10 @@ async function initExploreTeams() {
     }
 }
 
+function _esc(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 function renderExploreTeams(teams) {
     const grid = document.getElementById('explore-team-grid');
     if (!grid) return;
@@ -76,8 +80,8 @@ function renderExploreTeams(teams) {
         const color   = t.color || '#00ff88';
         const isOwn   = cap.id === myUserId;
         // Takım adı ve slug HTML-escape (inline onclick güvenliği)
-        const safeName = (t.name || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
-        const safeSlug = (t.slug || '').replace(/'/g, '');
+        const safeName = _esc(t.name);
+        const safeSlug = _esc(t.slug);
 
         return `
         <div class="explore-team-card glass-card" id="etc-${t.id}"
@@ -96,7 +100,7 @@ function renderExploreTeams(teams) {
                         : `<i class="fa-solid fa-shield-cat"></i>`}
                 </div>
                 <div class="etc-info">
-                    <h4 class="etc-name">${t.name || 'Takım'}</h4>
+                    <h4 class="etc-name">${safeName || 'Takım'}</h4>
                     <div class="etc-meta">
                         <span><i class="fa-solid fa-users" aria-hidden="true"></i> ${t.team_members?.[0]?.count ?? t.player_count ?? 0} oyuncu</span>
                         ${(t.district || t.city) ? `<span><i class="fa-solid fa-location-dot" aria-hidden="true"></i> ${t.district ? t.district + (t.city ? ', ' + t.city : '') : t.city}</span>` : ''}
@@ -115,7 +119,7 @@ function renderExploreTeams(teams) {
                     <span style="font-weight:800; color:var(--neon-cyan); font-size:0.9rem;">${t.slug || '—'}</span>
                 </div>
             </div>
-            ${t.description ? `<p class="etc-desc">${t.description}</p>` : ''}
+            ${t.description ? `<p class="etc-desc">${_esc(t.description)}</p>` : ''}
             <div class="etc-actions" onclick="event.stopPropagation()">
                 ${isOwn
                     ? `<span class="etc-badge-own"><i class="fa-solid fa-crown" aria-hidden="true"></i> Kendi Takımın</span>`
@@ -303,7 +307,7 @@ window._openTeamDetail = async function(cardEl) {
             </div>
 
             <!-- Açıklama -->
-            ${team.description ? `<p style="color:#888; font-size:0.85rem; margin-bottom:1rem; padding:0.7rem; background:#0d0d0d; border-radius:8px;">${team.description}</p>` : ''}
+            ${team.description ? `<p style="color:#888; font-size:0.85rem; margin-bottom:1rem; padding:0.7rem; background:#0d0d0d; border-radius:8px;">${_esc(team.description)}</p>` : ''}
 
             <!-- Üyeler -->
             <div style="margin-bottom:1.2rem;">
@@ -569,7 +573,7 @@ window.renderExploreGrid = function() {
         const fullName = (p.full_name || '').toLowerCase();
         const city = (p.city || '').toLowerCase();
         if (search && !nick.includes(search) && !fullName.includes(search) && !city.includes(search)) return false;
-        if (position && getPosCode(p.position || p.ana_mevki) !== position) return false;
+        if (position && getPosCode(p.ana_mevki || p.position) !== position) return false;
         return true;
     });
 
@@ -582,11 +586,10 @@ window.renderExploreGrid = function() {
     }
 
     grid.innerHTML = filtered.map(p => {
-        const dicebearFallback = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.username||'user')}`;
-        const avatarUrl  = p.avatar_url || dicebearFallback;
+        const avatarUrl  = p.avatar_url || '';
         const gen        = p.gen_score || p.community_gen || null;
         const genColor   = gen >= 8 ? 'var(--neon-green)' : gen >= 7 ? 'var(--neon-cyan)' : 'orange';
-        const posCode    = getPosCode(p.position || p.ana_mevki);
+        const posCode    = getPosCode(p.ana_mevki || p.position);
         const posIcon    = { KL:'🧤', DEF:'🛡️', OS:'⚡', FV:'⚽' }[posCode] || '⚡';
         const isMe       = currentUserId && p.id === currentUserId;
         const displayName = p.full_name || p.username || 'Oyuncu';
@@ -596,7 +599,7 @@ window.renderExploreGrid = function() {
         <div class="explore-player-card" id="epc-${p.id}">
             <div class="epc-header">
                 <div class="epc-avatar-wrap">
-                    <img src="${avatarUrl}" class="epc-avatar" alt="${p.username}" onerror="this.src='${dicebearFallback}';this.onerror=null;">
+                    <img src="${avatarUrl}" class="epc-avatar" alt="${p.username}" onerror="this.src='';this.onerror=null;">
                     <div class="epc-gen-badge" style="color:${genColor}; border-color:${genColor};">${Math.round(gen)}</div>
                 </div>
                 <div class="epc-info">
