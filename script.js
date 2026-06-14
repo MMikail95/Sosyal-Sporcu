@@ -1426,9 +1426,12 @@ window.updateAltMevkiOptions = function(anaMevki, currentVal) {
 };
 
 window.populateFutCard = function() {
-    let player = players.find(p => p.id === activePlayerId) || players[0];
-    // Karakter sayfasında players boşsa Supabase profilinden oluştur
-    if (!player && window.__SUPABASE_PROFILE__) {
+    // Başkasının profiline bakıyorsak tüm FUT kart verisini __SUPABASE_PROFILE__'dan al
+    const _viewedId = sessionStorage.getItem('ss_view_player_id');
+    const _isViewingOther = _viewedId && _viewedId !== window.__AUTH_USER__?.id;
+
+    let player;
+    if (_isViewingOther && window.__SUPABASE_PROFILE__) {
         const sp = window.__SUPABASE_PROFILE__;
         player = {
             id: sp.id, full_name: sp.full_name, name: sp.username,
@@ -1452,6 +1455,34 @@ window.populateFutCard = function() {
                 hiz: sp.rating_hiz, fizik: sp.rating_fizik, kondisyon: sp.rating_kondisyon
             }
         };
+    } else {
+        player = players.find(p => p.id === activePlayerId) || players[0];
+        // Karakter sayfasında players boşsa Supabase profilinden oluştur
+        if (!player && window.__SUPABASE_PROFILE__) {
+            const sp = window.__SUPABASE_PROFILE__;
+            player = {
+                id: sp.id, full_name: sp.full_name, name: sp.username,
+                avatar_url: sp.avatar_url, city: sp.city,
+                total_matches: sp.total_matches, total_goals: sp.total_goals, total_assists: sp.total_assists,
+                _sbTeamName: sp.current_team_name || null,
+                details: {
+                    anaMevki: sp.ana_mevki || sp.position,
+                    age: sp.age, city: sp.city, ayak: sp.ayak,
+                    height: sp.height, weight: sp.weight, oyunTarzi: sp.oyun_tarzi,
+                    futbolGecmisi:       sp.futbol_gecmisi      || null,
+                    sakatlikDurumu:      sp.sakatlik_durumu     || null,
+                    antrenmanAliskanlik: sp.antrenman_aliskanlik || null,
+                    macGunuTercihi:      sp.mac_gunu_tercihi    || null,
+                    ayakkabiTercihi:     sp.ayakkabi_tercihi    || null,
+                    formaNumarasi:       sp.forma_numarasi      ?? null,
+                    idol:                sp.idol                || null,
+                },
+                ratings: {
+                    teknik: sp.rating_teknik, sut: sp.rating_sut, pas: sp.rating_pas,
+                    hiz: sp.rating_hiz, fizik: sp.rating_fizik, kondisyon: sp.rating_kondisyon
+                }
+            };
+        }
     }
     if (!player) return;
     const d = player.details || {};
@@ -1932,7 +1963,20 @@ window.switchProfileTab = function (tabId) {
         if (player) {
             const vals = Object.values(player.ratings).filter(v => v !== null);
             const avg = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
-            checkSkillUnlocks(player, avg);
+            const _viewedSessId2 = sessionStorage.getItem('ss_view_player_id');
+            const _sbp2 = window.__SUPABASE_PROFILE__;
+            const _isOther2 = _sbp2 && _viewedSessId2 && _sbp2.id === _viewedSessId2;
+            let _pForBadges2 = player;
+            if (_isOther2) {
+                _pForBadges2 = {
+                    id: _sbp2.id, name: _sbp2.username, full_name: _sbp2.full_name,
+                    communityRatings: [],
+                    stats: { goals: _sbp2.total_goals || 0, assists: _sbp2.total_assists || 0, matches: _sbp2.total_matches || 0 },
+                    ratings: { teknik: _sbp2.rating_teknik, sut: _sbp2.rating_sut, pas: _sbp2.rating_pas, hiz: _sbp2.rating_hiz, fizik: _sbp2.rating_fizik, kondisyon: _sbp2.rating_kondisyon },
+                    details: { ekol: _sbp2.ekol, anaMevki: _sbp2.ana_mevki || _sbp2.position, futbolGecmisi: _sbp2.futbol_gecmisi, sakatlikDurumu: _sbp2.sakatlik_durumu, idol: _sbp2.idol, formaNumarasi: _sbp2.forma_numarasi, ayak: _sbp2.ayak }
+                };
+            }
+            checkSkillUnlocks(_pForBadges2, avg);
         }
         renderHonorBadges(window.__SUPABASE_PROFILE__ || {});
         // Tier rozet sistemi (async — renderAchievements'dan sonra append eder)
@@ -2146,7 +2190,30 @@ window.updateUI = function () {
 
     // --- Skills & Badge Strip ---
     try {
-        checkSkillUnlocks(player, avg || 0);
+        const _viewedSessId = sessionStorage.getItem('ss_view_player_id');
+        const _sbp = window.__SUPABASE_PROFILE__;
+        const _isViewingOther = _sbp && _viewedSessId && _sbp.id === _viewedSessId;
+        let playerForBadges = player;
+        if (_isViewingOther) {
+            // Başkasının profiline bakıyorken başarımları o kişinin verisiyle hesapla
+            playerForBadges = {
+                id: _sbp.id, name: _sbp.username, full_name: _sbp.full_name,
+                avatar_url: _sbp.avatar_url,
+                communityRatings: [],
+                stats: { goals: _sbp.total_goals || 0, assists: _sbp.total_assists || 0, matches: _sbp.total_matches || 0 },
+                ratings: {
+                    teknik: _sbp.rating_teknik, sut: _sbp.rating_sut, pas: _sbp.rating_pas,
+                    hiz: _sbp.rating_hiz, fizik: _sbp.rating_fizik, kondisyon: _sbp.rating_kondisyon
+                },
+                details: {
+                    ekol: _sbp.ekol, anaMevki: _sbp.ana_mevki || _sbp.position,
+                    futbolGecmisi: _sbp.futbol_gecmisi, sakatlikDurumu: _sbp.sakatlik_durumu,
+                    antrenmanAliskanlik: _sbp.antrenman_aliskanlik, formaNumarasi: _sbp.forma_numarasi,
+                    idol: _sbp.idol, ayak: _sbp.ayak, height: _sbp.height, weight: _sbp.weight,
+                }
+            };
+        }
+        checkSkillUnlocks(playerForBadges, avg || 0);
         // checkSkillUnlocks içinde renderBadgeStrip de çağrılıyor (SYNC-14)
     } catch (e) { console.error('Skill Unlock Check Failed:', e); }
 
