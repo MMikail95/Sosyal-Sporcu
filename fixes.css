@@ -1372,6 +1372,12 @@ body {
     margin-top: 0.85rem;
     flex-wrap: wrap;
 }
+.etc-actions .epc-btn, .etc-actions .etc-badge-own {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+    min-width: 80px;
+}
 .etc-badge-own {
     font-size: 0.78rem;
     font-weight: 700;

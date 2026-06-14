@@ -586,7 +586,8 @@ window.renderExploreGrid = function() {
     }
 
     grid.innerHTML = filtered.map(p => {
-        const avatarUrl  = p.avatar_url || '';
+        const _rawAv     = p.avatar_url || '';
+        const avatarUrl  = (_rawAv && !_rawAv.includes('dicebear.com')) ? _rawAv : '';
         const gen        = p.gen_score || p.community_gen || null;
         const genColor   = gen >= 8 ? 'var(--neon-green)' : gen >= 7 ? 'var(--neon-cyan)' : 'orange';
         const posCode    = getPosCode(p.ana_mevki || p.position);
