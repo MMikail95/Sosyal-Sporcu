@@ -1590,7 +1590,7 @@ const Honors = {
     }));
     const { data, error } = await sb()
       .from('match_honors')
-      .upsert(rows, { onConflict: 'match_id,rater_id,rated_id', ignoreDuplicates: true })
+      .upsert(rows, { onConflict: 'match_id,rater_id,honor_type', ignoreDuplicates: true })
       .select();
     if (error) throw error;
     return { inserted: (data || []).length };

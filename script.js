@@ -2204,7 +2204,7 @@ window.updateUI = function () {
                 id: _sbp.id, name: _sbp.username, full_name: _sbp.full_name,
                 avatar_url: _sbp.avatar_url,
                 communityRatings: [],
-                stats: { goals: _sbp.total_goals || 0, assists: _sbp.total_assists || 0, matches: _sbp.total_matches || 0 },
+                stats: { totalGoals: _sbp.total_goals || 0, totalAssists: _sbp.total_assists || 0, totalMatches: _sbp.total_matches || 0 },
                 ratings: {
                     teknik: _sbp.rating_teknik, sut: _sbp.rating_sut, pas: _sbp.rating_pas,
                     hiz: _sbp.rating_hiz, fizik: _sbp.rating_fizik, kondisyon: _sbp.rating_kondisyon
@@ -2214,6 +2214,10 @@ window.updateUI = function () {
                     futbolGecmisi: _sbp.futbol_gecmisi, sakatlikDurumu: _sbp.sakatlik_durumu,
                     antrenmanAliskanlik: _sbp.antrenman_aliskanlik, formaNumarasi: _sbp.forma_numarasi,
                     idol: _sbp.idol, ayak: _sbp.ayak, height: _sbp.height, weight: _sbp.weight,
+                    dakiklik: _sbp.dakiklik, lojistik: _sbp.lojistik,
+                    macSonu: _sbp.mac_sonu, mevkiSadakat: _sbp.mevki_sadakat,
+                    markaj: _sbp.markaj, oyunTarzi: _sbp.oyun_tarzi,
+                    macGunu: _sbp.mac_gunu, ayakkabi: _sbp.ayakkabi,
                 }
             };
         }
@@ -2727,12 +2731,12 @@ const ACHIEVEMENT_DEFS = [
         category: 'Katılım',
         tier: 'gumus',
         color: '#aaa',
-        desc: 'Son 10 maçın hepsine sakatlık bildirmeden katıldın.',
-        criteria: 'Sakatlık riski "Beton Gibi" ve en az 10 maça katıl.',
+        desc: 'Sakatlık durumu sağlam ve en az 10 maça katıldın.',
+        criteria: 'Sakatlık durumu "Sağlamım" ve en az 10 maça katıl.',
         check: (p) => {
-            const s = p.details?.sakatlik;
+            const s = p.details?.sakatlikDurumu || p.details?.sakatlik;
             const m = p.stats?.totalMatches || 0;
-            return s === 'Beton Gibi' && m >= 10;
+            return (s === 'Sağlamım' || s === 'Beton Gibi') && m >= 10;
         }
     },
     // ── KARAKTER & LOJİSTİK ────────────────────────────
@@ -2780,9 +2784,12 @@ const ACHIEVEMENT_DEFS = [
         category: 'Karakter',
         tier: 'bronz',
         color: '#cd7f32',
-        desc: 'Lisanslı futbol geçmişiyle gelen ekol sahibi oyuncu.',
-        criteria: 'Ekol "Eski Lisanslı" olsun.',
-        check: (p) => p.details?.ekol === 'Eski Lisanslı' && !!p.details?.futbolGecmisi
+        desc: 'Altyapı veya amatör lisans geçmişiyle gelen ekol sahibi oyuncu.',
+        criteria: 'Futbol geçmişi "Altyapı Deneyimim Var" veya "Amatör Lisanslı" olsun.',
+        check: (p) => {
+            const g = p.details?.futbolGecmisi;
+            return g === 'Altyapı Deneyimim Var' || g === 'Amatör Lisanslı';
+        }
     },
     // ── GOL & ŞÜT ──────────────────────────────────────
     {
@@ -2894,9 +2901,8 @@ const ACHIEVEMENT_DEFS = [
         desc: 'Defans mevkisinde oynayan üst düzey duvar.',
         criteria: 'Mevki DEF/Stoper/Bek olsun ve Fizik puanın 85+ olsun.',
         check: (p) => {
-            const pos = p.details?.pos || '';
             const mevki = p.details?.anaMevki || '';
-            const isDefans = pos === 'DEF' || mevki.includes('Stoper') || mevki.includes('Bek') || mevki.includes('Libero');
+            const isDefans = mevki === 'Defans' || mevki.includes('Stoper') || mevki.includes('Bek') || mevki.includes('Libero');
             return isDefans && (p.ratings?.fizik || 0) >= 85;
         }
     },

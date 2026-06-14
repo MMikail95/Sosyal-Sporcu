@@ -2621,14 +2621,30 @@ window._pmrHonorToggle = function(playerId, honorKey) {
     const selCount = Object.keys(_honorSelections).length;
 
     if (current === honorKey) {
+        // Aynı butona tekrar basıldı — kaldır
         delete _honorSelections[playerId];
-    } else if (current) {
-        _honorSelections[playerId] = honorKey;
     } else {
-        if (selCount >= HONOR_MAX) {
+        // Bu honor type başka bir oyuncuya verilmiş mi kontrol et
+        const prevHolder = Object.keys(_honorSelections).find(
+            id => id !== playerId && _honorSelections[id] === honorKey
+        );
+
+        // Yeni slot açılıyor (player'ın hiç honoru yok) ve limit doluysa
+        // ama taşınabilecek biri varsa limit sayılmaz
+        if (!current && !prevHolder && selCount >= HONOR_MAX) {
             if (typeof showToast === 'function') showToast(`En fazla ${HONOR_MAX} onur seçebilirsin.`);
             return;
         }
+
+        // Önceki sahipten al (1 honor type = sadece 1 kişi)
+        if (prevHolder) {
+            delete _honorSelections[prevHolder];
+            if (typeof showToast === 'function') {
+                const honorLabel = _HONOR_BTNS.find(b => b.key === honorKey)?.label || honorKey;
+                showToast(`${honorLabel} onuru taşındı.`);
+            }
+        }
+
         _honorSelections[playerId] = honorKey;
     }
     // Sadece onur butonlarını yeniden render et (stepper değerleri sıfırlanmasın)
