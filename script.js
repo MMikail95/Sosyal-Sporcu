@@ -2782,7 +2782,7 @@ const ACHIEVEMENT_DEFS = [
         color: '#cd7f32',
         desc: 'Lisanslı futbol geçmişiyle gelen ekol sahibi oyuncu.',
         criteria: 'Ekol "Eski Lisanslı" olsun.',
-        check: (p) => p.details?.ekol === 'Eski Lisanslı'
+        check: (p) => p.details?.ekol === 'Eski Lisanslı' && !!p.details?.futbolGecmisi
     },
     // ── GOL & ŞÜT ──────────────────────────────────────
     {
