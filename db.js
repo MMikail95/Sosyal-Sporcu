@@ -988,6 +988,144 @@ const Matches = {
         total:   s.total,
         winRate: s.total > 0 ? Math.round((s.wins / s.total) * 100) : 0
       }));
+  },
+
+  // ── Kadro davetleri toplu gönder ──
+  async sendInvitations(matchId, inviterId, playerIds) {
+    if (!playerIds || playerIds.length === 0) return;
+
+    // match_invitations tablosuna toplu insert
+    const rows = playerIds.map(pid => ({
+      match_id:   matchId,
+      inviter_id: inviterId,
+      invitee_id: pid,
+      status:     'pending'
+    }));
+    const { error } = await sb()
+      .from('match_invitations')
+      .upsert(rows, { onConflict: 'match_id,invitee_id', ignoreDuplicates: true });
+    if (error) console.warn('sendInvitations error:', error);
+
+    // Her oyuncuya bildirim gönder
+    const { data: matchData } = await sb()
+      .from('matches')
+      .select('scheduled_at, home_team:home_team_id(name)')
+      .eq('id', matchId)
+      .single();
+    const matchDate = matchData?.scheduled_at
+      ? new Date(matchData.scheduled_at).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })
+      : '';
+    const teamName = matchData?.home_team?.name || 'Takımın';
+
+    await Promise.all(playerIds.map(pid =>
+      sb().from('notifications').insert({
+        user_id:    pid,
+        type:       'match_invite',
+        title:      'Maç Daveti',
+        body:       `${teamName} — ${matchDate} tarihinde maça davet edildin!`,
+        actor_id:   inviterId,
+        related_id: matchId
+      }).then(() => {}).catch(() => {})
+    ));
+  },
+
+  // ── Maç davetine yanıt ver + çakışma kontrolü ──
+  async respondInvitation(matchId, playerId, accept) {
+    // match_invitations güncelle
+    await sb()
+      .from('match_invitations')
+      .update({ status: accept ? 'accepted' : 'declined', responded_at: new Date().toISOString() })
+      .eq('match_id', matchId)
+      .eq('invitee_id', playerId);
+
+    if (!accept) return;
+
+    // match_players'a confirmed olarak ekle / güncelle
+    const { data: existing } = await sb()
+      .from('match_players')
+      .select('id')
+      .eq('match_id', matchId)
+      .eq('player_id', playerId)
+      .single();
+
+    if (existing) {
+      await sb()
+        .from('match_players')
+        .update({ confirmed: true, confirmed_at: new Date().toISOString() })
+        .eq('match_id', matchId)
+        .eq('player_id', playerId);
+    } else {
+      await sb()
+        .from('match_players')
+        .insert({ match_id: matchId, player_id: playerId, team_side: 'home', confirmed: true, confirmed_at: new Date().toISOString() })
+        .catch(() => {});
+    }
+
+    // Çakışma kontrolü: aynı gün confirmed başka maç var mı?
+    const { data: matchData } = await sb()
+      .from('matches')
+      .select('scheduled_at, created_by, home_team:home_team_id(name)')
+      .eq('id', matchId)
+      .single();
+
+    if (matchData?.scheduled_at) {
+      const dayStart = new Date(matchData.scheduled_at);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
+      const { data: conflicts } = await sb()
+        .from('match_players')
+        .select('match_id, match:match_id(scheduled_at)')
+        .eq('player_id', playerId)
+        .eq('confirmed', true)
+        .neq('match_id', matchId)
+        .gte('match.scheduled_at', dayStart.toISOString())
+        .lt('match.scheduled_at', dayEnd.toISOString());
+
+      if (conflicts && conflicts.length > 0) {
+        const captainId = matchData.created_by;
+        const { data: playerData } = await sb()
+          .from('profiles')
+          .select('username')
+          .eq('id', playerId)
+          .single();
+        const playerName = playerData?.username || 'Oyuncu';
+
+        if (captainId) {
+          await sb().from('notifications').insert({
+            user_id:    captainId,
+            type:       'match_invite',
+            title:      '⚠️ Çakışma Uyarısı',
+            body:       `${playerName} aynı gün başka bir maçta da bulunuyor.`,
+            actor_id:   playerId,
+            related_id: matchId
+          }).catch(() => {});
+        }
+        await sb().from('notifications').insert({
+          user_id:    playerId,
+          type:       'match_invite',
+          title:      '⚠️ Çakışma Uyarısı',
+          body:       'Aynı gün birden fazla maçta onay verdin. Kaptanına bildirim gönderildi.',
+          actor_id:   captainId || playerId,
+          related_id: matchId
+        }).catch(() => {});
+      }
+    }
+  },
+
+  // ── Maç için davet özeti (kaptan görünümü) ──
+  async getInvitationSummary(matchId) {
+    const { data, error } = await sb()
+      .from('match_invitations')
+      .select('status, invitee:invitee_id(id, username, avatar_url)')
+      .eq('match_id', matchId);
+    if (error) return { accepted: [], declined: [], pending: [] };
+    const result = { accepted: [], declined: [], pending: [] };
+    (data || []).forEach(row => {
+      if (result[row.status]) result[row.status].push(row.invitee);
+    });
+    return result;
   }
 };
 

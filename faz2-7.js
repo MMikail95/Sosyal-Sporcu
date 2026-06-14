@@ -3170,7 +3170,11 @@ function _mcMatchCard(row, ratingStatuses, userId, playerCounts) {
             actionHtml = `<span class="pmr-badge-expired-sm"><i class="fa-solid fa-clock"></i> Süre Doldu</span>`;
         }
     } else if (isCreator && isActive) {
-        actionHtml = `<button class="btn-sm mc-score-entry-btn" onclick="mcOpenScoreEntry('${_mcEsc(mid)}')">
+        actionHtml = `
+        <button class="btn-sm mc-checkin-btn" onclick="mcShowCheckinSummary('${_mcEsc(mid)}', this)" style="margin-right:4px;">
+            <i class="fa-solid fa-clipboard-check"></i> Katılım
+        </button>
+        <button class="btn-sm mc-score-entry-btn" onclick="mcOpenScoreEntry('${_mcEsc(mid)}')">
             <i class="fa-solid fa-pen-to-square"></i> Skoru Gir
         </button>`;
     }
@@ -3900,6 +3904,20 @@ window.mcSubmitCreate = async function () {
             ).catch(() => {});
         }
 
+        // Feed'e maç oluşturma postu ekle
+        try {
+            const homeTeamName = document.getElementById('mc-home-team-select')?.selectedOptions?.[0]?.text || 'Takım';
+            const matchDate = parsedDate.toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' });
+            let feedText;
+            if (awayTeamName) {
+                feedText = `📅 ${homeTeamName} vs ${awayTeamName} — ${matchDate}${venueText ? ' @ ' + venueText : ''} #MaçAyarlandı`;
+            } else {
+                feedText = `📅 ${homeTeamName} maç oluşturdu — ${matchDate}${venueText ? ' @ ' + venueText : ''} — Rakip aranıyor! #MaçAyarlandı`;
+            }
+            await DB.Feed.createPost(userId, feedText, 'match_result', { related_match_id: created.id })
+                .catch(e => console.warn('Feed post (match create) error:', e));
+        } catch (_) {}
+
         if (typeof showToast === 'function') {
             showToast(awayCapId ? 'Maç oluşturuldu, davet gönderildi!' : 'Maç oluşturuldu!');
         }
@@ -3917,6 +3935,11 @@ window.mcSubmitCreate = async function () {
         const firstBtn = document.querySelector('.mc-tab-btn');
         mcSwitchTab('my-matches', firstBtn);
         await _mcLoadMatches();
+
+        // Kadro seçim modal'ını aç (sadece takım varsa)
+        if (homeTeamId) {
+            mcOpenRosterModal(created.id, homeTeamId, matchType);
+        }
 
     } catch (e) {
         console.error('mcSubmitCreate error:', e);
@@ -3992,6 +4015,154 @@ window.mcClearAwayTeam = function () {
 window._mcRefresh = async function () {
     _mcDropdownsLoaded = false;
     if (typeof initMatchCenter === 'function') await initMatchCenter();
+};
+
+// ── Kadro Seçim Modal ─────────────────────────────────
+
+window.mcOpenRosterModal = function(matchId, teamId, matchType) {
+    const slotMap = { '5v5': 5, '6v6': 6, '7v7': 7, '8v8': 8, '11v11': 11 };
+    const target = slotMap[matchType] || 7;
+
+    const members = (window._tmState?.members || []).filter(m => m.player?.id);
+    if (members.length === 0) return; // Takım üyesi yoksa modal açılmaz
+
+    let coreIds = [];
+    try { coreIds = JSON.parse(localStorage.getItem('ss_core_' + teamId) || '[]'); } catch(_) {}
+
+    const existing = document.getElementById('mc-roster-modal-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'mc-roster-modal-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = function(e) { if (e.target === overlay) mcCloseRosterModal(); };
+
+    const playerRows = members.map(m => {
+        const p = m.player;
+        const checked = coreIds.includes(p.id) ? 'checked' : '';
+        const av = p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.username||'p')}`;
+        const gen = p.gen_score ? `<span style="font-size:0.7rem;color:var(--neon-green);margin-left:4px;">${p.gen_score}</span>` : '';
+        return `
+        <label class="mc-roster-row" style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 1rem;cursor:pointer;border-radius:8px;transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+            <input type="checkbox" class="mc-roster-chk" value="${p.id}" ${checked} style="accent-color:var(--neon-green);width:16px;height:16px;">
+            <img src="${av}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'">
+            <span style="flex:1;font-size:0.9rem;">${p.username || 'Oyuncu'}</span>
+            ${gen}
+        </label>`;
+    }).join('');
+
+    overlay.innerHTML = `
+    <div style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:16px;width:min(420px,95vw);max-height:80vh;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:1.25rem 1.5rem;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;">
+            <div>
+                <div style="font-size:1.05rem;font-weight:700;color:#fff;"><i class="fa-solid fa-users-rectangle" style="color:var(--neon-green);margin-right:8px;"></i>Kadro Seç</div>
+                <div style="font-size:0.78rem;color:#555;margin-top:2px;">
+                    <span id="mc-roster-count">0</span> / ${target} oyuncu seçildi
+                </div>
+            </div>
+            <button onclick="mcCloseRosterModal()" style="background:none;border:none;color:#555;font-size:1.2rem;cursor:pointer;padding:4px;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:0.5rem 0;">${playerRows}</div>
+        <div style="padding:1rem 1.5rem;border-top:1px solid rgba(255,255,255,0.08);display:flex;gap:0.75rem;">
+            <button onclick="mcCloseRosterModal()" style="flex:1;padding:0.6rem;border-radius:8px;border:1px solid #444;background:transparent;color:#aaa;cursor:pointer;">Şimdi Değil</button>
+            <button id="mc-roster-send-btn" onclick="mcSubmitRoster('${matchId}', '${teamId}', ${target})"
+                style="flex:2;padding:0.6rem;border-radius:8px;border:none;background:linear-gradient(135deg,var(--neon-green),#6fff00);color:#0a0a0f;font-weight:700;cursor:pointer;">
+                <i class="fa-solid fa-paper-plane"></i> Davet Gönder
+            </button>
+        </div>
+    </div>`;
+
+    document.body.appendChild(overlay);
+
+    // Sayacı güncelle
+    function updateCount() {
+        const checked = overlay.querySelectorAll('.mc-roster-chk:checked').length;
+        const countEl = document.getElementById('mc-roster-count');
+        if (countEl) countEl.textContent = checked;
+    }
+    overlay.querySelectorAll('.mc-roster-chk').forEach(chk => chk.addEventListener('change', updateCount));
+    updateCount();
+};
+
+window.mcCloseRosterModal = function() {
+    document.getElementById('mc-roster-modal-overlay')?.remove();
+};
+
+window.mcSubmitRoster = async function(matchId, teamId, target) {
+    const overlay = document.getElementById('mc-roster-modal-overlay');
+    if (!overlay) return;
+
+    const selectedIds = Array.from(overlay.querySelectorAll('.mc-roster-chk:checked')).map(c => c.value);
+    if (selectedIds.length === 0) {
+        if (typeof showToast === 'function') showToast('En az 1 oyuncu seç.');
+        return;
+    }
+
+    const btn = document.getElementById('mc-roster-send-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gönderiliyor…'; }
+
+    try {
+        const userId = _mcGetUserId();
+        await DB.Matches.sendInvitations(matchId, userId, selectedIds);
+        mcCloseRosterModal();
+        if (typeof showToast === 'function') showToast(`✅ ${selectedIds.length} oyuncuya davet gönderildi!`);
+    } catch(e) {
+        console.error('mcSubmitRoster error:', e);
+        if (typeof showToast === 'function') showToast('Hata: ' + (e.message || 'Davet gönderilemedi'));
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Davet Gönder'; }
+    }
+};
+
+// ── Katılım Durumu Özeti (Kaptan) ─────────────────────
+
+window.mcShowCheckinSummary = async function(matchId, btn) {
+    const panel = document.getElementById('mc-participants-' + matchId);
+    if (!panel) return;
+
+    // Zaten açıksa kapat
+    if (panel.dataset.checkinOpen === '1') {
+        panel.dataset.checkinOpen = '';
+        panel.style.display = 'none';
+        return;
+    }
+
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+
+    try {
+        const summary = await DB.Matches.getInvitationSummary(matchId);
+        const total = summary.accepted.length + summary.pending.length + summary.declined.length;
+
+        const playerChip = (p, color, icon) => {
+            const av = p?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p?.username||'p')}`;
+            return `<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,0.04);">
+                <img src="${av}" style="width:22px;height:22px;border-radius:50%;" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=f'">
+                <span style="font-size:0.8rem;color:${color};">${icon} ${p?.username || '?'}</span>
+            </div>`;
+        };
+
+        panel.innerHTML = `
+        <div style="padding:0.75rem 1rem;border-top:1px solid rgba(255,255,255,0.06);">
+            <div style="font-size:0.78rem;color:#555;margin-bottom:0.6rem;">
+                Katılım Durumu — <span style="color:var(--neon-green);">${summary.accepted.length}</span> onay /
+                <span style="color:#aaa;">${summary.pending.length}</span> bekliyor /
+                <span style="color:var(--neon-pink);">${summary.declined.length}</span> red
+                ${total === 0 ? '(henüz davet gönderilmedi)' : ''}
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                ${summary.accepted.map(p => playerChip(p, 'var(--neon-green)', '✅')).join('')}
+                ${summary.pending.map(p => playerChip(p, '#888', '⏳')).join('')}
+                ${summary.declined.map(p => playerChip(p, 'var(--neon-pink)', '❌')).join('')}
+            </div>
+            ${total === 0 ? `<button onclick="mcOpenRosterModal('${matchId}', '', '')" style="margin-top:0.5rem;background:none;border:1px solid var(--neon-green);color:var(--neon-green);padding:4px 10px;border-radius:6px;font-size:0.78rem;cursor:pointer;"><i class="fa-solid fa-paper-plane"></i> Davet Gönder</button>` : ''}
+        </div>`;
+
+        panel.dataset.checkinOpen = '1';
+        panel.style.display = 'block';
+    } catch(e) {
+        console.error('mcShowCheckinSummary error:', e);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-clipboard-check"></i> Katılım'; }
+    }
 };
 
 })();

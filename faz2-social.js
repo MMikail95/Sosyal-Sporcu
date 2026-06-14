@@ -562,10 +562,11 @@ window.renderExploreGrid = function() {
     const position = exploreFilter.position;
 
     let filtered = explorePlayers.filter(p => {
-        const name = (p.username || p.full_name || '').toLowerCase();
+        const nick = (p.username || '').toLowerCase();
+        const fullName = (p.full_name || '').toLowerCase();
         const city = (p.city || '').toLowerCase();
-        if (search && !name.includes(search) && !city.includes(search)) return false;
-        if (position && p.position !== position) return false;
+        if (search && !nick.includes(search) && !fullName.includes(search) && !city.includes(search)) return false;
+        if (position && getPosCode(p.position || p.ana_mevki) !== position) return false;
         return true;
     });
 
@@ -578,22 +579,27 @@ window.renderExploreGrid = function() {
     }
 
     grid.innerHTML = filtered.map(p => {
-        const avatarUrl  = (p.avatar_url && !p.avatar_url.includes('dicebear.com')) ? p.avatar_url : '';
+        const dicebearFallback = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.username||'user')}`;
+        const avatarUrl  = p.avatar_url || dicebearFallback;
         const gen        = p.gen_score || p.community_gen || null;
         const genColor   = gen >= 8 ? 'var(--neon-green)' : gen >= 7 ? 'var(--neon-cyan)' : 'orange';
-        const posIcon    = { KL:'🧤', DEF:'🛡️', OS:'⚡', FV:'⚽' }[p.position] || '⚽';
+        const posCode    = getPosCode(p.position || p.ana_mevki);
+        const posIcon    = { KL:'🧤', DEF:'🛡️', OS:'⚡', FV:'⚽' }[posCode] || '⚡';
         const isMe       = currentUserId && p.id === currentUserId;
+        const displayName = p.full_name || p.username || 'Oyuncu';
+        const nick       = p.full_name && p.username ? p.username : '';
 
         return `
         <div class="explore-player-card" id="epc-${p.id}">
             <div class="epc-header">
                 <div class="epc-avatar-wrap">
-                    <img src="${avatarUrl}" class="epc-avatar" alt="${p.username}" onerror="this.src='';this.onerror=null;">
+                    <img src="${avatarUrl}" class="epc-avatar" alt="${p.username}" onerror="this.src='${dicebearFallback}';this.onerror=null;">
                     <div class="epc-gen-badge" style="color:${genColor}; border-color:${genColor};">${Math.round(gen)}</div>
                 </div>
                 <div class="epc-info">
-                    <h4 class="epc-name">${p.username || 'Oyuncu'}</h4>
-                    <span class="epc-position">${posIcon} ${getPosLabel(p.position)}</span>
+                    <h4 class="epc-name">${displayName}</h4>
+                    ${nick ? `<span style="font-size:0.7rem; color:#666; margin-bottom:2px;">@${nick}</span>` : ''}
+                    <span class="epc-position">${posIcon} ${getPosLabel(posCode || p.position)}</span>
                     ${p.city ? `<span class="epc-city"><i class="fa-solid fa-location-dot"></i> ${p.city}</span>` : ''}
                 </div>
             </div>
@@ -666,9 +672,17 @@ async function updateFriendshipStatuses(players, myId) {
     }
 }
 
+function getPosCode(pos) {
+    if (!pos) return '';
+    const byCode = { KL:'KL', DEF:'DEF', OS:'OS', FV:'FV' };
+    const byName = { 'Kaleci':'KL', 'Defans':'DEF', 'Orta Saha':'OS', 'Forvet':'FV' };
+    return byCode[pos] || byName[pos] || '';
+}
+
 function getPosLabel(pos) {
+    const code = getPosCode(pos);
     const map = { KL:'Kaleci', DEF:'Defans', OS:'Orta Saha', FV:'Forvet' };
-    return map[pos] || pos || 'Oyuncu';
+    return map[code] || pos || 'Oyuncu';
 }
 
 window.handleFriendAction = async function(targetId, targetName) {
@@ -1611,6 +1625,12 @@ function renderRealNotifications(notifs) {
                             <button onclick="event.stopPropagation(); window.DB.Notifications.markRead('${n.id}'); window.initRealNotifications();" style="flex:1; background:transparent; border:1px solid #ff4d4d; color:#ff4d4d; padding:4px; border-radius:4px; cursor:pointer;">Reddet</button>
                         </div>`;
                     }
+                } else if (n.type === 'match_invite' && n.related_id && !n.title?.includes('Çakışma')) {
+                    actionsHtml = `
+                    <div class="notif-actions" style="margin-top:0.5rem; display:flex; gap:0.5rem;">
+                        <button onclick="event.stopPropagation(); handleNotifMatchCheckin('${n.id}', '${n.related_id}', true)" style="flex:1; background:var(--neon-green); color:#000; border:none; padding:4px; border-radius:4px; font-weight:bold; cursor:pointer;">✅ Geleceğim</button>
+                        <button onclick="event.stopPropagation(); handleNotifMatchCheckin('${n.id}', '${n.related_id}', false)" style="flex:1; background:transparent; border:1px solid #ff4d4d; color:#ff4d4d; padding:4px; border-radius:4px; cursor:pointer;">❌ Gelemeyeceğim</button>
+                    </div>`;
                 }
             }
             return `
@@ -1671,6 +1691,24 @@ window.handleNotifTeamAction = async function(notifId, slugOrId, byId = false) {
         if (typeof window.initTakimim === 'function') window.initTakimim();
     } catch(e) {
         if (typeof showToast === 'function') showToast('❌ Takıma katılamadın: ' + e.message, 'error');
+    }
+};
+
+window.handleNotifMatchCheckin = async function(notifId, matchId, accept) {
+    const user = window.__AUTH_USER__;
+    if (!user || !window.DB) return;
+    try {
+        await window.DB.Matches.respondInvitation(matchId, user.id, accept);
+        if (!String(notifId).startsWith('virtual_')) {
+            await window.DB.Notifications.markRead(notifId);
+        }
+        window.initRealNotifications();
+        if (typeof showToast === 'function') {
+            showToast(accept ? '✅ Katılım onaylandı!' : '❌ Maç reddedildi.');
+        }
+    } catch(e) {
+        console.error('handleNotifMatchCheckin error:', e);
+        if (typeof showToast === 'function') showToast('❌ İşlem başarısız: ' + (e.message || ''), 'error');
     }
 };
 

@@ -1138,7 +1138,65 @@ function renderTeamOverview() {
   renderTeamRadarChart();
   renderTeamStrengthBadges();
   renderCoreSquadSection();
+  renderUpcomingTeamMatches();
   renderTeamMatchHistory();
+}
+
+async function renderUpcomingTeamMatches() {
+  let widget = document.getElementById('tm-upcoming-matches');
+  if (!widget) {
+    widget = document.createElement('div');
+    widget.id = 'tm-upcoming-matches';
+    const container = document.getElementById('team-member-grid');
+    if (!container) return;
+    container.insertAdjacentElement('beforebegin', widget);
+  }
+
+  const teamId = _tmState.team?.id;
+  if (!teamId || !window.DB) return;
+
+  let upcoming = [];
+  try {
+    const { data } = await window.sbClient
+      .from('matches')
+      .select(`id, scheduled_at, status, match_type, home_team:home_team_id(id,name), away_team:away_team_id(id,name), venue:venue_id(id,name)`)
+      .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+      .in('status', ['scheduled', 'confirmed'])
+      .gte('scheduled_at', new Date().toISOString())
+      .order('scheduled_at')
+      .limit(10);
+    upcoming = data || [];
+  } catch(_) {}
+
+  if (upcoming.length === 0) { widget.innerHTML = ''; return; }
+
+  const rows = upcoming.map(m => {
+    const isHome  = m.home_team?.id === teamId;
+    const opp     = isHome ? m.away_team : m.home_team;
+    const oppName = opp?.name || 'Rakip';
+    const date    = new Date(m.scheduled_at).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const venueTxt = m.venue?.name ? `<i class="fa-solid fa-location-dot"></i> ${m.venue.name}` : '';
+    return `
+    <div style="display:flex;align-items:center;gap:0.75rem;padding:0.55rem 0.75rem;border-radius:8px;background:rgba(255,255,255,0.03);margin-bottom:6px;">
+        <div style="flex:1;">
+            <div style="font-size:0.85rem;font-weight:600;">
+                ${isHome ? (_tmState.team?.name || 'Biz') : oppName}
+                <span style="color:#444;font-weight:400;margin:0 4px;">vs</span>
+                ${isHome ? oppName : (_tmState.team?.name || 'Biz')}
+            </div>
+            ${venueTxt ? `<div style="color:#555;font-size:0.75rem;margin-top:2px;">${venueTxt}</div>` : ''}
+        </div>
+        <span style="font-size:0.75rem;color:var(--neon-cyan);white-space:nowrap;">${date}</span>
+    </div>`;
+  }).join('');
+
+  widget.innerHTML = `
+    <div class="section-label-pill" style="margin-bottom:0.75rem;margin-top:1rem;">
+        <i class="fa-solid fa-calendar-days" style="color:var(--neon-green);"></i>
+        YAKLAŞAN MAÇLAR
+        <span style="margin-left:0.5rem;font-size:0.7rem;color:#666;">${upcoming.length} maç</span>
+    </div>
+    <div>${rows}</div>`;
 }
 
 function renderTeamRadarChart() {

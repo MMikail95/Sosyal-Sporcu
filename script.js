@@ -3724,6 +3724,57 @@ async function loadMatchHistory(targetPlayerId) {
     if (loadingEl) loadingEl.style.display = 'block';
     tbody.innerHTML = '';
 
+    // Yaklaşan maçlar bölümü (sadece kendi profili)
+    if (isOwnProfile) {
+        let upcomingWidget = document.getElementById('profile-upcoming-matches');
+        if (!upcomingWidget) {
+            upcomingWidget = document.createElement('div');
+            upcomingWidget.id = 'profile-upcoming-matches';
+            upcomingWidget.className = 'glass-card';
+            upcomingWidget.style.marginBottom = '1rem';
+            document.getElementById('match-history-loading')?.parentElement?.insertAdjacentElement('beforebegin', upcomingWidget);
+        }
+        try {
+            const teamIds = (window._tmState?.myTeams || []).map(t => t.id).filter(Boolean);
+            const allMatches = await window.DB.Matches.getMyMatches(user.id, teamIds, 20);
+            const now = new Date();
+            const upcoming = allMatches
+                .filter(r => {
+                    if (!r.match?.scheduled_at) return false;
+                    if (!['scheduled', 'confirmed'].includes(r.match.status)) return false;
+                    return new Date(r.match.scheduled_at) >= now;
+                })
+                .sort((a, b) => new Date(a.match.scheduled_at) - new Date(b.match.scheduled_at))
+                .slice(0, 5);
+
+            if (upcoming.length === 0) {
+                upcomingWidget.innerHTML = '';
+            } else {
+                const rows = upcoming.map(r => {
+                    const m = r.match;
+                    const home = m.home_team?.name || 'Ev Sahibi';
+                    const away = m.away_team?.name || 'Deplasman';
+                    const date = new Date(m.scheduled_at).toLocaleString('tr-TR', { day: 'numeric', month: 'short', weekday: 'short', hour: '2-digit', minute: '2-digit' });
+                    const venue = m.venue?.name ? `<span style="color:#555;font-size:0.75rem;margin-left:8px;"><i class="fa-solid fa-location-dot"></i> ${m.venue.name}</span>` : '';
+                    const confirmed = r.confirmed ? `<span style="color:var(--neon-green);font-size:0.72rem;margin-left:6px;">✅ Onaylandı</span>` : '';
+                    return `
+                    <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                        <div style="flex:1;">
+                            <span style="font-size:0.85rem;font-weight:600;">${home} <span style="color:#444;">vs</span> ${away}</span>
+                            ${venue}${confirmed}
+                        </div>
+                        <span style="font-size:0.75rem;color:var(--neon-cyan);white-space:nowrap;">${date}</span>
+                    </div>`;
+                }).join('');
+                upcomingWidget.innerHTML = `
+                    <h4 class="attr-header" style="margin-bottom:0.5rem;">
+                        <i class="fa-solid fa-calendar-days" style="color:var(--neon-green);margin-right:6px;"></i>YAKLAŞAN MAÇLAR
+                    </h4>
+                    ${rows}`;
+            }
+        } catch(_) {}
+    }
+
     try {
         const history = await window.DB.Matches.getPlayerHistory(playerId);
 
