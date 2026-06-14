@@ -1304,6 +1304,19 @@ body {
     font-size: 2.2rem;
     line-height: 1;
     flex-shrink: 0;
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.etc-crest img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
 }
 .etc-info {
     flex: 1;
@@ -1347,6 +1360,11 @@ body {
     margin: 0.75rem 0 0;
     padding-top: 0.75rem;
     border-top: 1px solid rgba(255,255,255,0.06);
+    overflow: hidden;
+    max-height: 80px;
+}
+.etc-desc img, .etc-desc iframe, .etc-desc video, .etc-desc embed, .etc-desc object {
+    display: none !important;
 }
 .etc-actions {
     display: flex;
