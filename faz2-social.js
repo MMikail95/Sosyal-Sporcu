@@ -90,8 +90,10 @@ function renderExploreTeams(teams) {
              onclick="_openTeamDetail(this)"
              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();_openTeamDetail(this);}">
             <div class="etc-header">
-                <div class="etc-crest" style="color:${color};" aria-hidden="true">
-                    <i class="fa-solid fa-shield-cat"></i>
+                <div class="etc-crest" style="color:${color}; ${t.logo_url ? 'padding:0;overflow:hidden;' : ''}" aria-hidden="true">
+                    ${t.logo_url
+                        ? `<img src="${t.logo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" alt="${safeName}" onerror="this.parentElement.innerHTML='<i class=\\'fa-solid fa-shield-cat\\'></i>'">`
+                        : `<i class="fa-solid fa-shield-cat"></i>`}
                 </div>
                 <div class="etc-info">
                     <h4 class="etc-name">${t.name || 'Takım'}</h4>
@@ -335,6 +337,7 @@ window._openTeamDetail = async function(cardEl) {
 window.openTeamProfile = function(teamId) {
     if (!teamId) return;
     sessionStorage.setItem('ss_view_team_id', teamId);
+    sessionStorage.setItem('ss_team_back_url', window.location.href);
     var navMap = window._MPA_NAV_MAP;
     var url = (navMap && navMap.teamProfile) ? navMap.teamProfile : '../team-profile/';
     window.location.href = url;

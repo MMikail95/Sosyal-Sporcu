@@ -240,7 +240,7 @@
     <main class="main-content">
         <section id="team-profile-section" class="section active">
 
-            <button class="tp-back-btn" onclick="history.back()">
+            <button class="tp-back-btn" onclick="(function(){var b=sessionStorage.getItem('ss_team_back_url');sessionStorage.removeItem('ss_team_back_url');if(b){window.location.href=b;}else{history.back();}})()">
                 <i class="fa-solid fa-arrow-left"></i> Geri
             </button>
 
