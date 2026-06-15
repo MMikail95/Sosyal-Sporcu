@@ -587,9 +587,7 @@ window.renderExploreGrid = function() {
 
     grid.innerHTML = filtered.map(p => {
         const _rawAv     = p.avatar_url || '';
-        const avatarUrl  = (_rawAv && !_rawAv.includes('dicebear.com'))
-            ? _rawAv
-            : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.username || p.id || 'u')}`;
+        const avatarUrl  = (_rawAv && !_rawAv.includes('dicebear.com')) ? _rawAv : '';
         const gen        = p.gen_score || p.community_gen || null;
         const genColor   = gen >= 8 ? 'var(--neon-green)' : gen >= 7 ? 'var(--neon-cyan)' : 'orange';
         const posCode    = getPosCode(p.ana_mevki || p.position);
@@ -602,7 +600,7 @@ window.renderExploreGrid = function() {
         <div class="explore-player-card" id="epc-${p.id}">
             <div class="epc-header">
                 <div class="epc-avatar-wrap">
-                    <img src="${avatarUrl}" class="epc-avatar" alt="${p.username}" onerror="this.onerror=null;this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.username||'u')}'">
+                    <img src="${avatarUrl}" class="epc-avatar" alt="${p.username}" onerror="this.onerror=null;this.src=''">
                     <div class="epc-gen-badge" style="color:${genColor}; border-color:${genColor};">${Math.round(gen)}</div>
                 </div>
                 <div class="epc-info">

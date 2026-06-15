@@ -713,16 +713,25 @@
 document.addEventListener('supabaseUserReady', async function onSupabaseReady() {
     document.removeEventListener('supabaseUserReady', onSupabaseReady); // tek tetik
 
-    const viewedId   = sessionStorage.getItem('ss_view_player_id');
+    const viewedId   = sessionStorage.getItem('ss_view_player_id') || window.__PENDING_VIEW_PLAYER_ID__ || null;
     const loggedInId = window.__AUTH_USER__ && window.__AUTH_USER__.id;
 
     // Başkasının profiline bakıyorsak o oyuncunun profilini yükle
     if (viewedId && viewedId !== loggedInId && window.DB) {
         try {
+            // Arkadaşlık kontrolü
+            let isFriend = false;
+            if (loggedInId) {
+                try {
+                    const fs = await window.DB.Friends.checkStatus(loggedInId, viewedId);
+                    isFriend = fs?.status === 'accepted';
+                } catch(e) {}
+            }
+            window.viewingAsFriend = isFriend;
+
             const viewedProfile = await window.DB.Profiles.get(viewedId);
             if (viewedProfile) {
                 window.__SUPABASE_PROFILE__ = viewedProfile;
-                console.log('👁️ Bakılan oyuncu profili yüklendi:', viewedProfile.username);
             }
         } catch(e) { console.warn('Viewed profile load error:', e); }
     }
@@ -733,20 +742,20 @@ document.addEventListener('supabaseUserReady', async function onSupabaseReady() 
     if (viewedId && viewedId !== loggedInId) {
         const sbp = window.__SUPABASE_PROFILE__;
         if (sbp) {
-            const _diceSeed = encodeURIComponent(sbp.username || sbp.id || 'u');
-            const _fallbackAv = `https://api.dicebear.com/7.x/avataaars/svg?seed=${_diceSeed}`;
             const headerAvatar = document.getElementById('profile-avatar');
             if (headerAvatar) {
-                headerAvatar.src = sbp.avatar_url || _fallbackAv;
-                headerAvatar.onerror = () => { headerAvatar.onerror = null; headerAvatar.src = _fallbackAv; };
+                headerAvatar.src = sbp.avatar_url || '';
+                headerAvatar.onerror = () => { headerAvatar.onerror = null; headerAvatar.src = ''; };
             }
             const futAvatar = document.getElementById('fut-avatar');
             if (futAvatar) {
-                futAvatar.src = sbp.avatar_url || _fallbackAv;
-                futAvatar.style.opacity = '1';
-                futAvatar.onerror = () => { futAvatar.onerror = null; futAvatar.src = _fallbackAv; futAvatar.style.opacity = '0.8'; };
+                futAvatar.src = sbp.avatar_url || '';
+                futAvatar.style.opacity = sbp.avatar_url ? '1' : '0.25';
+                futAvatar.onerror = () => { futAvatar.onerror = null; futAvatar.src = ''; futAvatar.style.opacity = '0.25'; };
             }
         }
+        // İzin modunu uygula (tab gizleme dahil)
+        setTimeout(() => { if (typeof applyProfileViewMode === 'function') applyProfileViewMode(); }, 100);
     }
     if (typeof updateChart === 'function' && typeof players !== 'undefined' && players.length) {
         var p = players.find(function(pl){ return pl.id === activePlayerId; }) || players[0];

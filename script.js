@@ -963,6 +963,10 @@ window.goBackFromProfile = function() {
  * Returns true if we're viewing someone else's profile (not ours)
  */
 function isViewingOtherProfile() {
+    // character page MPA flow: components.js sessionStorage'ı siler ve window değişkenine yazar
+    if (window.__PENDING_VIEW_PLAYER_ID__ && window.__AUTH_USER__?.id !== window.__PENDING_VIEW_PLAYER_ID__) {
+        return true;
+    }
     const acc = getActiveAccount();
     return acc && acc.playerId !== activePlayerId;
 }
@@ -2020,7 +2024,7 @@ window.updateUI = function () {
     if (avatarEl) {
         const sbp = window.__SUPABASE_PROFILE__;
         // ss_view_player_id varsa ve __SUPABASE_PROFILE__ o kişiye aitse → başkasının profili
-        const viewedSessionId = sessionStorage.getItem('ss_view_player_id');
+        const viewedSessionId = sessionStorage.getItem('ss_view_player_id') || window.__PENDING_VIEW_PLAYER_ID__ || null;
         const isViewingOther  = sbp && viewedSessionId && sbp.id === viewedSessionId;
         // Race condition fix: viewedSessionId var ama henüz doğru profil yüklenmediyse kendi avatarımızı gösterme
         if (viewedSessionId && !isViewingOther) {

@@ -227,6 +227,9 @@
         var pendingId       = sessionStorage.getItem('ss_view_player_id');
         var pendingUsername = sessionStorage.getItem('ss_view_player_username');
         if (pendingId && location.pathname.includes('/character')) {
+            // Window değişkenine kaydet — supabaseUserReady listener sessionStorage silinmeden önce okuyabilsin
+            window.__PENDING_VIEW_PLAYER_ID__ = pendingId;
+            window.__PENDING_VIEW_PLAYER_USERNAME__ = pendingUsername;
             sessionStorage.removeItem('ss_view_player_id');
             sessionStorage.removeItem('ss_view_player_username');
             document.addEventListener('DOMContentLoaded', function () {
