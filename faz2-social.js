@@ -588,6 +588,7 @@ window.renderExploreGrid = function() {
     grid.innerHTML = filtered.map(p => {
         const _rawAv     = p.avatar_url || '';
         const avatarUrl  = (_rawAv && !_rawAv.includes('dicebear.com')) ? _rawAv : '';
+        const initial    = (p.username || p.full_name || 'O').charAt(0).toUpperCase();
         const gen        = p.gen_score || p.community_gen || null;
         const genColor   = gen >= 8 ? 'var(--neon-green)' : gen >= 7 ? 'var(--neon-cyan)' : 'orange';
         const posCode    = getPosCode(p.ana_mevki || p.position);
@@ -595,12 +596,15 @@ window.renderExploreGrid = function() {
         const isMe       = currentUserId && p.id === currentUserId;
         const displayName = p.full_name || p.username || 'Oyuncu';
         const nick       = p.full_name && p.username ? p.username : '';
+        const avatarEl   = avatarUrl
+            ? `<img src="${avatarUrl}" class="epc-avatar" alt="${p.username}" onerror="this.onerror=null;this.parentNode.innerHTML='<div class=\\'epc-avatar epc-avatar-initials\\'>${initial}</div>'">`
+            : `<div class="epc-avatar epc-avatar-initials">${initial}</div>`;
 
         return `
         <div class="explore-player-card" id="epc-${p.id}">
             <div class="epc-header">
                 <div class="epc-avatar-wrap">
-                    <img src="${avatarUrl}" class="epc-avatar" alt="${p.username}" onerror="this.onerror=null;this.src=''">
+                    ${avatarEl}
                     <div class="epc-gen-badge" style="color:${genColor}; border-color:${genColor};">${Math.round(gen)}</div>
                 </div>
                 <div class="epc-info">
