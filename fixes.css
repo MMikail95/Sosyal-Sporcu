@@ -15,6 +15,11 @@
    0. SPRINT 6 — KRİTİK BUG FIX'LER
    ────────────────────────────────────────────────────────────── */
 
+/* Fix 0: Sidebar collapsed — overflow:visible taşan logoyu gizle (U harfi bug) */
+.sidebar.collapsed {
+    overflow: hidden;
+}
+
 /* Fix 1: Bildirim butonu MANAGER++ logosunun önünde olmalı.
    sidebar z-index=1000, sidebar-toggle z-index=1100,
    Bu buton her ikisinin üstünde: 1200 */
