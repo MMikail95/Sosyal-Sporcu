@@ -500,12 +500,16 @@ async function renderFriendsList() {
         container.innerHTML = friends.map(f => {
             const other = f.requester_id === user.id ? f.addressee : f.requester;
             if (!other) return '';
-            const avatar = other.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(other.username||'u')}`;
+            const _fAv   = other.avatar_url || '';
+            const fAvUrl = (_fAv && !_fAv.includes('dicebear.com')) ? _fAv : '';
+            const fInit  = (other.username || other.full_name || 'O').charAt(0).toUpperCase();
             const gen    = other.gen_score || null;
             return `
             <div class="friend-list-row glass-card">
-                <img src="${avatar}" class="friend-avatar" alt="${other.username}"
-                     onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'">
+                ${fAvUrl
+                    ? `<img src="${fAvUrl}" class="friend-avatar" alt="${other.username}" onerror="this.onerror=null;this.outerHTML='<div class=\\'friend-avatar friend-avatar-initials\\'>${fInit}</div>'">`
+                    : `<div class="friend-avatar friend-avatar-initials">${fInit}</div>`
+                }
                 <div class="friend-info">
                     <span class="friend-name">${other.username || 'Oyuncu'}</span>
                     <span class="friend-meta">
@@ -587,7 +591,7 @@ window.renderExploreGrid = function() {
 
     grid.innerHTML = filtered.map(p => {
         const _rawAv     = p.avatar_url || '';
-        const avatarUrl  = _rawAv || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.username || p.id || 'u')}`;
+        const avatarUrl  = (_rawAv && !_rawAv.includes('dicebear.com')) ? _rawAv : '';
         const initial    = (p.username || p.full_name || 'O').charAt(0).toUpperCase();
         const gen        = p.gen_score || p.community_gen || null;
         const genColor   = gen >= 8 ? 'var(--neon-green)' : gen >= 7 ? 'var(--neon-cyan)' : 'orange';
@@ -596,7 +600,9 @@ window.renderExploreGrid = function() {
         const isMe       = currentUserId && p.id === currentUserId;
         const displayName = p.full_name || p.username || 'Oyuncu';
         const nick       = p.full_name && p.username ? p.username : '';
-        const avatarEl   = `<img src="${avatarUrl}" class="epc-avatar" alt="${p.username}" onerror="this.onerror=null;this.parentNode.innerHTML='<div class=\\'epc-avatar epc-avatar-initials\\'>${initial}</div>'">`;
+        const avatarEl   = avatarUrl
+            ? `<img src="${avatarUrl}" class="epc-avatar" alt="${p.username}" onerror="this.onerror=null;this.parentNode.innerHTML='<div class=\\'epc-avatar epc-avatar-initials\\'>${initial}</div>'">`
+            : `<div class="epc-avatar epc-avatar-initials">${initial}</div>`;
 
         return `
         <div class="explore-player-card" id="epc-${p.id}">
