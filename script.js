@@ -1935,9 +1935,11 @@ function applyFriendshipTabRestriction(viewingOther) {
         btn.style.display = visibleTabs.includes(tabId) ? '' : 'none';
     });
 
-    // Aktif sekme artık gizlendiyse Genel Bakış'a geç
+    // Aktif sekme veya görünür içerik kısıtlı bir tabsa Genel Bakış'a geç
     const activeBtn = document.querySelector('.tab-btn.active');
-    if (activeBtn && !visibleTabs.includes(activeBtn.getAttribute('data-tab'))) {
+    const visibleSubtab = [...document.querySelectorAll('.profile-subtab')].find(el => el.style.display !== 'none');
+    const activeTabId = (activeBtn && activeBtn.getAttribute('data-tab')) || (visibleSubtab && visibleSubtab.id);
+    if (activeTabId && !visibleTabs.includes(activeTabId)) {
         switchProfileTab('tab-genel');
     }
 

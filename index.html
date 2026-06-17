@@ -427,7 +427,7 @@
                                         style="position:relative; min-height:400px; display:flex; flex-direction:column;">
                                         <h3 style="color: #888; font-size: 1rem; margin-bottom: 0;">OYUNCU PROFİLİ</h3>
                                         <!-- GEN Badge -->
-                                        <div style="position:absolute; top:1.5rem; right:1.5rem;
+                                        <div id="chart-gen-badge" style="position:absolute; top:1.5rem; right:1.5rem;
                                              border: 2px solid var(--neon-green);
                                              background: rgba(0,0,0,0.6);
                                              padding: 8px 18px; border-radius: 12px;
@@ -438,8 +438,8 @@
                                                        line-height:1;">88</span>
                                             <span style="font-size:0.8rem; font-weight:700; color:#fff; display:block; text-align:center; letter-spacing:2px;">GEN</span>
                                         </div>
-                                        <div style="position: relative; height: 350px; width: 100%; display: block !important;">
-                                            <canvas id="profileChart" width="400" height="400"></canvas>
+                                        <div class="chart-canvas-wrapper" style="position:relative; height:350px; width:100%; overflow:hidden;">
+                                            <canvas id="profileChart"></canvas>
                                         </div>
                                     </div>
                                 </div>
@@ -806,12 +806,6 @@
                                     <div style="color:#555; font-size:0.82rem;">Yükleniyor...</div>
                                 </div>
                             </div>
-
-                            <!-- Maça Davet Et (sadece başkasının profilinde gösterilir) -->
-                            <button id="btn-mac-davet"
-                                style="width:100%; margin-top:1.5rem; background:var(--neon-pink); color:white; border:none; padding:1rem; border-radius:8px; font-weight:800; cursor:pointer; display:none; font-family:inherit; font-size:0.95rem;">
-                                <i class="fa-solid fa-envelope-open-text"></i> MAÇA DAVET ET
-                            </button>
 
                         </div><!-- /tab-hakkimda -->
 
@@ -1215,13 +1209,10 @@
 
                         <!-- TAB: ARKADAŞLARIM -->
                         <div id="tab-arkadaslarim" class="profile-subtab" style="display:none;">
-                            <div class="glass-card" style="padding:0.75rem 1.25rem; margin-bottom:1.25rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
+                            <div class="glass-card" style="padding:0.75rem 1.25rem; margin-bottom:1.25rem;">
                                 <span style="font-weight:700; color:#888; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px;">
                                     <i class="fa-solid fa-user-group"></i> Arkadaş Listem
                                 </span>
-                                <button class="btn-outline" onclick="loadFriendsList()" style="padding:0.4rem 0.9rem; font-size:0.8rem;">
-                                    <i class="fa-solid fa-rotate"></i> Yenile
-                                </button>
                             </div>
                             <div class="explore-player-grid" id="friends-list-grid">
                                 <div style="text-align:center; padding:3rem; color:#555; grid-column:1/-1;">
@@ -1278,6 +1269,14 @@
                         </div>
 
                     </div><!-- end profile-content-container -->
+
+                    <!-- Maça Davet Et (sadece başkasının profilinde gösterilir, tab dışında) -->
+                    <button id="btn-mac-davet"
+                        style="width:100%; margin-top:1.5rem; background:var(--neon-pink); color:white; border:none; padding:1rem; border-radius:8px; font-weight:800; cursor:pointer; display:none; font-family:inherit; font-size:0.95rem;"
+                        onclick="openMatchInviteModal && openMatchInviteModal()">
+                        <i class="fa-solid fa-envelope-open-text"></i> MAÇA DAVET ET
+                    </button>
+
                 </div><!-- end profile-center-col -->
 
             </section>

@@ -2295,7 +2295,7 @@ window.renderOdemelerTab = function() {
                         const statusColor = isDebt ? 'var(--neon-pink)' : bal === 0 ? '#888' : 'var(--neon-green)';
                         return `
                         <div class="odeme-player-row">
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}" class="odeme-avatar">
+                            <img src="${p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.name||'u')}`}" class="odeme-avatar">
                             <div class="odeme-player-name">
                                 ${p.name}
                                 ${p.id === t.captain_id || p.supabase_id === t.captain_id ? '<i class="fa-solid fa-crown" style="color:#ffd700; font-size:0.7rem;"></i>' : ''}
@@ -2332,7 +2332,7 @@ window.renderOdemelerTab = function() {
                             <span class="history-type-icon" style="color:${isDebt?'var(--neon-pink)':'var(--neon-green)'};">
                                 <i class="fa-solid ${isDebt?'fa-arrow-down':'fa-arrow-up'}"></i>
                             </span>
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${player?.name||'x'}" class="odeme-history-avatar">
+                            <img src="${player?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(player?.name||'x')}`}" class="odeme-history-avatar">
                             <div class="odeme-history-info">
                                 <span class="odeme-history-name">${player?.name || 'Bilinmeyen'}</span>
                                 <span class="odeme-history-desc">${pay.desc || (isDebt ? 'Borç' : 'Ödeme')}</span>
