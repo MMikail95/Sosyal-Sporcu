@@ -1909,8 +1909,8 @@ function applyProfileViewMode() {
 // sadece bu nesneyi güncelle — mantık koda dokunmadan çalışır.
 const PROFILE_TAB_PERMISSIONS = {
     own:       ['tab-genel', 'tab-hakkimda', 'tab-kariyer', 'tab-maclar', 'tab-arkadaslarim'],
-    friend:    ['tab-genel', 'tab-maclar', 'tab-arkadaslarim'],
-    nonFriend: ['tab-genel', 'tab-maclar', 'tab-arkadaslarim'],
+    friend:    ['tab-genel', 'tab-hakkimda', 'tab-maclar', 'tab-arkadaslarim'],
+    nonFriend: ['tab-genel', 'tab-hakkimda', 'tab-maclar', 'tab-arkadaslarim'],
 };
 
 // Sadece profil sahibine gösterilen bloklar (rozet / onur şeritleri vb.)
