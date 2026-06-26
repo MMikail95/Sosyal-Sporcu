@@ -439,6 +439,8 @@ window.switchAccount = function (accountId) {
 };
 
 function updateAccountUI() {
+    // Gerçek Supabase kullanıcısı varsa mock verisi yazma (flash önleme)
+    if (window.__AUTH_USER__) return;
     const acc = getActiveAccount();
     if (!acc) return;
 
@@ -2049,7 +2051,12 @@ window.updateUI = function () {
     const isSelf  = authId && (player.supabase_id === authId || player.id === authId);
     if (isSelf) {
         const sidebarName = document.getElementById('current-account-name');
-        if (sidebarName && player.name) sidebarName.textContent = player.name;
+        if (sidebarName) {
+            // Gerçek Supabase kullanıcı adını kullan, mock ismi değil
+            const realRaw = window.__SUPABASE_PROFILE__?.username || window.__SUPABASE_PROFILE__?.full_name || player.name;
+            const firstName = realRaw ? realRaw.split(' ')[0] : '';
+            if (firstName) sidebarName.textContent = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+        }
         const sidebarAvatar = document.getElementById('current-account-avatar');
         if (sidebarAvatar && player.avatar_url) sidebarAvatar.src = player.avatar_url;
     }

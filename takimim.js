@@ -31,6 +31,13 @@ let teamData = null; // eski referansları kırmamak için
 // 2. YARDIMCI
 // ──────────────────────────────────────────────────────
 
+// Modal backdrop'a tıklanınca kapat — ama metin seçerken sürükleyip bırakılınca değil
+function _tmBackdropClose(modal, closeFn) {
+  let startedOnBackdrop = false;
+  modal.addEventListener('mousedown', e => { startedOnBackdrop = e.target === modal; });
+  modal.addEventListener('click', e => { if (e.target === modal && startedOnBackdrop) closeFn(); });
+}
+
 function _tmSetLoading(on) {
   _tmState.loading = on;
   const el = document.getElementById('team-main-header');
@@ -585,6 +592,7 @@ function _tmRenderTeamUI() {
   _tmRenderTeamSelector();
   _tmRenderHeader();
   renderTeamOverview();
+  if (typeof renderKadroTab === 'function') renderKadroTab();
 }
 
 window._tmNewTeamModal = function() {
@@ -669,7 +677,7 @@ window._tmNewTeamModal = function() {
     </div>
   `;
 
-  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  _tmBackdropClose(modal, () => modal.remove());
   document.body.appendChild(modal);
   requestAnimationFrame(() => modal.classList.add('visible'));
 };
@@ -853,7 +861,7 @@ window._tmOpenAvatarPicker = function() {
   modal.id = 'team-avatar-picker-modal';
   modal.className = 'modal-backdrop';
   modal.style.cssText = 'display:flex;z-index:9999;';
-  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  _tmBackdropClose(modal, () => modal.remove());
 
   modal.innerHTML = `
     <div class="modal-box" onclick="event.stopPropagation()" style="max-width:480px;">
@@ -963,7 +971,7 @@ window._tmOpenInviteModal = function() {
     </div>
   `;
 
-  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+  _tmBackdropClose(modal, () => modal.remove());
   document.body.appendChild(modal);
   requestAnimationFrame(() => modal.classList.add('visible'));
 };
@@ -1576,7 +1584,7 @@ window.openTeamEditModal = function() {
     modal = document.createElement('div');
     modal.id = 'team-edit-modal';
     modal.className = 'modal-backdrop';
-    modal.onclick = e => { if (e.target === modal) closeTeamEditModal(); };
+    _tmBackdropClose(modal, closeTeamEditModal);
     document.body.appendChild(modal);
   }
 
@@ -1642,9 +1650,18 @@ window.saveTeamEdit = async function() {
       name, description: desc, city,
       total_wins: wins, total_draws: draws, total_losses: losses,
     });
-    window.showToast?.('Takım güncellendi', 'success');
+    // Update local state immediately so header & selector reflect the change
+    _tmState.team.name        = name;
+    _tmState.team.description = desc;
+    _tmState.team.city        = city;
+    _tmState.team.total_wins  = wins;
+    _tmState.team.total_draws = draws;
+    _tmState.team.total_losses = losses;
+    const myTeamRow = _tmState.myTeams.find(t => t.id === _tmState.team.id);
+    if (myTeamRow) myTeamRow.name = name;
     closeTeamEditModal();
-    await initTakimim();
+    _tmRenderTeamUI();
+    window.showToast?.('Takım güncellendi', 'success');
   } catch (e) {
     window.showToast?.('❌ ' + e.message, 'error');
   }
@@ -1793,7 +1810,7 @@ window._tmOpenGuestModal = function() {
   modal.id = 'tm-guest-modal';
   modal.className = 'modal-backdrop';
   modal.style.cssText = 'display:flex;z-index:9999;';
-  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  _tmBackdropClose(modal, () => modal.remove());
   modal.innerHTML = `
     <div class="modal-box" onclick="event.stopPropagation()" style="max-width:380px;">
       <div class="modal-header">
