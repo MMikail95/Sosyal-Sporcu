@@ -1252,13 +1252,10 @@ const Notifications = {
 
   // Bildirim gönder
   async send(userId, type, title, body, actorId = null, relatedId = null) {
-    const { data, error } = await sb()
+    const { error } = await sb()
       .from('notifications')
-      .insert({ user_id: userId, type, title, body, actor_id: actorId, related_id: relatedId })
-      .select()
-      .single();
-    if (error) console.error('Notification send error:', error);
-    return data;
+      .insert({ user_id: userId, type, title, body, actor_id: actorId, related_id: relatedId });
+    if (error) throw error;
   },
 
   // Realtime bildirim aboneliği
