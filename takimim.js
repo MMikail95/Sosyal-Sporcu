@@ -1029,9 +1029,19 @@ window._tmSearchPlayers = async function() {
       .neq('id', _tmState.userId);
 
     if (isNickSearch) {
-      dbQuery = dbQuery.ilike('username', `${q}%`);
+      dbQuery = dbQuery.ilike('username', `%${q}%`);
     } else {
-      dbQuery = dbQuery.or(`full_name.ilike.${q}%,username.ilike.${q}%`);
+      // PostgreSQL C locale doesn't equate i↔İ, ş↔s etc. in ilike.
+      // Generate a Turkish-capital variant for the first char to catch "İsmail" when user types "ismail".
+      const trMap = {i:'İ',I:'İ',s:'Ş',S:'Ş',c:'Ç',C:'Ç',g:'Ğ',G:'Ğ',o:'Ö',O:'Ö',u:'Ü',U:'Ü'};
+      const firstTR = trMap[q[0]];
+      const qTR = firstTR ? firstTR + q.slice(1) : null;
+      const filters = [
+        `full_name.ilike.%${q}%`,
+        `username.ilike.${q}%`,
+        ...(qTR ? [`full_name.ilike.%${qTR}%`, `username.ilike.${qTR}%`] : [])
+      ].join(',');
+      dbQuery = dbQuery.or(filters);
     }
 
     const { data, error } = await dbQuery
