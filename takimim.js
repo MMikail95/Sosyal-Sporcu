@@ -957,14 +957,11 @@ window._tmOpenInviteModal = function() {
 
       <!-- Oyuncu Arama Tab -->
       <div id="itab-search" class="tm-invite-tab-content" style="display:none">
-        <p class="tm-invite-hint">Kullanıcı adıyla oyuncu arayın ve davet bildirimi gönderin.</p>
+        <p class="tm-invite-hint">İsim yazarak arayın. Nick aramak için <strong>@</strong> ile başlayın.</p>
         <div class="tm-invite-search-row">
           <input type="text" id="tm-inv-search-input" class="profile-input"
-                 placeholder="Kullanıcı adı..." maxlength="30"
-                 onkeydown="if(event.key==='Enter') _tmSearchPlayers()">
-          <button class="ntc-lookup-btn" onclick="_tmSearchPlayers()">
-            <i class="fa-solid fa-magnifying-glass"></i>
-          </button>
+                 placeholder="İsim veya @nick..." maxlength="30"
+                 oninput="_tmSearchDebounce()">
         </div>
         <div id="tm-inv-results" class="tm-inv-results-list"></div>
       </div>
@@ -1001,21 +998,43 @@ function _tmNormalizeTR(str) {
   return (str || '').replace(/[çÇğĞıİöÖşŞüÜ]/g, m => map[m] || m).toLowerCase();
 }
 
+let _tmSearchTimer = null;
+window._tmSearchDebounce = function() {
+  clearTimeout(_tmSearchTimer);
+  const q = document.getElementById('tm-inv-search-input')?.value?.trim() || '';
+  if (q.length < 1) {
+    const el = document.getElementById('tm-inv-results');
+    if (el) el.innerHTML = '';
+    return;
+  }
+  _tmSearchTimer = setTimeout(() => window._tmSearchPlayers(), 300);
+};
+
 window._tmSearchPlayers = async function() {
-  const q = document.getElementById('tm-inv-search-input')?.value?.trim();
-  if (!q || q.length < 2) { window.showToast?.('En az 2 karakter girin', 'error'); return; }
+  const raw = document.getElementById('tm-inv-search-input')?.value?.trim() || '';
+  if (!raw) return;
+
+  const isNickSearch = raw.startsWith('@');
+  const q = isNickSearch ? raw.slice(1) : raw;
+  if (!q) return;
 
   const resultsEl = document.getElementById('tm-inv-results');
   if (!resultsEl) return;
   resultsEl.innerHTML = `<div class="tm-inv-searching"><i class="fa-solid fa-spinner fa-spin"></i> Aranıyor…</div>`;
 
-  // Arama kaynağı: Supabase `profiles` tablosu — username alanı (ilike, büyük/küçük harf duyarsız)
   try {
-    const { data, error } = await window.sbClient
+    let dbQuery = window.sbClient
       .from('profiles')
-      .select('id, username, avatar_url, position, ana_mevki, gen_score, current_team_id')
-      .ilike('username', `%${q}%`)
-      .neq('id', _tmState.userId)
+      .select('id, username, full_name, avatar_url, position, ana_mevki, gen_score, current_team_id')
+      .neq('id', _tmState.userId);
+
+    if (isNickSearch) {
+      dbQuery = dbQuery.ilike('username', `${q}%`);
+    } else {
+      dbQuery = dbQuery.or(`full_name.ilike.${q}%,username.ilike.${q}%`);
+    }
+
+    const { data, error } = await dbQuery
       .limit(10);
 
     if (error) throw error;
@@ -1034,13 +1053,14 @@ window._tmSearchPlayers = async function() {
       const avatar    = p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(p.username||'u')}`;
       const pos       = p.ana_mevki || p.position || 'OS';
       const gen       = p.gen_score || '—';
-      const displayName = p.username;
+      const displayName = p.full_name || p.username;
+      const nickLine  = p.full_name ? `<span style="opacity:.6;font-size:.8em">@${p.username}</span>` : '';
 
       return `
         <div class="tm-inv-result-row">
           <img src="${avatar}" class="tm-inv-result-avatar" alt="${p.username}">
           <div class="tm-inv-result-info">
-            <span class="tm-inv-result-name">${displayName}</span>
+            <span class="tm-inv-result-name">${displayName} ${nickLine}</span>
             <span class="tm-inv-result-meta">${pos} · ${gen} GEN${hasTeam ? ' · <span style="color:#ff6b35">Takımlı</span>' : ''}</span>
           </div>
           ${isMember
