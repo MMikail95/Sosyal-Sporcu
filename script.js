@@ -5,6 +5,14 @@
 window.TEST_MODE = false;
 
 // ======================================================
+// ADMIN / TANRI MODU — geçici olarak tamamen devre dışı.
+// profiles.is_admin ne olursa olsun hiçbir hesap admin rolü almaz ve
+// God Mode FAB hiçbir kullanıcıda görünmez. Tekrar açmak için true yapın.
+// (bkz. CLAUDE.md → "Admin Rolü (Tanrı Modu)")
+// ======================================================
+window.ADMIN_FEATURE_ENABLED = false;
+
+// ======================================================
 // SIDEBAR TOGGLE
 // ======================================================
 let sidebarOpen = true;
@@ -402,7 +410,9 @@ function getActiveAccount() {
 }
 
 // Tüm admin-yetkisi kontrolleri buradan geçer (profiles.is_admin → accounts[].role).
+// ADMIN_FEATURE_ENABLED false iken hiçbir hesap admin sayılmaz.
 window.isAdminUser = function() {
+    if (!window.ADMIN_FEATURE_ENABLED) return false;
     const acc = getActiveAccount();
     return !!(acc && acc.role === 'admin');
 };
@@ -414,7 +424,7 @@ function getAccountForPlayer(playerId) {
 function canEditPlayer(playerId) {
     const acc = getActiveAccount();
     if (!acc) return false;
-    if (acc.role === 'admin') return true;
+    if (window.isAdminUser()) return true;
     return acc.playerId === playerId;
 }
 
@@ -456,8 +466,9 @@ function updateAccountUI() {
 
     if (nameEl) nameEl.textContent = acc.name;
     if (roleEl) {
-        roleEl.textContent = acc.role === 'admin' ? '⚡ Admin' : '🎮 Oyuncu';
-        roleEl.style.color = acc.role === 'admin' ? 'var(--neon-cyan)' : 'var(--neon-green)';
+        roleEl.textContent = window.isAdminUser() ? '⚡ Admin' : '🎮 Oyuncu';
+        roleEl.style.color = window.isAdminUser() ? 'var(--neon-cyan)' : 'var(--neon-green)';
+        roleEl.style.display = '';
     }
     if (avatarEl) avatarEl.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${acc.name}`;
 
@@ -483,7 +494,7 @@ function renderAccountList() {
             <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${acc.name}" class="acc-list-avatar">
             <div class="acc-list-info">
                 <span class="acc-list-name">${acc.name}</span>
-                <span class="acc-list-role">${acc.role === 'admin' ? '⚡ Admin' : acc.playerId === getActiveAccount()?.playerId && isActive ? '🎮 Sen' : '🎮 Oyuncu'}</span>
+                <span class="acc-list-role">${(window.ADMIN_FEATURE_ENABLED && acc.role === 'admin') ? '⚡ Admin' : acc.playerId === getActiveAccount()?.playerId && isActive ? '🎮 Sen' : '🎮 Oyuncu'}</span>
             </div>
             <span class="acc-list-gen" style="color:${gen >= 80 ? 'var(--neon-green)' : 'orange'}">${gen}</span>
             ${isActive ? '<i class="fa-solid fa-check" style="color:var(--neon-green); margin-left:4px;"></i>' : ''}
@@ -527,48 +538,59 @@ async function initSupabaseUser() {
         if (profile) window.__SUPABASE_PROFILE__ = profile;
 
         if (profile) {
-            // Supabase profilini localStorage mock sistemiyle köprüle:
-            let existingPlayer = players.find(p =>
-                p.name.toLowerCase() === (profile.username || '').toLowerCase()
-            );
+            // Supabase profilini localStorage mock sistemiyle köprüle.
+            // ÖNEMLİ: eşleştirme SADECE supabase_id ile yapılır — asla isimle değil.
+            // (Eskiden isimle eşleştiriliyordu; kullanıcı adı 11 adet sabit demo
+            //  oyuncu isminden biriyle (Mikimon, Barış, Kerem, Tarık, Emre, Oğuz,
+            //  Can, Serhat, Mert, Ali, Hasan) çakışınca o demo kaydın admin rolünü
+            //  ve kurgusal metinlerini gerçek kullanıcıya sızdırıyordu.)
+            let existingPlayer = players.find(p => p.supabase_id === userId);
+
+            // Supabase profilinden tam bir 'details' nesnesi üret — hiçbir alan
+            // eski/mock veriden miras kalmasın, boş alanlar hep aynı nötr varsayılana düşsün.
+            const playerDetailsFromProfile = {
+                pos:           profile.position    || 'OS',
+                age:           profile.age         || null,
+                height:        profile.height      || null,
+                weight:        profile.weight      || null,
+                city:          profile.city        || null,
+                ekol:          profile.ekol        || null,
+                sakatlik:      profile.sakatlik    || null,
+                macsatma:      profile.macsatma    || null,
+                mizac:         profile.mizac       || null,
+                lojistik:      profile.lojistik    || null,
+                anaMevki:      profile.ana_mevki   || null,
+                altPos:        profile.alt_pos     || '',
+                oyunTarzi:     profile.oyun_tarzi  || null,
+                formStatus:    profile.form_status || 'Orta',
+                dakiklik:      profile.dakiklik       || 'Son Dakika Yetişir',
+                sahaIletisim:  profile.saha_iletisim  || 'Sessiz Oynar',
+                macSonu:       profile.mac_sonu       || 'Bir Çay İçip Gider',
+                mevkiSadakat:  profile.mevki_sadakat  || 'Bazen Gezer',
+                presGucu:      profile.pres_gucu      || 'Yorgunsa Yavaş',
+                pasTercihi:    profile.pas_tercihi    || 'Dengeli',
+                markaj:        profile.markaj         || 'Yakın Takip',
+                bio:           profile.bio            || '',
+                ayak:          profile.ayak        || null,
+                highlight_url_1: null,
+                highlight_url_2: null
+            };
 
             if (!existingPlayer) {
                 // Yeni kullanıcı — geçici player objesi oluştur
                 const newPlayer = {
-                    id:              `sb_${userId}`,
-                    name:            profile.username || profile.full_name || 'Oyuncu',
-                    supabase_id:     userId,
+                    id:                `sb_${userId}`,
+                    name:              profile.username || profile.full_name || 'Oyuncu',
+                    supabase_id:       userId,
                     supabase_username: profile.username || null,
-                    full_name:       profile.full_name || null,
-                    avatar_url:      profile.avatar_url || null, // #4: boş avatar
-                    details: {
-                        pos:           profile.position    || 'OS',
-                        age:           profile.age         || null, // #6: boş başlar
-                        height:        profile.height      || null,
-                        weight:        profile.weight      || null,
-                        city:          profile.city        || null, // #6: boş başlar
-                        ekol:          profile.ekol        || null,
-                        sakatlik:      profile.sakatlik    || null,
-                        macsatma:      profile.macsatma    || null,
-                        mizac:         profile.mizac       || null,
-                        lojistik:      profile.lojistik    || null,
-                        anaMevki:      profile.ana_mevki   || null,
-                        altPos:        profile.alt_pos     || '',
-                        oyunTarzi:     profile.oyun_tarzi  || null,
-                        formStatus:    profile.form_status || 'Orta',
-                        dakiklik:      profile.dakiklik       || 'Son Dakika Yetişir',
-                        sahaIletisim:  profile.saha_iletisim  || 'Sessiz Oynar',
-                        macSonu:       profile.mac_sonu       || 'Bir Çay İçip Gider',
-                        mevkiSadakat:  profile.mevki_sadakat  || 'Bazen Gezer',
-                        presGucu:      profile.pres_gucu      || 'Yorgunsa Yavaş',
-                        pasTercihi:    profile.pas_tercihi    || 'Dengeli',
-                        markaj:        profile.markaj         || 'Yakın Takip',
-                        bio:           profile.bio            || '',
-                        highlight_url_1: null,
-                        highlight_url_2: null
-                    },
-                    highlight_url_1: null,
-                    highlight_url_2: null,
+                    full_name:         profile.full_name || null,
+                    avatar_url:        profile.avatar_url || null,
+                    genScore:          profile.gen_score || null,
+                    community_gen:     profile.community_gen || null,
+                    city:              profile.city || null,
+                    details:           playerDetailsFromProfile,
+                    highlight_url_1:   null,
+                    highlight_url_2:   null,
                     ratings: {
                         teknik:    profile.rating_teknik    ?? null,
                         sut:       profile.rating_sut       ?? null,
@@ -592,7 +614,7 @@ async function initSupabaseUser() {
                 const newAccount = {
                     id:       `acc_${userId}`,
                     name:     profile.username || profile.full_name || 'Oyuncu',
-                    role:     profile.is_admin ? 'admin' : 'player',
+                    role:     (window.ADMIN_FEATURE_ENABLED && profile.is_admin) ? 'admin' : 'player',
                     playerId: newPlayer.id,
                     supabase_id: userId
                 };
@@ -612,28 +634,29 @@ async function initSupabaseUser() {
                     renderHighlights(newPlayer);
                 } catch(e) { console.warn('highlight url load warn:', e); }
             } else {
-                // Mevcut mock oyuncu bulundu → aktif hesaba geç
-                const acc = accounts.find(a => a.playerId === existingPlayer.id);
+                // Bu tarayıcıda bu Supabase kullanıcısı için player/hesap zaten var
+                // (ör. sayfa yeniden yüklendi) → tüm alanları Supabase'den tazele.
+                let acc = accounts.find(a => a.supabase_id === userId);
+                if (!acc) acc = accounts.find(a => a.playerId === existingPlayer.id);
                 if (acc) {
+                    // Rol her zaman gerçek Supabase profilinden gelir — mock/demo
+                    // hesabın sabit kodlanmış rolü asla kullanılmaz.
+                    acc.role = (window.ADMIN_FEATURE_ENABLED && profile.is_admin) ? 'admin' : 'player';
+                    acc.supabase_id = userId;
                     activeAccountId = acc.id;
                     activePlayerId  = existingPlayer.id;
                 }
-                // Supabase'den gelen TÜM verileri override et (localStorage'da eski değerler kalıyor)
-                // supabase_id her zaman set et (yeni player branch'ında var ama existing'de eksikti)
-                existingPlayer.supabase_id = userId;
-                // İsim ve avatar her zaman Supabase'den gelsin
-                if (profile.username)   { existingPlayer.name = profile.username; existingPlayer.supabase_username = profile.username; }
-                if (profile.full_name)  { existingPlayer.full_name = profile.full_name; }
-                if (profile.avatar_url) existingPlayer.avatar_url = profile.avatar_url;
-                if (!existingPlayer.details) existingPlayer.details = {};
-                if (profile.form_status) existingPlayer.details.formStatus = profile.form_status;
-                if (profile.city)        { existingPlayer.city = profile.city; existingPlayer.details.city = profile.city; }
-                if (profile.age)         existingPlayer.details.age    = profile.age;
-                if (profile.height)      existingPlayer.details.height = profile.height;
-                if (profile.weight)      existingPlayer.details.weight = profile.weight;
-                if (profile.ana_mevki)   existingPlayer.details.anaMevki = profile.ana_mevki;
-                if (profile.ayak)        existingPlayer.details.ayak   = profile.ayak;
-                if (profile.bio !== undefined) existingPlayer.details.bio = profile.bio;
+                // Supabase'den gelen TÜM verileri override et — hiçbir eski/mock
+                // alan kalmasın (isim, avatar, tüm 'details' alanları dahil).
+                existingPlayer.supabase_id       = userId;
+                existingPlayer.name              = profile.username || profile.full_name || 'Oyuncu';
+                existingPlayer.supabase_username = profile.username || null;
+                existingPlayer.full_name         = profile.full_name || null;
+                existingPlayer.avatar_url        = profile.avatar_url || null;
+                existingPlayer.genScore          = profile.gen_score || null;
+                existingPlayer.community_gen     = profile.community_gen || null;
+                existingPlayer.city              = profile.city || null;
+                existingPlayer.details           = playerDetailsFromProfile;
                 // Highlight URL'leri — schema cache bypass: RPC ile oku
                 try {
                     const hlUrls = await window.DB.Profiles.getHighlightUrls(userId);
@@ -684,7 +707,7 @@ async function initSupabaseUser() {
                     filter: `id=eq.${userId}`
                 }, payload => {
                     if (payload.new) {
-                        const _viewedId = sessionStorage.getItem('ss_view_player_id');
+                        const _viewedId = getViewedPlayerId();
                         const _isViewingOther = _viewedId && _viewedId !== userId;
                         if (!_isViewingOther) {
                             window.__SUPABASE_PROFILE__ = { ...(window.__SUPABASE_PROFILE__ || {}), ...payload.new };
@@ -987,6 +1010,17 @@ window.goBackFromProfile = function() {
     const nav = document.querySelector(`.nav-item[data-target="${target}"]`);
     if (nav) nav.classList.add('active');
 };
+
+/**
+ * Görüntülenen (bakılan) oyuncunun ID'sini döner.
+ * components.js karakter sayfasına geçerken sessionStorage'daki 'ss_view_player_id'yi
+ * hemen silip window.__PENDING_VIEW_PLAYER_ID__'e yazıyor — bu yüzden HER YERDE
+ * ikisi birden kontrol edilmeli, yoksa sessionStorage silindikten sonra çalışan
+ * kod (tab değişimi, realtime event vb.) bakılan kişiyi kaybedip kendi ID'sine düşer.
+ */
+function getViewedPlayerId() {
+    return sessionStorage.getItem('ss_view_player_id') || window.__PENDING_VIEW_PLAYER_ID__ || null;
+}
 
 /**
  * Returns true if we're viewing someone else's profile (not ours)
@@ -1467,9 +1501,17 @@ window.updateAltMevkiOptions = function(anaMevki, currentVal) {
 
 window.populateFutCard = function() {
     // Başkasının profiline bakıyorsak tüm FUT kart verisini __SUPABASE_PROFILE__'dan al
-    const _viewedId = sessionStorage.getItem('ss_view_player_id') || window.__PENDING_VIEW_PLAYER_ID__ || null;
+    const _viewedId = getViewedPlayerId();
     const _isViewingOther = _viewedId && _viewedId !== window.__AUTH_USER__?.id
         && window.__SUPABASE_PROFILE__?.id === _viewedId;
+
+    // Race condition fix: başka birinin profiline bakıyoruz ama __SUPABASE_PROFILE__
+    // henüz o kişiye güncellenmedi (hâlâ bizim profilimiz) — bu durumda "else" dalına
+    // düşüp KENDİ mock player'ımızı (kendi avatarımız dahil) göstermeyelim; doğru profil
+    // yüklenince zaten tekrar çağrılacak (bkz. updateUI() içindeki aynı korumalı avatar mantığı).
+    if (_viewedId && _viewedId !== window.__AUTH_USER__?.id && !_isViewingOther) {
+        return;
+    }
 
     let player;
     if (_isViewingOther && window.__SUPABASE_PROFILE__) {
@@ -1477,10 +1519,11 @@ window.populateFutCard = function() {
         player = {
             id: sp.id, full_name: sp.full_name, name: sp.username,
             avatar_url: sp.avatar_url, city: sp.city,
+            genScore: sp.gen_score, community_gen: sp.community_gen,
             total_matches: sp.total_matches, total_goals: sp.total_goals, total_assists: sp.total_assists,
             _sbTeamName: sp.current_team_name || null,
             details: {
-                anaMevki: sp.ana_mevki || sp.position,
+                anaMevki: sp.ana_mevki || null,  // 'position' kayıt-varsayılanı ('OS'); mevkide fallback yapma (bug #2)
                 age: sp.age, city: sp.city, ayak: sp.ayak,
                 height: sp.height, weight: sp.weight, oyunTarzi: sp.oyun_tarzi,
                 futbolGecmisi:       sp.futbol_gecmisi      || null,
@@ -1504,10 +1547,11 @@ window.populateFutCard = function() {
             player = {
                 id: sp.id, full_name: sp.full_name, name: sp.username,
                 avatar_url: sp.avatar_url, city: sp.city,
+                genScore: sp.gen_score, community_gen: sp.community_gen,
                 total_matches: sp.total_matches, total_goals: sp.total_goals, total_assists: sp.total_assists,
                 _sbTeamName: sp.current_team_name || null,
                 details: {
-                    anaMevki: sp.ana_mevki || sp.position,
+                    anaMevki: sp.ana_mevki || null,  // 'position' kayıt-varsayılanı ('OS'); mevkide fallback yapma (bug #2)
                     age: sp.age, city: sp.city, ayak: sp.ayak,
                     height: sp.height, weight: sp.weight, oyunTarzi: sp.oyun_tarzi,
                     futbolGecmisi:       sp.futbol_gecmisi      || null,
@@ -1528,9 +1572,13 @@ window.populateFutCard = function() {
     if (!player) return;
     const d = player.details || {};
 
-    // GEN
+    // GEN — önce kendi self-rating ortalaması, yoksa topluluk puanı (community_gen zaten
+    // community_ratings + gen_score fallback'ini DB view'ında birleştiriyor, bkz. profiles_with_ratings)
     const rVals = Object.values(player.ratings || {}).filter(v => v != null);
-    const gen = rVals.length ? Math.round(rVals.reduce((a,b) => a+b, 0) / rVals.length) : null;
+    const gen = rVals.length
+        ? Math.round(rVals.reduce((a,b) => a+b, 0) / rVals.length)
+        : (player.community_gen != null ? Math.round(player.community_gen)
+           : (player.genScore != null ? Math.round(player.genScore) : null));
     const genEl = document.getElementById('fut-gen');
     if (genEl) {
         genEl.textContent = gen ?? '—';
@@ -1838,7 +1886,7 @@ window.saveHakkimdaSection = async function(section) {
 function applyProfileViewMode() {
     const viewingOther = isViewingOtherProfile();
     const acc = getActiveAccount();
-    const isAdmin = acc && acc.role === 'admin';
+    const isAdmin = window.isAdminUser();
 
     // If admin, always can edit. If viewing own profile, can edit.
     const canEdit = !viewingOther || isAdmin;
@@ -1981,6 +2029,13 @@ function applyFriendshipTabRestriction(viewingOther) {
 // ======================================================
 
 window.switchProfileTab = function (tabId) {
+    // Güvenlik: sadece profil sahibine özel sekmeler (Hakkımda / Kariyer ve Rozetler)
+    // başkasının profilinde asla açılmasın — buton her nasılsa görünür kalmış olsa bile.
+    const OWN_ONLY_TABS = ['tab-hakkimda', 'tab-kariyer'];
+    if (OWN_ONLY_TABS.includes(tabId) && isViewingOtherProfile()) {
+        tabId = 'tab-genel';
+    }
+
     document.querySelectorAll('.profile-subtab').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
 
@@ -2012,7 +2067,7 @@ window.switchProfileTab = function (tabId) {
         if (player) {
             const vals = Object.values(player.ratings).filter(v => v !== null);
             const avg = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
-            const _viewedSessId2 = sessionStorage.getItem('ss_view_player_id');
+            const _viewedSessId2 = getViewedPlayerId();
             const _sbp2 = window.__SUPABASE_PROFILE__;
             const _isOther2 = _sbp2 && _viewedSessId2 && _sbp2.id === _viewedSessId2;
             let _pForBadges2 = player;
@@ -2250,7 +2305,7 @@ window.updateUI = function () {
 
     // --- Skills & Badge Strip ---
     try {
-        const _viewedSessId = sessionStorage.getItem('ss_view_player_id');
+        const _viewedSessId = getViewedPlayerId();
         const _sbp = window.__SUPABASE_PROFILE__;
         const _isViewingOther = _sbp && _viewedSessId && _sbp.id === _viewedSessId;
         let playerForBadges = player;
@@ -2304,9 +2359,8 @@ window.updateUI = function () {
     // --- Tanrı Modu butonu: sadece gerçek oturumu olan admin kullanıcıda göster ---
     const godFab = document.getElementById('god-mode-fab');
     if (godFab) {
-        const acc = getActiveAccount();
         const appVisible = document.getElementById('app-container')?.style.display !== 'none';
-        godFab.style.display = (appVisible && acc && acc.role === 'admin') ? 'block' : 'none';
+        godFab.style.display = (appVisible && window.isAdminUser()) ? 'block' : 'none';
     }
 
     // Update community rating count badge
@@ -2410,32 +2464,12 @@ function updateChart(player) {
         communityR.hiz, communityR.fizik, communityR.kondisyon
     ] : null;
 
-    // Boş overlay mesajını göster/gizle
+    // Boş overlay mesajı kaldırıldı (bug #4) — puan yokken sadece boş hexagon gösterilir,
+    // "Henüz puan girilmedi" yazısı artık hiç eklenmez. Eski turlardan kalmış bir overlay
+    // DOM'da varsa temizle.
     const canvasParent = ctx.parentElement;
-    let emptyOverlay = canvasParent?.querySelector('.chart-empty-overlay');
-    const showEmpty = !hasOwnRatings && !communityValues;
-    if (showEmpty) {
-        if (!emptyOverlay) {
-            emptyOverlay = document.createElement('div');
-            emptyOverlay.className = 'chart-empty-overlay';
-            emptyOverlay.style.cssText = `
-                position:absolute; inset:0; display:flex; flex-direction:column;
-                align-items:center; justify-content:center; pointer-events:none;
-                z-index:2;
-            `;
-            emptyOverlay.innerHTML = `
-                <i class="fa-solid fa-chart-simple" style="font-size:2rem; color:#333; margin-bottom:0.5rem;"></i>
-                <span style="font-size:0.82rem; color:#444; text-align:center; line-height:1.4;">
-                    Henüz puan<br>girilmedi
-                </span>
-            `;
-            canvasParent.style.position = 'relative';
-            canvasParent.appendChild(emptyOverlay);
-        }
-        emptyOverlay.style.display = 'flex';
-    } else if (emptyOverlay) {
-        emptyOverlay.style.display = 'none';
-    }
+    const staleOverlay = canvasParent?.querySelector('.chart-empty-overlay');
+    if (staleOverlay) staleOverlay.remove();
 
     const datasets = [];
 
@@ -3572,7 +3606,7 @@ function renderPlayerList() {
             e.dataTransfer.effectAllowed = 'copy';
         };
 
-        const isEditable = acc && (acc.role === 'admin' || acc.playerId === p.id);
+        const isEditable = acc && (window.isAdminUser() || acc.playerId === p.id);
         const communityStr = communityAvg > 0
             ? `<span style="color:var(--neon-cyan); font-size:0.8rem;" title="Community puanı">⭐${communityAvg.toFixed(1)}</span>`
             : '';
@@ -3602,7 +3636,7 @@ function renderPlayerList() {
                 <span style="font-weight:800; color:var(--neon-green); font-size:1.1rem;">${gen}</span>
             </td>
             <td style="text-align:center;">
-                ${acc && acc.role === 'admin' ? `
+                ${window.isAdminUser() ? `
                 <i class="fa-solid fa-circle-xmark"
                    style="color:#ff4444; cursor:pointer; font-size:1.2rem; transition: transform 0.2s;"
                    onmouseover="this.style.transform='scale(1.2)'"
@@ -3850,8 +3884,12 @@ async function loadMatchHistory(targetPlayerId) {
     }
 
     // Bak\u0131lan profil kendi profilimiz mi, ba\u015fkas\u0131n\u0131n m\u0131?
+    // NOT: sessionStorage'daki 'ss_view_player_id' components.js taraf\u0131ndan karakter
+    // sayfas\u0131na var\u0131r varmaz siliniyor (window.__PENDING_VIEW_PLAYER_ID__'e ta\u015f\u0131n\u0131yor) \u2014
+    // bu y\u00fczden tab de\u011fi\u015ftirirken parametresiz \u00e7a\u011fr\u0131lan loadMatchHistory() burada
+    // yaln\u0131zca sessionStorage'a bakarsa hep kendi ID'sine d\u00fc\u015fer.
     const playerId = targetPlayerId
-        || sessionStorage.getItem('ss_view_player_id')
+        || getViewedPlayerId()
         || user.id;
     const isOwnProfile = playerId === user.id;
 

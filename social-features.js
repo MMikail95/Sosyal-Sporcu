@@ -524,7 +524,7 @@ async function renderFriendsList() {
                         ${gen ? ` · <span style="color:var(--neon-green)">${Math.round(gen)} GEN</span>` : ''}
                     </span>
                 </div>
-                <button class="epc-btn epc-btn-profile" onclick="openUserProfile('${other.id}', '${other.username}')">
+                <button class="epc-btn epc-btn-profile" onclick="viewPlayerProfileSmart('${other.id}', '${other.username}')">
                     <i class="fa-solid fa-user-circle"></i> Profil
                 </button>
             </div>`;
@@ -2053,6 +2053,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let _savedMyPlayerId = null;
 
+// Bir oyuncunun profiline "doğru yoldan" git.
+// - Karakter (MPA) sayfasındayken: SPA fonksiyonu olan openUserProfile'ı YERİNDE
+//   çalıştırmak state kirliliği/geri-dönememe yaratıyordu (bkz. bug #12). Bunun yerine
+//   sessionStorage'a ID yazıp sayfayı tazeliyoruz → components.js temiz "bakılan profil"
+//   akışını baştan kuruyor, "Keşfete/Geri Dön" bannerı düzgün çalışıyor.
+// - Index (SPA) sayfasında: normal openUserProfile yerinde çalışır.
+window.viewPlayerProfileSmart = function(supabaseId, username) {
+    const onCharacterPage = location.pathname.includes('/character');
+    const myId = window.__AUTH_USER__ && window.__AUTH_USER__.id;
+    if (onCharacterPage) {
+        if (supabaseId === myId) {
+            // Kendi profilime dön → bakılan-profil işaretini temizleyip tazele
+            sessionStorage.removeItem('ss_view_player_id');
+            sessionStorage.removeItem('ss_view_player_username');
+        } else {
+            sessionStorage.setItem('ss_view_player_id', supabaseId);
+            if (username) sessionStorage.setItem('ss_view_player_username', username);
+        }
+        window.location.reload();
+        return;
+    }
+    if (typeof window.openUserProfile === 'function') return window.openUserProfile(supabaseId, username);
+};
+
 // Modal'daki "Profil Sayfasına Git" butonu / herhangi bir yerden çağrılabilir
 window.openUserProfile = window.__openUserProfileCore = async function(supabaseId, username) {
     const user = window.__AUTH_USER__;
@@ -2079,8 +2103,6 @@ window.openUserProfile = window.__openUserProfileCore = async function(supabaseI
         console.log(`💾 Kendi player ID saklandı: ${_savedMyPlayerId}`);
     }
 
-    showToast('⏳ Profil yükleniyor...');
-
     // Supabase'den profil çek
     let profile = null;
     try {
@@ -2103,34 +2125,50 @@ window.openUserProfile = window.__openUserProfileCore = async function(supabaseI
 
     const tempId = `sb_view_${supabaseId}`;
 
-    // Geçici player objesi oluştur
+    // Geçici player objesi oluştur.
+    // ÖNEMLİ: Hiçbir alana MOCK/uydurma varsayılan atanmaz (eskiden age||24, height||180,
+    // anaMevki||position||'Orta Saha', oyunTarzi||'Box-to-Box', city||'istanbul' vb. vardı).
+    // Bunlar bakılan kişi hiç doldurmamış olsa bile sanki doldurmuş gibi gösteriyordu.
+    // Boş alanlar null kalır, arayüz '—' gösterir. 'position' kolonu kayıt-varsayılanı
+    // olduğu için mevkide ASLA fallback yapılmaz — sadece kullanıcının seçtiği 'ana_mevki'.
     const tempPlayer = {
         id: tempId,
-        name: profile.username || profile.full_name || username || 'Oyuncu',
+        name:       profile.username || profile.full_name || username || 'Oyuncu',
+        full_name:  profile.full_name || null,
         supabase_id: supabaseId,
+        supabase_username: profile.username || null,
         _isViewProfile: true,
+        city:       profile.city || null,
         details: {
-            pos:           profile.position      || 'OS',
-            age:           profile.age           || 24,
-            height:        profile.height        || 180,
-            weight:        profile.weight        || 75,
-            ekol:          profile.ekol          || 'Halısaha Gazisi',
-            anaMevki:      profile.ana_mevki     || profile.position || 'Orta Saha',
+            pos:           profile.position      || null,
+            age:           profile.age           ?? null,
+            height:        profile.height        ?? null,
+            weight:        profile.weight        ?? null,
+            ekol:          profile.ekol          || null,
+            anaMevki:      profile.ana_mevki     || null,
             altPos:        profile.alt_pos       || '',
-            oyunTarzi:     profile.oyun_tarzi    || 'Box-to-Box',
-            dakiklik:      profile.dakiklik      || 'Son Dakika Yetişir',
-            sahaIletisim:  profile.saha_iletisim || 'Sessiz Oynar',
-            macSonu:       profile.mac_sonu      || 'Bir Çay İçip Gider',
-            mevkiSadakat:  profile.mevki_sadakat || 'Bazen Gezer',
-            presGucu:      profile.pres_gucu     || 'Yorgunsa Yavaş',
-            pasTercihi:    profile.pas_tercihi   || 'Dengeli',
-            markaj:        profile.markaj        || 'Yakın Takip',
-            sakatlik:      profile.sakatlik      || 'Maç Seçer',
-            macsatma:      profile.macsatma      || 'Keyfine Bağlı',
-            mizac:         profile.mizac         || 'Makara Yapıcı',
-            lojistik:      profile.lojistik      || 'Kendi Gelir',
-            ayak:          profile.ayak          || 'Sağ',
-            city:          profile.city          || 'istanbul',
+            oyunTarzi:     profile.oyun_tarzi    || null,
+            dakiklik:      profile.dakiklik      || null,
+            sahaIletisim:  profile.saha_iletisim || null,
+            macSonu:       profile.mac_sonu      || null,
+            mevkiSadakat:  profile.mevki_sadakat || null,
+            presGucu:      profile.pres_gucu     || null,
+            pasTercihi:    profile.pas_tercihi   || null,
+            markaj:        profile.markaj        || null,
+            sakatlik:      profile.sakatlik      || null,
+            macsatma:      profile.macsatma      || null,
+            mizac:         profile.mizac         || null,
+            lojistik:      profile.lojistik      || null,
+            ayak:          profile.ayak          || null,
+            city:          profile.city          || null,
+            futbolGecmisi:       profile.futbol_gecmisi       || null,
+            sakatlikDurumu:      profile.sakatlik_durumu      || null,
+            antrenmanAliskanlik: profile.antrenman_aliskanlik || null,
+            macGunuTercihi:      profile.mac_gunu_tercihi     || null,
+            ayakkabiTercihi:     profile.ayakkabi_tercihi     || null,
+            formaNumarasi:       profile.forma_numarasi       ?? null,
+            idol:                profile.idol                 || null,
+            bio:                 profile.bio                  || '',
         },
         ratings: {
             teknik:    profile.rating_teknik    ?? null,
@@ -2171,8 +2209,17 @@ window.openUserProfile = window.__openUserProfileCore = async function(supabaseI
         } catch(e) { console.error('Community ratings fetch error:', e); }
     }
 
-    // Arkadaş olduğu için tam profil açılıyor
-    window.viewingAsFriend = true;
+    // Gerçek arkadaşlık durumunu kontrol et — daha önce her zaman "true" sabitlenmişti,
+    // bu da arkadaş olmayan biri Keşfet'ten görüntülendiğinde de tam-profil (arkadaş)
+    // yetkileriyle açılmasına yol açıyordu (bkz. PROFILE_TAB_PERMISSIONS.nonFriend).
+    let isFriend = false;
+    if (user && window.DB) {
+        try {
+            const fs = await window.DB.Friends.checkStatus(user.id, supabaseId);
+            isFriend = fs?.status === 'accepted';
+        } catch(e) { console.warn('Friend status check failed:', e); }
+    }
+    window.viewingAsFriend = isFriend;
 
     // window.players'a ekle / güncelle
     if (window.players) {
@@ -2209,9 +2256,8 @@ window.openUserProfile = window.__openUserProfileCore = async function(supabaseI
     if (typeof applyProfileViewMode === 'function') {
         setTimeout(() => applyProfileViewMode(), 60);
     }
-
-    showToast(`👤 ${profile.username || username}'in profili açıldı — puan verebilirsin!`);
-
+    // Not: "puan verebilirsin" toast'u kaldırıldı — puanlama sadece maç sonrası akışta
+    // anlamlı, profil görüntülemede yanıltıcıydı.
 };
 
 // Profil görüntüleme banner'ı — artık view-only-banner kullanıldığı için devre dışı
@@ -2369,7 +2415,10 @@ window.loadFriendsList = async function() {
             const initial  = name.charAt(0).toUpperCase();
             const gen      = friend.gen_score || null;
             const genColor = gen >= 8 ? 'var(--neon-green)' : gen >= 7 ? 'var(--neon-cyan)' : 'orange';
-            const posIcon  = { KL:'🧤', DEF:'🛡️', OS:'⚡', FV:'⚽' }[friend.position] || '⚽';
+            // Gerçek mevki 'ana_mevki'de; 'position' kolonu kayıt-varsayılanı (herkes 'OS')
+            // olduğu için ana_mevki varsa o esas alınır (bug #10).
+            const posCode  = getPosCode(friend.ana_mevki || friend.position);
+            const posIcon  = { KL:'🧤', DEF:'🛡️', OS:'⚡', FV:'⚽' }[posCode] || '⚽';
             const avatarEl = avatar
                 ? `<img src="${avatar}" class="epc-avatar" onerror="this.onerror=null;this.parentNode.innerHTML='<div class=\\'epc-avatar epc-avatar-initials\\'>${initial}</div>';">`
                 : `<div class="epc-avatar epc-avatar-initials">${initial}</div>`;
@@ -2382,7 +2431,7 @@ window.loadFriendsList = async function() {
                     </div>
                     <div class="epc-info">
                         <h4 class="epc-name">${name}</h4>
-                        <span class="epc-position">${posIcon} ${getPosLabel(friend.position)}</span>
+                        ${posCode ? `<span class="epc-position">${posIcon} ${getPosLabel(friend.ana_mevki || friend.position)}</span>` : ''}
                         ${friend.city ? `<span class="epc-city"><i class="fa-solid fa-location-dot"></i> ${friend.city}</span>` : ''}
                     </div>
                 </div>
@@ -2393,8 +2442,8 @@ window.loadFriendsList = async function() {
                 </div>
                 <div class="epc-actions">
                     <button class="epc-btn epc-btn-profile"
-                            onclick="openUserProfile('${friendId}', '${name}')">
-                        <i class="fa-solid fa-user-circle"></i> Profil & Puan Ver
+                            onclick="viewPlayerProfileSmart('${friendId}', '${name}')">
+                        <i class="fa-solid fa-user-circle"></i> Profili Gör
                     </button>
                     ${isViewingOther ? '' : `
                     <button class="epc-btn" style="color:#ff4d4d; border-color:rgba(255,77,77,0.2);"

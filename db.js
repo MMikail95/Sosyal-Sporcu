@@ -70,9 +70,14 @@ const Auth = {
 
 const Profiles = {
   // Tek profil getir
+  // NOT: 'profiles_with_ratings' view'ı kullanılıyor (sadece 'profiles' değil) çünkü
+  // community_ratings puanları profiles.gen_score'u GÜNCELLEMEZ (o trigger sadece
+  // kendi self-rating'lerine tepki verir). View, topluluk ortalaması varsa onu,
+  // yoksa gen_score'u community_gen alanında birleştiriyor — GEN her yerde bu yüzden
+  // community_gen tercih edilmeli (bkz. populateFutCard, Explore kartları).
   async get(userId) {
     const { data, error } = await sb()
-      .from('profiles')
+      .from('profiles_with_ratings')
       .select('*')
       .eq('id', userId)
       .single();
@@ -83,9 +88,9 @@ const Profiles = {
   // Tüm profilleri getir (Keşfet sayfası için)
   async getAll({ city, position, search, limit = 200 } = {}) {
     let query = sb()
-      .from('profiles')
-      .select('id, username, full_name, avatar_url, city, position, ana_mevki, ayak, gen_score, total_matches, total_goals, total_assists')
-      .order('gen_score', { ascending: false, nullsFirst: false })
+      .from('profiles_with_ratings')
+      .select('id, username, full_name, avatar_url, city, position, ana_mevki, ayak, gen_score, community_gen, total_matches, total_goals, total_assists')
+      .order('community_gen', { ascending: false, nullsFirst: false })
       .limit(limit);
 
     if (city) query = query.eq('city', city);
@@ -164,8 +169,8 @@ const Friends = {
       .from('friendships')
       .select(`
         *,
-        requester:requester_id(id, username, avatar_url, gen_score, position, city, total_matches, total_goals, total_assists),
-        addressee:addressee_id(id, username, avatar_url, gen_score, position, city, total_matches, total_goals, total_assists)
+        requester:requester_id(id, username, avatar_url, gen_score, position, ana_mevki, city, total_matches, total_goals, total_assists),
+        addressee:addressee_id(id, username, avatar_url, gen_score, position, ana_mevki, city, total_matches, total_goals, total_assists)
       `)
       .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
       .eq('status', 'accepted');
