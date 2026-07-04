@@ -124,28 +124,28 @@
             </a>
         </div>
 
-        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; max-width:1000px; width:100%;">
-            <div style="background:var(--glass-bg,rgba(255,255,255,0.05)); border:1px solid var(--glass-border,rgba(255,255,255,0.1)); border-radius:16px; padding:1.5rem 1.25rem;">
+        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:1rem; max-width:1000px; width:100%;">
+            <div style="flex:1 1 260px; max-width:300px; background:var(--glass-bg,rgba(255,255,255,0.05)); border:1px solid var(--glass-border,rgba(255,255,255,0.1)); border-radius:16px; padding:1.5rem 1.25rem;">
                 <i class="fa-solid fa-id-card" style="color:var(--neon-green); font-size:1.4rem; margin-bottom:0.6rem; display:block;"></i>
                 <h3 style="font-size:1rem; margin-bottom:0.4rem;">Oyuncu Profili</h3>
                 <p style="font-size:0.85rem; color:#888; line-height:1.5;">6 yeteneğe dayalı GEN skorun, kariyer istatistiklerin ve rozetlerin.</p>
             </div>
-            <div style="background:var(--glass-bg,rgba(255,255,255,0.05)); border:1px solid var(--glass-border,rgba(255,255,255,0.1)); border-radius:16px; padding:1.5rem 1.25rem;">
+            <div style="flex:1 1 260px; max-width:300px; background:var(--glass-bg,rgba(255,255,255,0.05)); border:1px solid var(--glass-border,rgba(255,255,255,0.1)); border-radius:16px; padding:1.5rem 1.25rem;">
                 <i class="fa-solid fa-users-gear" style="color:var(--neon-cyan); font-size:1.4rem; margin-bottom:0.6rem; display:block;"></i>
                 <h3 style="font-size:1rem; margin-bottom:0.4rem;">Takım Yönetimi</h3>
                 <p style="font-size:0.85rem; color:#888; line-height:1.5;">Kadro, taktik tahtası ve dengeli takım kurma algoritmasıyla takımını yönet.</p>
             </div>
-            <div style="background:var(--glass-bg,rgba(255,255,255,0.05)); border:1px solid var(--glass-border,rgba(255,255,255,0.1)); border-radius:16px; padding:1.5rem 1.25rem;">
+            <div style="flex:1 1 260px; max-width:300px; background:var(--glass-bg,rgba(255,255,255,0.05)); border:1px solid var(--glass-border,rgba(255,255,255,0.1)); border-radius:16px; padding:1.5rem 1.25rem;">
                 <i class="fa-solid fa-clipboard-list" style="color:var(--neon-pink); font-size:1.4rem; margin-bottom:0.6rem; display:block;"></i>
                 <h3 style="font-size:1rem; margin-bottom:0.4rem;">Maç Merkezi</h3>
                 <p style="font-size:0.85rem; color:#888; line-height:1.5;">Maç planla, katılımcıları belirle ve maç sonrası birbirinizi puanlayın.</p>
             </div>
-            <div style="background:var(--glass-bg,rgba(255,255,255,0.05)); border:1px solid var(--glass-border,rgba(255,255,255,0.1)); border-radius:16px; padding:1.5rem 1.25rem;">
+            <div style="flex:1 1 260px; max-width:300px; background:var(--glass-bg,rgba(255,255,255,0.05)); border:1px solid var(--glass-border,rgba(255,255,255,0.1)); border-radius:16px; padding:1.5rem 1.25rem;">
                 <i class="fa-solid fa-rss" style="color:var(--neon-green); font-size:1.4rem; margin-bottom:0.6rem; display:block;"></i>
                 <h3 style="font-size:1rem; margin-bottom:0.4rem;">Sosyal Akış</h3>
                 <p style="font-size:0.85rem; color:#888; line-height:1.5;">Paylaşım yap, yorum ve beğeni al, halısaha camiasıyla etkileşimde kal.</p>
             </div>
-            <div style="background:var(--glass-bg,rgba(255,255,255,0.05)); border:1px solid var(--glass-border,rgba(255,255,255,0.1)); border-radius:16px; padding:1.5rem 1.25rem;">
+            <div style="flex:1 1 260px; max-width:300px; background:var(--glass-bg,rgba(255,255,255,0.05)); border:1px solid var(--glass-border,rgba(255,255,255,0.1)); border-radius:16px; padding:1.5rem 1.25rem;">
                 <i class="fa-solid fa-compass" style="color:var(--neon-cyan); font-size:1.4rem; margin-bottom:0.6rem; display:block;"></i>
                 <h3 style="font-size:1rem; margin-bottom:0.4rem;">Keşfet</h3>
                 <p style="font-size:0.85rem; color:#888; line-height:1.5;">Bölgendeki oyuncuları, takımları bul ve arkadaş ekle.</p>
@@ -426,10 +426,10 @@
                         <button class="tab-btn active" onclick="switchProfileTab('tab-genel')" data-tab="tab-genel">
                             <i class="fa-solid fa-house"></i> Genel Bakış
                         </button>
-                        <button class="tab-btn" onclick="switchProfileTab('tab-hakkimda')" data-tab="tab-hakkimda">
+                        <button class="tab-btn" onclick="switchProfileTab('tab-hakkimda')" data-tab="tab-hakkimda" style="display:none;">
                             <i class="fa-solid fa-user-circle"></i> Hakkımda
                         </button>
-                        <button class="tab-btn" onclick="switchProfileTab('tab-kariyer')" data-tab="tab-kariyer">
+                        <button class="tab-btn" onclick="switchProfileTab('tab-kariyer')" data-tab="tab-kariyer" style="display:none;">
                             <i class="fa-solid fa-trophy"></i> Kariyer ve Rozetler
                         </button>
                         <button class="tab-btn" onclick="switchProfileTab('tab-maclar')" data-tab="tab-maclar">
@@ -1354,13 +1354,6 @@
                         </div>
 
                     </div><!-- end profile-content-container -->
-
-                    <!-- Maça Davet Et (sadece başkasının profilinde gösterilir, tab dışında) -->
-                    <button id="btn-mac-davet"
-                        style="width:100%; margin-top:1.5rem; background:var(--neon-pink); color:white; border:none; padding:1rem; border-radius:8px; font-weight:800; cursor:pointer; display:none; font-family:inherit; font-size:0.95rem;"
-                        onclick="openMatchInviteModal && openMatchInviteModal()">
-                        <i class="fa-solid fa-envelope-open-text"></i> MAÇA DAVET ET
-                    </button>
 
                 </div><!-- end profile-center-col -->
 

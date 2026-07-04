@@ -136,10 +136,10 @@
                     <button class="tab-btn active" onclick="switchProfileTab('tab-genel')" data-tab="tab-genel">
                         <i class="fa-solid fa-house"></i> Genel Bakış
                     </button>
-                    <button class="tab-btn" onclick="switchProfileTab('tab-hakkimda')" data-tab="tab-hakkimda">
+                    <button class="tab-btn" onclick="switchProfileTab('tab-hakkimda')" data-tab="tab-hakkimda" style="display:none;">
                         <i class="fa-solid fa-user-circle"></i> Hakkımda
                     </button>
-                    <button class="tab-btn" onclick="switchProfileTab('tab-kariyer')" data-tab="tab-kariyer">
+                    <button class="tab-btn" onclick="switchProfileTab('tab-kariyer')" data-tab="tab-kariyer" style="display:none;">
                         <i class="fa-solid fa-trophy"></i> Kariyer ve Rozetler
                     </button>
                     <button class="tab-btn" onclick="switchProfileTab('tab-maclar')" data-tab="tab-maclar">
@@ -662,13 +662,6 @@
                     </div>
 
                 </div><!-- end profile-content-container -->
-
-                    <!-- Maça Davet Et (sadece başkasının profilinde gösterilir, tab dışında) -->
-                    <button id="btn-mac-davet"
-                        style="width:100%; margin-top:1.5rem; background:var(--neon-pink); color:white; border:none; padding:1rem; border-radius:8px; font-weight:800; cursor:pointer; display:none; font-family:inherit; font-size:0.95rem;"
-                        onclick="openMatchInviteModal && openMatchInviteModal()">
-                        <i class="fa-solid fa-envelope-open-text"></i> MAÇA DAVET ET
-                    </button>
 
             </div><!-- end profile-center-col -->
 

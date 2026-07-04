@@ -1467,8 +1467,9 @@ window.updateAltMevkiOptions = function(anaMevki, currentVal) {
 
 window.populateFutCard = function() {
     // Başkasının profiline bakıyorsak tüm FUT kart verisini __SUPABASE_PROFILE__'dan al
-    const _viewedId = sessionStorage.getItem('ss_view_player_id');
-    const _isViewingOther = _viewedId && _viewedId !== window.__AUTH_USER__?.id;
+    const _viewedId = sessionStorage.getItem('ss_view_player_id') || window.__PENDING_VIEW_PLAYER_ID__ || null;
+    const _isViewingOther = _viewedId && _viewedId !== window.__AUTH_USER__?.id
+        && window.__SUPABASE_PROFILE__?.id === _viewedId;
 
     let player;
     if (_isViewingOther && window.__SUPABASE_PROFILE__) {
@@ -1923,12 +1924,6 @@ function applyProfileViewMode() {
         });
     }
 
-    // Maça davet butonu — sadece başkasının profilindeyken görünsün
-    const davetBtn = document.getElementById('btn-mac-davet');
-    if (davetBtn) {
-        davetBtn.style.display = viewingOther ? 'block' : 'none';
-    }
-
     // Arkadaş değilse kısıtlı tab görünümü uygula
     applyFriendshipTabRestriction(viewingOther);
 }
@@ -1938,8 +1933,8 @@ function applyProfileViewMode() {
 // sadece bu nesneyi güncelle — mantık koda dokunmadan çalışır.
 const PROFILE_TAB_PERMISSIONS = {
     own:       ['tab-genel', 'tab-hakkimda', 'tab-kariyer', 'tab-maclar', 'tab-arkadaslarim'],
-    friend:    ['tab-genel', 'tab-hakkimda', 'tab-maclar', 'tab-arkadaslarim'],
-    nonFriend: ['tab-genel', 'tab-hakkimda', 'tab-maclar', 'tab-arkadaslarim'],
+    friend:    ['tab-genel', 'tab-maclar', 'tab-arkadaslarim'],
+    nonFriend: ['tab-genel', 'tab-maclar', 'tab-arkadaslarim'],
 };
 
 // Sadece profil sahibine gösterilen bloklar (rozet / onur şeritleri vb.)
@@ -2306,11 +2301,12 @@ window.updateUI = function () {
     // --- Profile view mode ---
     applyProfileViewMode();
 
-    // --- Tanrı Modu butonu: sadece admin kullanıcıda göster ---
+    // --- Tanrı Modu butonu: sadece gerçek oturumu olan admin kullanıcıda göster ---
     const godFab = document.getElementById('god-mode-fab');
     if (godFab) {
         const acc = getActiveAccount();
-        godFab.style.display = (acc && acc.role === 'admin') ? 'block' : 'none';
+        const appVisible = document.getElementById('app-container')?.style.display !== 'none';
+        godFab.style.display = (appVisible && acc && acc.role === 'admin') ? 'block' : 'none';
     }
 
     // Update community rating count badge

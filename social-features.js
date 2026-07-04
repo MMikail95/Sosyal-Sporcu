@@ -2359,16 +2359,20 @@ window.loadFriendsList = async function() {
             const friendId = f.requester_id === user.id ? f.addressee_id : f.requester_id;
             const friend   = f.requester_id === user.id ? (f.addressee || {}) : (f.requester || {});
             const name     = friend.username || 'Oyuncu';
-            const fallbackAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(friend.username || friendId)}`;
-            const avatar   = friend.avatar_url || fallbackAvatar;
+            const _rawAv   = friend.avatar_url || '';
+            const avatar   = (_rawAv && !_rawAv.includes('dicebear.com')) ? _rawAv : '';
+            const initial  = name.charAt(0).toUpperCase();
             const gen      = friend.gen_score || null;
             const genColor = gen >= 8 ? 'var(--neon-green)' : gen >= 7 ? 'var(--neon-cyan)' : 'orange';
             const posIcon  = { KL:'🧤', DEF:'🛡️', OS:'⚡', FV:'⚽' }[friend.position] || '⚽';
+            const avatarEl = avatar
+                ? `<img src="${avatar}" class="epc-avatar" onerror="this.onerror=null;this.parentNode.innerHTML='<div class=\\'epc-avatar epc-avatar-initials\\'>${initial}</div>';">`
+                : `<div class="epc-avatar epc-avatar-initials">${initial}</div>`;
             return `
             <div class="explore-player-card">
                 <div class="epc-header">
                     <div class="epc-avatar-wrap">
-                        <img src="${avatar}" class="epc-avatar" onerror="this.onerror=null;this.src='${fallbackAvatar}';">
+                        ${avatarEl}
                         <div class="epc-gen-badge" style="color:${genColor}; border-color:${genColor};">${Math.round(gen)}</div>
                     </div>
                     <div class="epc-info">
