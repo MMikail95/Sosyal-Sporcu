@@ -38,10 +38,20 @@
     ===================================================== -->
     <script>
       function ss_showApp() {
-        var pl = document.getElementById('public-landing');
-        var app = document.getElementById('app-container');
-        if (pl) pl.style.display = 'none';
-        if (app) app.style.display = '';
+        function apply() {
+          var pl = document.getElementById('public-landing');
+          var app = document.getElementById('app-container');
+          if (pl) pl.style.display = 'none';
+          if (app) app.style.display = '';
+        }
+        // Oturum kontrolü DOM tamamen kurulmadan önce sonuçlanabiliyor
+        // (özellikle giriş sonrası yönlendirmede) — bu durumda elemanlar
+        // henüz mevcut olmayabilir, DOMContentLoaded'ı bekle.
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', apply, { once: true });
+        } else {
+          apply();
+        }
       }
       (async function guardSession() {
         if (!window.sbClient) { ss_showApp(); return; } // Supabase yüklenmediyse devam et (geliştirme)
@@ -1296,7 +1306,7 @@
                         <div id="tab-arkadaslarim" class="profile-subtab" style="display:none;">
                             <div class="glass-card" style="padding:0.75rem 1.25rem; margin-bottom:1.25rem;">
                                 <span style="font-weight:700; color:#888; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px;">
-                                    <i class="fa-solid fa-user-group"></i> Arkadaş Listem
+                                    <i class="fa-solid fa-user-group"></i> <span id="friends-list-title">Arkadaş Listem</span>
                                 </span>
                             </div>
                             <div class="explore-player-grid" id="friends-list-grid">

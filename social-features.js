@@ -2317,15 +2317,20 @@ window.loadFriendsList = async function() {
         return;
     }
 
+    // Başkasının profilindeyken kendi arkadaş listem değil, bakılan kişinin arkadaş listesi gösterilmeli
+    const viewedId       = sessionStorage.getItem('ss_view_player_id') || window.__PENDING_VIEW_PLAYER_ID__ || null;
+    const isViewingOther = !!(viewedId && viewedId !== user.id);
+    const ownerId         = isViewingOther ? viewedId : user.id;
+
     try {
-        const friendships = await window.DB.Friends.getMyFriends(user.id);
-        // Pending gelen istekler
-        const pending = await window.DB.Friends.getPendingRequests(user.id);
+        const friendships = await window.DB.Friends.getMyFriends(ownerId);
+        // Bekleyen istekler sadece kendi profilinde anlamlı/gizli bilgi — başkasının profilinde gösterilmez
+        const pending = isViewingOther ? [] : await window.DB.Friends.getPendingRequests(ownerId);
 
         myFriendsList = friendships;
 
         // Pending istekleri göster
-        const pendingHtml = pending.filter(f => f.addressee_id === user.id).map(f => {
+        const pendingHtml = pending.filter(f => f.addressee_id === ownerId).map(f => {
             const actor = f.requester || {};
             const name  = actor.username || 'Oyuncu';
             const seed  = actor.username || f.requester_id;
@@ -2356,8 +2361,8 @@ window.loadFriendsList = async function() {
 
         // Kabul edilmiş arkadaşlar
         const friendsHtml = friendships.length === 0 ? '' : friendships.map(f => {
-            const friendId = f.requester_id === user.id ? f.addressee_id : f.requester_id;
-            const friend   = f.requester_id === user.id ? (f.addressee || {}) : (f.requester || {});
+            const friendId = f.requester_id === ownerId ? f.addressee_id : f.requester_id;
+            const friend   = f.requester_id === ownerId ? (f.addressee || {}) : (f.requester || {});
             const name     = friend.username || 'Oyuncu';
             const _rawAv   = friend.avatar_url || '';
             const avatar   = (_rawAv && !_rawAv.includes('dicebear.com')) ? _rawAv : '';
@@ -2391,18 +2396,23 @@ window.loadFriendsList = async function() {
                             onclick="openUserProfile('${friendId}', '${name}')">
                         <i class="fa-solid fa-user-circle"></i> Profil & Puan Ver
                     </button>
+                    ${isViewingOther ? '' : `
                     <button class="epc-btn" style="color:#ff4d4d; border-color:rgba(255,77,77,0.2);"
                             onclick="removeFriend('${f.id}', this)">
                         <i class="fa-solid fa-user-minus"></i>
-                    </button>
+                    </button>`}
                 </div>
             </div>`;
         }).join('');
 
+        const friendsLabel = isViewingOther ? 'Arkadaşları' : 'Arkadaşlarım';
+        const titleEl = document.getElementById('friends-list-title');
+        if (titleEl) titleEl.textContent = isViewingOther ? 'Arkadaş Listesi' : 'Arkadaş Listem';
+
         if (pendingHtml === '' && friendsHtml === '') {
             grid.innerHTML = `<div style="text-align:center; padding:3rem; color:#555; grid-column:1/-1;">
                 <i class="fa-solid fa-user-group fa-2x" style="margin-bottom:1rem; display:block;"></i>
-                Henüz arkadaşın yok. Keşfet'ten oyuncu ekle!
+                ${isViewingOther ? 'Henüz hiç arkadaşı yok.' : "Henüz arkadaşın yok. Keşfet'ten oyuncu ekle!"}
             </div>`;
         } else {
             const pendingSection = pendingHtml ? `
@@ -2414,12 +2424,12 @@ window.loadFriendsList = async function() {
                 ${pendingHtml}
                 <div style="grid-column:1/-1; margin-bottom:0.5rem; margin-top:1rem;">
                     <h4 style="color:#888; font-size:0.85rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin:0 0 0.75rem;">
-                        ✅ Arkadaşlarım (${friendships.length})
+                        ✅ ${friendsLabel} (${friendships.length})
                     </h4>
                 </div>` : `
                 <div style="grid-column:1/-1; margin-bottom:0.75rem;">
                     <h4 style="color:#888; font-size:0.85rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin:0 0 0.75rem;">
-                        ✅ Arkadaşlarım (${friendships.length})
+                        ✅ ${friendsLabel} (${friendships.length})
                     </h4>
                 </div>`;
             grid.innerHTML = pendingSection + friendsHtml;
