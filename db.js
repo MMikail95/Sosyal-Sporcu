@@ -1512,35 +1512,31 @@ const Ratings = {
     };
     if (matchId) payload.match_id = matchId;
 
-    // Supabase JS onConflict: kolon adı alır, constraint adı değil.
-    if (matchId) {
-      try {
-        const { data, error } = await sb()
-          .from('community_ratings')
-          .upsert(payload, { onConflict: 'rated_player_id,rater_id,match_id', ignoreDuplicates: false })
-          .select()
-          .single();
-        if (error) throw error;
-        return data;
-      } catch (e) {
-        // match_id kolonu yoksa (SQL migration çalıştırılmamış) → fallback
-        if (e.message && (e.message.includes('match_id') || e.message.includes('column'))) {
-          const fb = { ...payload };
-          delete fb.match_id;
-          const { data, error } = await sb()
-            .from('community_ratings')
-            .upsert(fb, { onConflict: 'rated_player_id,rater_id', ignoreDuplicates: false })
-            .select()
-            .single();
-          if (error) throw error;
-          return data;
-        }
-        throw e;
-      }
+    // community_ratings'teki benzersizlik PARTIAL unique index'lerle sağlanıyor
+    // (match_id IS NOT NULL / IS NULL) — Postgres ON CONFLICT bunları WHERE'siz
+    // eşleştiremediği için upsert yerine manuel bul-ve-güncelle/ekle kullanılır.
+    let findQuery = sb()
+      .from('community_ratings')
+      .select('id')
+      .eq('rater_id', raterId)
+      .eq('rated_player_id', ratedPlayerId);
+    findQuery = matchId ? findQuery.eq('match_id', matchId) : findQuery.is('match_id', null);
+    const { data: existing, error: findError } = await findQuery.maybeSingle();
+    if (findError) throw findError;
+
+    if (existing) {
+      const { data, error } = await sb()
+        .from('community_ratings')
+        .update(payload)
+        .eq('id', existing.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
     } else {
       const { data, error } = await sb()
         .from('community_ratings')
-        .upsert(payload, { onConflict: 'rated_player_id,rater_id', ignoreDuplicates: false })
+        .insert(payload)
         .select()
         .single();
       if (error) throw error;

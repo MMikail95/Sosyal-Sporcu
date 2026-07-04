@@ -8,6 +8,8 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#adff2f">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
   <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -721,6 +723,10 @@
 
 <script src="auth.js"></script>
 <script>
+  // Ana sayfadaki CTA'dan '#kayit' ile gelindiyse kayıt sekmesini aç
+  if (window.location.hash === '#kayit' && typeof window.switchAuthTab === 'function') {
+    window.switchAuthTab('kayit');
+  }
   // Yüzen toplar oluştur
   (function createFloatingBalls() {
     const container = document.getElementById('floating-balls');

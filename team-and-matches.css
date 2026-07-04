@@ -1864,6 +1864,35 @@
     color: #ccc;
 }
 
+/* --- Mouse'u takip eden onur rozeti açıklama balonu --- */
+.honor-mouse-tooltip {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    max-width: 220px;
+    background: rgba(10,10,10,0.95);
+    color: #ddd;
+    font-size: 0.72rem;
+    font-weight: 500;
+    line-height: 1.35;
+    padding: 0.45rem 0.65rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(2px);
+    transition: opacity 0.12s ease, transform 0.12s ease;
+    font-family: 'Outfit', sans-serif;
+}
+.honor-mouse-tooltip.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
 /* ═══════════════════════════════════════
    MAÇ TAKVİMİ
    ═══════════════════════════════════════ */

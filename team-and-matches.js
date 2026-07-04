@@ -2460,22 +2460,22 @@ let _honorSelections = {}; // { [rated_id]: honor_type } — modal boyunca topla
 
 const _HONOR_BTNS = [
     // Saha İçi Performans
-    { key: 'mvp',              icon: '👑', label: 'MVP',             group: 'Saha İçi' },
-    { key: 'maestro',          icon: '🎯', label: 'Maestro',         group: 'Saha İçi' },
-    { key: 'fuzeci',           icon: '🚀', label: 'Füzeci',          group: 'Saha İçi' },
-    { key: 'duvar',            icon: '🧱', label: 'Duvar',           group: 'Saha İçi' },
-    { key: 'cigersiz_honor',   icon: '🫁', label: 'Ciğersiz',        group: 'Saha İçi' },
+    { key: 'mvp',              icon: '👑', label: 'MVP',             group: 'Saha İçi', desc: 'Maçın en iyi oyuncusu.' },
+    { key: 'maestro',          icon: '🎯', label: 'Maestro',         group: 'Saha İçi', desc: 'Oyunu yöneten, akıllı paslarla fark yaratan oyuncu.' },
+    { key: 'fuzeci',           icon: '🚀', label: 'Füzeci',          group: 'Saha İçi', desc: 'Sert ve isabetli şutlarıyla öne çıkan oyuncu.' },
+    { key: 'duvar',            icon: '🧱', label: 'Duvar',           group: 'Saha İçi', desc: 'Savunmada geçilemeyen, sağlam performans sergileyen oyuncu.' },
+    { key: 'cigersiz_honor',   icon: '🫁', label: 'Ciğersiz',        group: 'Saha İçi', desc: 'Sahada hiç durmadan koşan, tükenmeyen enerjisiyle öne çıkan oyuncu.' },
     // Karakter & Vibe
-    { key: 'beyefendi',        icon: '🎩', label: 'Beyefendi',       group: 'Karakter' },
-    { key: 'sosyal',           icon: '🎉', label: 'Sosyal',          group: 'Karakter' },
-    { key: 'gizli_cevher',     icon: '💎', label: 'Gizli Cevher',    group: 'Karakter' },
-    { key: 'oyunbozan',        icon: '😤', label: 'Oyunbozan',       group: 'Karakter' },
+    { key: 'beyefendi',        icon: '🎩', label: 'Beyefendi',       group: 'Karakter', desc: 'Sahada fair-play ve saygılı tavrıyla örnek olan oyuncu.' },
+    { key: 'sosyal',           icon: '🎉', label: 'Sosyal',          group: 'Karakter', desc: 'Takım içi iletişimi ve motivasyonu güçlü, herkesle iyi geçinen oyuncu.' },
+    { key: 'gizli_cevher',     icon: '💎', label: 'Gizli Cevher',    group: 'Karakter', desc: 'Beklentilerin üzerinde performans gösteren sürpriz oyuncu.' },
+    { key: 'oyunbozan',        icon: '😤', label: 'Oyunbozan',       group: 'Karakter', desc: 'Rakibi sinirlendiren, oyunun temposunu bozan zeki oyuncu.' },
     // Lojistik & Fedakarlık
-    { key: 'organizator',      icon: '📋', label: 'Organizatör',     group: 'Lojistik' },
-    { key: 'saha_komiseri',    icon: '🏟️', label: 'Saha Komiseri',   group: 'Lojistik' },
-    { key: 'emanetci',         icon: '🎒', label: 'Emanetçi',        group: 'Lojistik' },
-    { key: 'fedakar_eldiven',  icon: '🧤', label: 'Fedakar Eldiven', group: 'Lojistik' },
-    { key: 'joker',            icon: '🃏', label: 'Joker',           group: 'Lojistik' },
+    { key: 'organizator',      icon: '📋', label: 'Organizatör',     group: 'Lojistik', desc: 'Maçın organizasyonunu üstlenen, herkesi bir araya getiren oyuncu.' },
+    { key: 'saha_komiseri',    icon: '🏟️', label: 'Saha Komiseri',   group: 'Lojistik', desc: 'Saha/tesis ayarlamalarıyla ilgilenen, rezervasyonu halleden oyuncu.' },
+    { key: 'emanetci',         icon: '🎒', label: 'Emanetçi',        group: 'Lojistik', desc: 'Forma, top, kap gibi malzemeleri getirip götüren oyuncu.' },
+    { key: 'fedakar_eldiven',  icon: '🧤', label: 'Fedakar Eldiven', group: 'Lojistik', desc: 'Gerektiğinde kaleci forması giyerek takıma fedakarlık yapan oyuncu.' },
+    { key: 'joker',            icon: '🃏', label: 'Joker',           group: 'Lojistik', desc: 'Son anda eksik tamamlayan, her role uyum sağlayan oyuncu.' },
 ];
 
 const _RATING_KEYS = [
@@ -2604,6 +2604,7 @@ function _pmrHonorRow(playerId) {
         const btns = _HONOR_BTNS.filter(h => h.group === g).map(h => {
             const isSel = selected === h.key;
             return `<button class="honor-type-btn${isSel ? ' honor-type-selected' : ''}"
+                        data-desc="${_pmrEsc(h.desc)}"
                         ${atLimit && !isSel ? 'disabled title="Onur limiti doldu"' : ''}
                         onclick="_pmrHonorToggle('${_pmrEsc(playerId)}','${h.key}')">
                     ${h.icon} ${h.label}
@@ -2625,6 +2626,49 @@ function _pmrHonorRow(playerId) {
             ${groupedHtml}
         </div>`;
 }
+
+// ── Onur rozetleri için mouse'u takip eden açıklama balonu ──
+(function _initHonorTooltip() {
+    let tipEl = null;
+    function ensureTip() {
+        if (!tipEl) {
+            tipEl = document.createElement('div');
+            tipEl.className = 'honor-mouse-tooltip';
+            document.body.appendChild(tipEl);
+        }
+        return tipEl;
+    }
+    function position(e) {
+        if (!tipEl) return;
+        const pad = 14;
+        let x = e.clientX + pad;
+        let y = e.clientY + pad;
+        const rect = tipEl.getBoundingClientRect();
+        if (x + rect.width > window.innerWidth - 8) x = e.clientX - rect.width - pad;
+        if (y + rect.height > window.innerHeight - 8) y = e.clientY - rect.height - pad;
+        tipEl.style.left = x + 'px';
+        tipEl.style.top = y + 'px';
+    }
+    document.addEventListener('mouseover', function(e) {
+        const btn = e.target.closest('.honor-type-btn[data-desc]');
+        if (!btn) return;
+        const desc = btn.getAttribute('data-desc');
+        if (!desc) return;
+        const tip = ensureTip();
+        tip.textContent = desc;
+        tip.classList.add('visible');
+        position(e);
+    });
+    document.addEventListener('mousemove', function(e) {
+        if (tipEl && tipEl.classList.contains('visible')) position(e);
+    });
+    document.addEventListener('mouseout', function(e) {
+        const btn = e.target.closest('.honor-type-btn[data-desc]');
+        if (!btn) return;
+        if (e.relatedTarget && btn.contains(e.relatedTarget)) return;
+        if (tipEl) tipEl.classList.remove('visible');
+    });
+})();
 
 window._pmrHonorToggle = function(playerId, honorKey) {
     const current = _honorSelections[playerId];

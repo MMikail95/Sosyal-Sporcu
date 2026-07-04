@@ -19,6 +19,8 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#adff2f">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
     <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');</script>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="team-fix.css">
@@ -30,17 +32,25 @@
     <!-- Supabase Client Config -->
     <script src="supabase.js"></script>
     <!-- =====================================================
-         OTURUM KORUMASI — Giriş yapılmamışsa auth.html'e yönlendir
+         OTURUM KORUMASI — Giriş yapılmamışsa genel tanıtım sayfası (#public-landing) gösterilir.
+         (auth.html'e yönlendirme kaldırıldı: Google botu da oturumsuz göründüğü için
+         arama sonuçlarında hep "Giriş Yap" sayfası indeksleniyordu.)
     ===================================================== -->
     <script>
+      function ss_showApp() {
+        var pl = document.getElementById('public-landing');
+        var app = document.getElementById('app-container');
+        if (pl) pl.style.display = 'none';
+        if (app) app.style.display = '';
+      }
       (async function guardSession() {
-        if (!window.sbClient) return; // Supabase yüklenmediyse devam et (geliştirme)
+        if (!window.sbClient) { ss_showApp(); return; } // Supabase yüklenmediyse devam et (geliştirme)
         try {
           const { data: { session } } = await window.sbClient.auth.getSession();
           if (!session) {
-            window.location.replace('auth.html');
-            return;
+            return; // Oturum yok → #public-landing zaten görünür durumda kalır
           }
+          ss_showApp();
           // Oturum var → kullanıcıyı global'e kaydet
           window.__AUTH_USER__ = session.user;
           console.log('🔐 Oturum aktif:', session.user.email);
@@ -51,7 +61,7 @@
                   if (typeof window.initRealNotifications === 'function') window.initRealNotifications();
               });
           }
-          
+
           window.sbClient.auth.onAuthStateChange((event, _session) => {
               if (_session && _session.user) {
                   window.__AUTH_USER__ = _session.user;
@@ -60,6 +70,7 @@
           });
         } catch (e) {
           console.warn('Session check failed, proceeding offline:', e.message);
+          ss_showApp();
         }
       })();
     </script>
@@ -68,7 +79,81 @@
 </head>
 
 <body>
-    <div class="app-container">
+
+    <!-- =====================================================
+         GENEL TANITIM SAYFASI — oturum yoksa (ör. Google botu) gösterilir.
+         Uygulamanın kendisi #app-container içinde, oturum onaylanınca açılır.
+    ===================================================== -->
+    <div id="public-landing" style="min-height:100vh; background:var(--bg-dark,#121212); color:#fff; display:flex; flex-direction:column; align-items:center; padding:3rem 1.5rem 4rem; font-family:inherit; text-align:center;">
+
+        <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1.5rem;">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="44" height="44">
+                <defs>
+                    <radialGradient id="plball-g" cx="36%" cy="30%" r="65%">
+                        <stop offset="0%" stop-color="#ffffff"/>
+                        <stop offset="55%" stop-color="#eaeaea"/>
+                        <stop offset="100%" stop-color="#b5b5b5"/>
+                    </radialGradient>
+                    <clipPath id="plball-c"><circle cx="50" cy="50" r="46"/></clipPath>
+                </defs>
+                <circle cx="50" cy="50" r="47" fill="url(#plball-g)" stroke="#cccccc" stroke-width="1.5"/>
+                <polygon points="50,34 65,45 59,62 41,62 35,45" fill="#1a1a1a" clip-path="url(#plball-c)"/>
+                <polygon points="50,4 64,9 59,26 41,26 36,9"    fill="#1a1a1a" clip-path="url(#plball-c)"/>
+                <polygon points="88,24 95,38 88,52 76,50 76,32" fill="#1a1a1a" clip-path="url(#plball-c)"/>
+                <polygon points="80,72 70,87 57,88 53,74 65,62" fill="#1a1a1a" clip-path="url(#plball-c)"/>
+                <polygon points="20,72 30,87 43,88 47,74 35,62" fill="#1a1a1a" clip-path="url(#plball-c)"/>
+                <polygon points="12,24 5,38 12,52 24,50 24,32"  fill="#1a1a1a" clip-path="url(#plball-c)"/>
+                <ellipse cx="37" cy="28" rx="13" ry="7" fill="white" opacity="0.28" transform="rotate(-30 37 28)" clip-path="url(#plball-c)"/>
+            </svg>
+            <span style="font-size:1.3rem; font-weight:900; letter-spacing:1px; background:linear-gradient(135deg,var(--neon-green),var(--neon-cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">SOSYAL SPORCU</span>
+        </div>
+
+        <h1 style="font-size:2.4rem; font-weight:900; max-width:700px; line-height:1.2; margin-bottom:0.75rem;">
+            Halısahanın <span style="color:var(--neon-green);">Sosyal Ağı</span>
+        </h1>
+        <p style="font-size:1.05rem; color:#aaa; max-width:560px; line-height:1.6; margin-bottom:2rem;">
+            Oyuncu profilini oluştur, takımını yönet, maçlarını planla, halısaha arkadaşlarınla puanlaş ve sahadaki performansını GEN skoruyla takip et.
+        </p>
+
+        <div style="display:flex; gap:0.85rem; flex-wrap:wrap; justify-content:center; margin-bottom:3rem;">
+            <a href="auth.html" style="padding:0.9rem 1.75rem; border-radius:12px; background:linear-gradient(135deg,var(--neon-green),#6fff00); color:#0a0a0f; font-weight:800; text-decoration:none; font-size:0.95rem; letter-spacing:0.3px;">
+                <i class="fa-solid fa-right-to-bracket"></i> Giriş Yap
+            </a>
+            <a href="auth.html#kayit" style="padding:0.9rem 1.75rem; border-radius:12px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:#fff; font-weight:800; text-decoration:none; font-size:0.95rem; letter-spacing:0.3px;">
+                <i class="fa-solid fa-user-plus"></i> Hesap Oluştur
+            </a>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; max-width:1000px; width:100%;">
+            <div style="background:var(--glass-bg,rgba(255,255,255,0.05)); border:1px solid var(--glass-border,rgba(255,255,255,0.1)); border-radius:16px; padding:1.5rem 1.25rem;">
+                <i class="fa-solid fa-id-card" style="color:var(--neon-green); font-size:1.4rem; margin-bottom:0.6rem; display:block;"></i>
+                <h3 style="font-size:1rem; margin-bottom:0.4rem;">Oyuncu Profili</h3>
+                <p style="font-size:0.85rem; color:#888; line-height:1.5;">6 yeteneğe dayalı GEN skorun, kariyer istatistiklerin ve rozetlerin.</p>
+            </div>
+            <div style="background:var(--glass-bg,rgba(255,255,255,0.05)); border:1px solid var(--glass-border,rgba(255,255,255,0.1)); border-radius:16px; padding:1.5rem 1.25rem;">
+                <i class="fa-solid fa-users-gear" style="color:var(--neon-cyan); font-size:1.4rem; margin-bottom:0.6rem; display:block;"></i>
+                <h3 style="font-size:1rem; margin-bottom:0.4rem;">Takım Yönetimi</h3>
+                <p style="font-size:0.85rem; color:#888; line-height:1.5;">Kadro, taktik tahtası ve dengeli takım kurma algoritmasıyla takımını yönet.</p>
+            </div>
+            <div style="background:var(--glass-bg,rgba(255,255,255,0.05)); border:1px solid var(--glass-border,rgba(255,255,255,0.1)); border-radius:16px; padding:1.5rem 1.25rem;">
+                <i class="fa-solid fa-clipboard-list" style="color:var(--neon-pink); font-size:1.4rem; margin-bottom:0.6rem; display:block;"></i>
+                <h3 style="font-size:1rem; margin-bottom:0.4rem;">Maç Merkezi</h3>
+                <p style="font-size:0.85rem; color:#888; line-height:1.5;">Maç planla, katılımcıları belirle ve maç sonrası birbirinizi puanlayın.</p>
+            </div>
+            <div style="background:var(--glass-bg,rgba(255,255,255,0.05)); border:1px solid var(--glass-border,rgba(255,255,255,0.1)); border-radius:16px; padding:1.5rem 1.25rem;">
+                <i class="fa-solid fa-rss" style="color:var(--neon-green); font-size:1.4rem; margin-bottom:0.6rem; display:block;"></i>
+                <h3 style="font-size:1rem; margin-bottom:0.4rem;">Sosyal Akış</h3>
+                <p style="font-size:0.85rem; color:#888; line-height:1.5;">Paylaşım yap, yorum ve beğeni al, halısaha camiasıyla etkileşimde kal.</p>
+            </div>
+            <div style="background:var(--glass-bg,rgba(255,255,255,0.05)); border:1px solid var(--glass-border,rgba(255,255,255,0.1)); border-radius:16px; padding:1.5rem 1.25rem;">
+                <i class="fa-solid fa-compass" style="color:var(--neon-cyan); font-size:1.4rem; margin-bottom:0.6rem; display:block;"></i>
+                <h3 style="font-size:1rem; margin-bottom:0.4rem;">Keşfet</h3>
+                <p style="font-size:0.85rem; color:#888; line-height:1.5;">Bölgendeki oyuncuları, takımları bul ve arkadaş ekle.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container" id="app-container" style="display:none;">
         <!-- Mobile Overlay -->
         <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 

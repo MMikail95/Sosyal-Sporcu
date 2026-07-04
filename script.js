@@ -704,6 +704,26 @@ async function initSupabaseUser() {
     }
 }
 
+// Supabase yanıtı gelmeden önce localStorage'daki son bilinen kullanıcı
+// bilgisiyle sidebar'ı doldurur — sayfa yenilemede mock avatar/"Yükleniyor..." flaşını önler.
+function hydrateSidebarFromCache() {
+    const acc = getActiveAccount();
+    if (!acc || !acc.supabase_id) return; // gerçek bir Supabase hesabı yoksa dokunma
+
+    const player = players.find(p => p.id === acc.playerId);
+    const nameEl   = document.getElementById('current-account-name');
+    const avatarEl = document.getElementById('current-account-avatar');
+    const roleEl   = document.getElementById('current-account-role');
+
+    if (nameEl) {
+        const raw = (player && (player.full_name || player.name)) || acc.name || '';
+        const firstName = raw.split(' ')[0];
+        if (firstName) nameEl.textContent = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+    }
+    if (avatarEl && player && player.avatar_url) avatarEl.src = player.avatar_url;
+    if (roleEl) roleEl.style.display = 'none';
+}
+
 // Sidebar'a oturum kapatma butonu ekle + mock hesap panelini gizle
 function addLogoutButton(profile) {
     if (document.getElementById('btn-logout')) return;
@@ -785,6 +805,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     loadData();
     setupNavigation();
+    hydrateSidebarFromCache();
 
     // FAZ 1: Supabase kullanıcısını yükle
     await initSupabaseUser();
