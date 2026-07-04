@@ -1,6 +1,12 @@
 // =====================================================
-// FAZ2-SOCIAL.JS — Sosyal Katman
-// Arkadaşlar, Gerçek Feed, Yorum & Beğeni, Keşfet
+// SOCIAL-FEATURES.JS
+// Bu dosya ne işe yarar (Supabase veritabanına bağlı sosyal katman):
+//  - Keşfet: oyuncu ve takım arama/filtreleme
+//  - Gerçek akış (feed): paylaşım oluşturma, görüntüleme, yorum & beğeni
+//  - Bildirim sistemi (Supabase realtime — notifications-and-toast.js'deki
+//    yerel/localStorage bildirimlerden ayrı, sunucu taraflı bildirimler)
+//  - Profil güncelleme, başka kullanıcının profiline gitme (openUserProfile)
+//  - Arkadaşlar listesi, davet linki paylaşımı, avatar yükleme
 // =====================================================
 
 'use strict';

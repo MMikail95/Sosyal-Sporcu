@@ -22,7 +22,7 @@ let _tmState = {
   matches:          [],
   loading:          false,
 };
-window._tmState = _tmState; // Expose globally for faz2-7.js
+window._tmState = _tmState; // Expose globally for team-and-matches.js
 
 // Geriye uyumluluk için eski takımım.js global değişkenleri
 let teamData = null; // eski referansları kırmamak için
@@ -1905,7 +1905,7 @@ window._tmRemoveGuestMember = async function(memberId) {
 };
 
 // ──────────────────────────────────────────────────────
-// 15. STUBS — faz2-7.js override eder
+// 15. STUBS — team-and-matches.js override eder
 // ──────────────────────────────────────────────────────
 
 window.renderKadroTab        = window.renderKadroTab        || function() {};

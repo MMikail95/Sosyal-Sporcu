@@ -1,6 +1,16 @@
 
 // ======================================================
-// FAZ 2-7: Takımım Kapsamlı Yönetim Modülü
+// TEAM-AND-MATCHES.JS
+// Bu dosya ne işe yarar:
+//  - Kadro & davetler: takıma oyuncu ekleme/çıkarma, katılım istekleri
+//  - Saha düzeni: sürükle-bırak oyuncu yerleştirme (taktik sahası)
+//  - Taktik tahtası: canvas üzerine çizim yapılan taktik ekranı
+//  - Dengeli takım oluşturma algoritması (oyuncuları otomatik gruplama)
+//  - Sinerji matrisi ve rakip takımlar ekranı
+//  - Ödemeler takibi (kim ödedi / ödemedi)
+//  - Maç sonu puanlama modalı (openPostMatchRatingModal) ve Maç Merkezi ekranı
+// Not: Takım modülünün temel state'i (_tmState) takimim.js'de tutulur;
+// bu dosya o state üzerine kurulu daha gelişmiş takım ve maç özellikleridir.
 // ======================================================
 
 // Supabase Faz 2 Uyum Sağlayıcı
@@ -465,7 +475,7 @@ window.rejectTeamInvite = function(invId) {
     showToast('Davet reddedildi.');
 };
 
-// showToast is defined in faz1.js — no override needed
+// showToast is defined in notifications-and-toast.js — no override needed
 
 
 // ──────────────────────────────────────────────────────

@@ -1,5 +1,9 @@
 // ======================================================
-// FAZ 1 — BİLDİRİM, MAÇ DAVETİ, TOAST
+// NOTIFICATIONS-AND-TOAST.JS
+// Bu dosya ne işe yarar:
+//  - Zil ikonundaki bildirim listesini yönetir (localStorage'da saklanır)
+//  - "Maça davet et" penceresini açar/kapatır ve daveti gönderir
+//  - Ekranın altında beliren kısa "toast" mesajlarını gösterir (showToast)
 // ======================================================
 
 function timeAgo(isoDate) {

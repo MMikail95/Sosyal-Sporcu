@@ -976,7 +976,7 @@ function isViewingOtherProfile() {
         return true;
     }
     const acc = getActiveAccount();
-    // SPA flow: openUserProfile (faz2-social.js) sets window.activePlayerId to a temp 'sb_view_...' ID
+    // SPA flow: openUserProfile (social-features.js) sets window.activePlayerId to a temp 'sb_view_...' ID
     // while the local activePlayerId var stays as the logged-in user's ID — use window version first
     const _activeId = window.activePlayerId || activePlayerId;
     return acc && acc.playerId !== _activeId;
@@ -3010,7 +3010,7 @@ function getPlayerStats(player) {
             totalAssists: player.stats.totalAssists  || 0,
         };
     }
-    // Supabase'den yüklendiyse (faz2-social.js tempPlayer)
+    // Supabase'den yüklendiyse (social-features.js tempPlayer)
     if (player.supabase_matches !== undefined) {
         return {
             totalMatches: player.supabase_matches || 0,

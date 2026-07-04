@@ -317,7 +317,7 @@ body {
 [data-theme="light"] .theme-toggle-btn .theme-icon { transform: rotate(180deg); }
 
 /* ──────────────────────────────────────────────────────────────
-   5. MODAL CSS (takimim.js + faz2-7.js modalleri için)
+   5. MODAL CSS (takimim.js + team-and-matches.js modalleri için)
    ────────────────────────────────────────────────────────────── */
 .modal-backdrop {
     position: fixed;

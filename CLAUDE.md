@@ -29,6 +29,9 @@ Do **not** open via `file://` — Supabase auth and Dicebear avatar API will fai
 - `character/index.html` — Standalone profile view (used when navigating from Explore)
 - `explore/index.html` — Standalone explore page
 - `matches/index.html` — Standalone match center page
+- `team/index.html` — Standalone "Takımım" (own team) page
+- `team-profile/index.html` — Standalone view of another team's profile
+- `feed/index.html` — Standalone social feed page
 
 Cross-page navigation via `sessionStorage` (`ss_view_player_id`) and `components.js` wrappers. `window.__openUserProfileCore` is the unwrapped reference to `openUserProfile` that bypasses the MPA redirect logic — use this when calling from within the character page itself.
 
@@ -41,10 +44,12 @@ Scripts load in this order (bottom of `index.html` body):
 | `db.js` | Supabase abstraction — all DB ops go through `window.DB.*` |
 | `assets/js/components.js` | MPA navigation wrappers, cross-page profile linking |
 | `script.js` | Core app: `showSection()`, `updateUI()`, `updateChart()`, profile render |
-| `faz1.js` | Legacy localStorage feed + `showToast()` — still active for toast |
-| `takimim.js` | Team module (`_tmState`, squad, invites, realtime) |
-| `faz2-7.js` | Match center UI + post-match rating modal (`openPostMatchRatingModal`) |
-| `faz2-social.js` | Supabase feed, explore grid, friendships, `openUserProfile` |
+| `notifications-and-toast.js` | Bell-icon notifications (localStorage), match-invite modal, `showToast()` |
+| `takimim.js` | Team module core (`_tmState`, squad, invites, realtime) |
+| `team-and-matches.js` | Extended team features (squad/invites, drag-drop pitch, tactics board, balanced-team algorithm, synergy matrix, rivals, payments tracking) + post-match rating modal (`openPostMatchRatingModal`) + Match Center UI |
+| `social-features.js` | Explore (search players/teams), real Supabase feed, post creation, comments/likes, Supabase-realtime notifications, profile editing, `openUserProfile`, friends list, invite links, avatar upload |
+
+Historical naming note: these three files were originally named `faz1.js`, `faz2-7.js`, and `faz2-social.js` after their development phase ("faz" = phase). Renamed 2026-07-04 for clarity; content/behavior unchanged.
 
 **Key globals:**
 - `window.sbClient` — Supabase client (from `supabase.js`)
@@ -75,10 +80,10 @@ Full schema in `schema.sql`. Migration files: `master-migration.sql`, `sprint6-m
 
 ## CSS
 
-Four files load in order: `style.css` → `team-fix.css` → `faz2-7.css` → `fixes.css`.
+Four files load in order: `style.css` → `team-fix.css` → `team-and-matches.css` → `fixes.css`.
 
 - `style.css` — design system, layout, all CSS variables
-- `faz2-7.css` — match center and post-match modal styles (`.pmr-*` classes)
+- `team-and-matches.css` — styles for `team-and-matches.js`: squad, pitch, tactics board, balanced-team, post-match modal (`.pmr-*` classes), Match Center
 - `fixes.css` — responsive overrides and z-index fixes (edits here when layout breaks)
 
 **CSS variables (defined in `style.css`):**
@@ -96,8 +101,8 @@ Four files load in order: `style.css` → `team-fix.css` → `faz2-7.css` → `f
 
 **Rendering to a section:** Call `updateUI()` to re-render the profile section. For team, call `renderTeamOverview()`. For feed, call `window.initRealFeed()`.
 
-**Post-match rating flow:** Match finishes → `loadMatchHistory()` shows "Puan Ver" badge → `openPostMatchRatingModal(matchId, teamSide)` (in `faz2-7.js`) → saves to `community_ratings` with `match_id` → calls `updateChart()`.
+**Post-match rating flow:** Match finishes → `loadMatchHistory()` shows "Puan Ver" badge → `openPostMatchRatingModal(matchId, teamSide)` (in `team-and-matches.js`) → saves to `community_ratings` with `match_id` → calls `updateChart()`.
 
-**Explore tab sections** use IDs `etab-players`, `etab-teams`, `etab-friends` in `explore/index.html`. The `switchExploreTab()` function in `faz2-social.js` must reference these exact IDs.
+**Explore tab sections** use IDs `etab-players`, `etab-teams`, `etab-friends` in `explore/index.html`. The `switchExploreTab()` function in `social-features.js` must reference these exact IDs.
 
 **No TypeScript, no build step, no test framework.** Syntax check: `node --check <file>.js`.
