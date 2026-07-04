@@ -1122,6 +1122,207 @@ const Matches = {
       if (result[row.status]) result[row.status].push(row.invitee);
     });
     return result;
+  },
+
+  // ── Proposal: Maç oluştur (proposal aşamasında) ──
+  async createProposal(captainId, payload) {
+    const { required_players, scheduled_at, venue_id, home_team_id, away_team_id, notes, match_type } = payload;
+    const { data, error } = await sb()
+      .from('matches')
+      .insert({
+        created_by: captainId,
+        status: 'proposal',
+        required_players: required_players || 8,
+        scheduled_at,
+        venue_id: venue_id || null,
+        home_team_id: home_team_id || null,
+        away_team_id: away_team_id || null,
+        notes: notes || null,
+        match_type: match_type || 'friendly'
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  // ── Proposal: Takım üyelerine oylama kaydı aç + bildirim gönder ──
+  async sendProposalPoll(matchId, captainId, playerIds, teamSide) {
+    if (!playerIds || playerIds.length === 0) return;
+
+    const rows = playerIds.map(pid => ({
+      match_id: matchId,
+      player_id: pid,
+      team_side: teamSide,
+      status: 'pending'
+    }));
+
+    const { error } = await sb()
+      .from('match_proposal_votes')
+      .upsert(rows, { onConflict: 'match_id,player_id', ignoreDuplicates: true });
+    if (error) console.warn('sendProposalPoll upsert error:', error);
+
+    const { data: matchData } = await sb()
+      .from('matches')
+      .select('scheduled_at, required_players, home_team:home_team_id(name)')
+      .eq('id', matchId)
+      .single();
+
+    const matchDate = matchData?.scheduled_at
+      ? new Date(matchData.scheduled_at).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })
+      : '';
+    const teamName = matchData?.home_team?.name || 'Takımın';
+    const reqCount = matchData?.required_players || 8;
+
+    await Promise.all(playerIds.map(pid =>
+      sb().from('notifications').insert({
+        user_id:    pid,
+        type:       'match_poll',
+        title:      'Müsait misin?',
+        body:       `${teamName} — ${matchDate} maçı için ${reqCount}v${reqCount} kadro toplanıyor. Gelebilir misin?`,
+        actor_id:   captainId,
+        related_id: matchId
+      }).then(() => {}).catch(() => {})
+    ));
+  },
+
+  // ── Proposal: Oyuncu oy kullan ──
+  async castProposalVote(matchId, playerId, accept) {
+    const { error } = await sb()
+      .from('match_proposal_votes')
+      .update({
+        status: accept ? 'accepted' : 'declined',
+        responded_at: new Date().toISOString()
+      })
+      .eq('match_id', matchId)
+      .eq('player_id', playerId);
+    if (error) throw error;
+  },
+
+  // ── Proposal: Oy durumunu getir (kaptan paneli) ──
+  async getProposalVotes(matchId) {
+    const { data, error } = await sb()
+      .from('match_proposal_votes')
+      .select('status, is_substitute, team_side, player:player_id(id, username, avatar_url, ana_mevki)')
+      .eq('match_id', matchId);
+    if (error) return { accepted: [], declined: [], pending: [] };
+    const result = { accepted: [], declined: [], pending: [] };
+    (data || []).forEach(row => {
+      const bucket = result[row.status] || result.pending;
+      bucket.push({ ...row.player, is_substitute: row.is_substitute, team_side: row.team_side });
+    });
+    return result;
+  },
+
+  // ── Proposal: Oyuncuyu yedek/asil olarak işaretle ──
+  async setSubstitute(matchId, playerId, isSubstitute) {
+    await sb()
+      .from('match_proposal_votes')
+      .update({ is_substitute: isSubstitute })
+      .eq('match_id', matchId)
+      .eq('player_id', playerId);
+  },
+
+  // ── Proposal: Kaptan rakip kaptana maç daveti gönder (proposal→invited) ──
+  async sendInterTeamInvite(matchId, captainId, awayCapId, awayTeamName) {
+    // Maçı invited'a çek
+    await sb().from('matches').update({ status: 'invited' }).eq('id', matchId);
+
+    const { data: matchData } = await sb()
+      .from('matches')
+      .select('scheduled_at, required_players, home_team:home_team_id(name)')
+      .eq('id', matchId)
+      .single();
+
+    const matchDate = matchData?.scheduled_at
+      ? new Date(matchData.scheduled_at).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })
+      : '';
+    const homeTeamName = matchData?.home_team?.name || 'Rakip takım';
+    const reqCount = matchData?.required_players || 8;
+
+    await sb().from('notifications').insert({
+      user_id:    awayCapId,
+      type:       'match_invite',
+      title:      'Maç Daveti Geldi!',
+      body:       `${homeTeamName} seni ${matchDate} tarihinde ${reqCount}v${reqCount} maça davet etti. Kadronuzu toplayın!`,
+      actor_id:   captainId,
+      related_id: matchId
+    });
+  },
+
+  // ── Proposal: Rakip kaptan kabul → maç confirmed'a geçer + her iki taraf match_players'a eklenir ──
+  async confirmMatch(matchId, homeCaptainId) {
+    // Her iki taraftaki accepted oyları match_players'a ekle
+    const { data: votes } = await sb()
+      .from('match_proposal_votes')
+      .select('player_id, team_side, is_substitute')
+      .eq('match_id', matchId)
+      .eq('status', 'accepted');
+
+    const { data: matchData } = await sb()
+      .from('matches')
+      .select('required_players, home_team_id, away_team_id')
+      .eq('id', matchId)
+      .single();
+
+    const reqCount = matchData?.required_players || 8;
+
+    // Her team_side için ilk reqCount asil oyuncu, geri kalanlar yedek
+    const sides = { home: [], away: [] };
+    (votes || []).forEach(v => {
+      if (sides[v.team_side]) sides[v.team_side].push(v);
+    });
+
+    const playerRows = [];
+    for (const [side, players] of Object.entries(sides)) {
+      let starters = 0;
+      for (const p of players) {
+        const isYedek = p.is_substitute || starters >= reqCount;
+        if (!isYedek) starters++;
+        playerRows.push({
+          match_id:  matchId,
+          player_id: p.player_id,
+          team_side: side,
+          confirmed: true,
+          confirmed_at: new Date().toISOString()
+        });
+      }
+    }
+
+    if (playerRows.length > 0) {
+      await sb()
+        .from('match_players')
+        .upsert(playerRows, { onConflict: 'match_id,player_id', ignoreDuplicates: true });
+    }
+
+    await sb().from('matches').update({ status: 'scheduled' }).eq('id', matchId);
+
+    // Ev sahibi kaptana bildirim
+    await sb().from('notifications').insert({
+      user_id:    homeCaptainId,
+      type:       'match_result',
+      title:      '✅ Maç Onaylandı!',
+      body:       'Rakip takım kabul etti. Maç takvime girdi.',
+      actor_id:   homeCaptainId,
+      related_id: matchId
+    }).catch(() => {});
+  },
+
+  // ── Proposal: Bekleyen proposal/invited maçları getir ──
+  async getPendingProposals(userId) {
+    const { data, error } = await sb()
+      .from('matches')
+      .select(`
+        *,
+        home_team:home_team_id(id, name, logo_url, captain_id),
+        away_team:away_team_id(id, name, logo_url, captain_id),
+        venue:venue_id(id, name)
+      `)
+      .in('status', ['proposal', 'invited'])
+      .or(`home_team_id.in.(select id from teams where captain_id='${userId}'),away_team_id.in.(select id from teams where captain_id='${userId}'),created_by.eq.${userId}`)
+      .order('scheduled_at', { ascending: true });
+    if (error) return [];
+    return data || [];
   }
 };
 
@@ -1435,22 +1636,22 @@ const Ratings = {
     return new Set((data || []).map(r => r.rated_player_id));
   },
 
-  // Bu maç için 24 saatlik oylama penceresi hâlâ açık mı?
+  // Bu maç için oylama hâlâ açık mı?
+  // TEMP: 24 saatlik süre kısıtı test amacıyla devre dışı — geri açmak için eski haline getir.
   async isVotingOpen(matchId) {
     if (!matchId) return false;
-    if (window.TEST_MODE) return true;
     const { data } = await sb()
       .from('matches')
       .select('status, finished_at')
       .eq('id', matchId)
       .maybeSingle();
     if (!data || data.status !== 'finished') return false;
-    if (!data.finished_at) return true; // migration henüz çalışmadıysa fail-open
-    return (Date.now() - new Date(data.finished_at).getTime()) < 24 * 60 * 60 * 1000;
+    return true;
   },
 
   // Maç geçmişi tablosu için toplu durum sorgulama
-  // Döndürür: { [matchId]: 'pending' | 'done' | 'expired' | null }
+  // Döndürür: { [matchId]: 'pending' | 'done' | null }
+  // TEMP: 'expired' durumu 24 saatlik kısıt test için devre dışı bırakıldığından artık dönmüyor.
   async getMatchRatingStatuses(userId, matchIds) {
     if (!matchIds || matchIds.length === 0) return {};
 
@@ -1470,10 +1671,8 @@ const Ratings = {
     // 3) Takım ID'lerinden üye listesini çek (fallback)
     const teamIds = [];
     const matchTeamMap = {}; // matchId -> [teamId, ...]
-    const finishedAtMap = {}; // matchId -> finished_at string | null
     (matchRows || []).forEach(m => {
       matchTeamMap[m.id] = [];
-      finishedAtMap[m.id] = m.finished_at || null;
       if (m.home_team_id) { teamIds.push(m.home_team_id); matchTeamMap[m.id].push(m.home_team_id); }
       if (m.away_team_id) { teamIds.push(m.away_team_id); matchTeamMap[m.id].push(m.away_team_id); }
     });
@@ -1521,14 +1720,9 @@ const Ratings = {
     const givenSet = new Set((given || []).map(r => `${r.match_id}:${r.rated_player_id}`));
 
     // 6) Sonucu hesapla
+    // TEMP: 24 saatlik süre kısıtı test amacıyla devre dışı — expired hiç dönmüyor.
     const result = {};
     matchIds.forEach(mid => {
-      // Oylama penceresi dolmuşsa expired döndür
-      const fat = finishedAtMap[mid];
-      if (fat && (Date.now() - new Date(fat).getTime()) >= 24 * 60 * 60 * 1000) {
-        result[mid] = 'expired';
-        return;
-      }
       const peers = [...byMatch[mid]];
       if (peers.length === 0) { result[mid] = 'pending'; return; } // takım varsa pending göster
       result[mid] = peers.every(pid => givenSet.has(`${mid}:${pid}`)) ? 'done' : 'pending';

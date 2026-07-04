@@ -73,25 +73,33 @@
                 <button class="mc-tab-btn active" onclick="mcSwitchTab('my-matches', this)">
                     <i class="fa-solid fa-calendar-check"></i> Maçlarım
                 </button>
+                <button class="mc-tab-btn" onclick="mcSwitchTab('proposals', this)">
+                    <i class="fa-solid fa-clipboard-list"></i> Planlanan
+                </button>
                 <button class="mc-tab-btn" onclick="mcSwitchTab('open-matches', this)">
                     <i class="fa-solid fa-door-open"></i> Açık Maçlar
                 </button>
                 <button class="mc-tab-btn" onclick="mcSwitchTab('create-match', this)">
-                    <i class="fa-solid fa-plus"></i> Maç Oluştur
+                    <i class="fa-solid fa-plus"></i> Maç Planla
                 </button>
             </div>
             <!-- Sekme: Maçlarım -->
             <div id="mc-tab-my-matches" class="mc-tab-content">
                 <div id="mc-matches-list"><div class="empty-state-sm"><i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor…</div></div>
             </div>
+            <!-- Sekme: Planlanan Maçlar -->
+            <div id="mc-tab-proposals" class="mc-tab-content" style="display:none;">
+                <div id="mc-proposals-list"><div class="empty-state-sm"><i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor…</div></div>
+            </div>
             <!-- Sekme: Açık Maçlar -->
             <div id="mc-tab-open-matches" class="mc-tab-content" style="display:none;">
                 <div id="mc-open-list"><div class="empty-state-sm"><i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor…</div></div>
             </div>
-            <!-- Sekme: Maç Oluştur -->
+            <!-- Sekme: Maç Planla -->
             <div id="mc-tab-create-match" class="mc-tab-content" style="display:none;">
                 <div class="glass-card mc-create-form">
-                    <h3 class="mc-form-title"><i class="fa-solid fa-plus-circle"></i> Yeni Maç Oluştur</h3>
+                    <h3 class="mc-form-title"><i class="fa-solid fa-clipboard-list"></i> Maç Planla</h3>
+                    <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1rem;">Kadro oylaması açılır, yeterli oyuncu toplanınca rakibe davet gönderilir.</p>
                     <div class="mc-form-grid">
                         <div class="form-group">
                             <label class="form-label">Halı Saha</label>
@@ -106,13 +114,12 @@
                             <select class="form-select" id="mc-time-input"></select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Maç Tipi</label>
-                            <select class="form-select" id="mc-type-select">
-                                <option value="5v5">5v5</option>
-                                <option value="6v6">6v6</option>
-                                <option value="7v7" selected>7v7</option>
-                                <option value="8v8">8v8</option>
-                                <option value="11v11">11v11</option>
+                            <label class="form-label">Kaç kişilik maç?</label>
+                            <select class="form-select" id="mc-type-select" onchange="mcUpdateRequiredPlayers(this.value)">
+                                <option value="5v5">5v5 — 5 kişi</option>
+                                <option value="7v7">7v7 — 7 kişi</option>
+                                <option value="8v8" selected>8v8 — 8 kişi</option>
+                                <option value="11v11">11v11 — 11 kişi</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -122,7 +129,7 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Rakip Takım</label>
+                            <label class="form-label">Rakip Takım <span style="color:var(--text-muted);font-size:0.8rem;">(opsiyonel, sonra eklenebilir)</span></label>
                             <div class="mc-away-search-wrap">
                                 <input type="text" class="form-input" id="mc-away-team-input"
                                     placeholder="Takım ara…" autocomplete="off"
@@ -137,7 +144,20 @@
                         </div>
                     </div>
                     <button class="btn-primary mc-submit-btn" id="mc-submit-btn" onclick="mcSubmitCreate()">
-                        <i class="fa-solid fa-check"></i> Maç Oluştur
+                        <i class="fa-solid fa-users"></i> Kadro Oylaması Başlat
+                    </button>
+                </div>
+            </div>
+
+            <!-- Kadro Seçim Modal (Proposal Poll) -->
+            <div id="mc-poll-modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;display:none;align-items:center;justify-content:center;">
+                <div class="glass-card" style="width:min(480px,94vw);max-height:80vh;overflow-y:auto;padding:1.5rem;position:relative;">
+                    <button onclick="document.getElementById('mc-poll-modal-backdrop').style.display='none'" style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text-muted);font-size:1.2rem;cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+                    <h3 style="margin-bottom:0.25rem;"><i class="fa-solid fa-users" style="color:var(--neon-green);"></i> Kadro Oylaması</h3>
+                    <p id="mc-poll-modal-desc" style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1rem;"></p>
+                    <div id="mc-poll-member-list" style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;"></div>
+                    <button class="btn-primary" style="width:100%;" onclick="mcSendProposalPoll()">
+                        <i class="fa-solid fa-paper-plane"></i> Oylama Gönder
                     </button>
                 </div>
             </div>

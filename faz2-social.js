@@ -1611,6 +1611,7 @@ function renderRealNotifications(notifs) {
         friend_request:    '👥',
         friend_accepted:   '✅',
         match_invite:      '📩',
+        match_poll:        '📋',
         match_result:      '⚽',
         team_invite:       '🏆',
         team_join:         '🎉',
@@ -1640,11 +1641,19 @@ function renderRealNotifications(notifs) {
                             <button onclick="event.stopPropagation(); window.DB.Notifications.markRead('${n.id}'); window.initRealNotifications();" style="flex:1; background:transparent; border:1px solid #ff4d4d; color:#ff4d4d; padding:4px; border-radius:4px; cursor:pointer;">Reddet</button>
                         </div>`;
                     }
-                } else if (n.type === 'match_invite' && n.related_id && !n.title?.includes('Çakışma')) {
+                } else if (n.type === 'match_poll' && n.related_id) {
+                    // Takım içi oylama — oyuncu kendi cevabını veriyor
                     actionsHtml = `
                     <div class="notif-actions" style="margin-top:0.5rem; display:flex; gap:0.5rem;">
-                        <button onclick="event.stopPropagation(); handleNotifMatchCheckin('${n.id}', '${n.related_id}', true)" style="flex:1; background:var(--neon-green); color:#000; border:none; padding:4px; border-radius:4px; font-weight:bold; cursor:pointer;">✅ Geleceğim</button>
-                        <button onclick="event.stopPropagation(); handleNotifMatchCheckin('${n.id}', '${n.related_id}', false)" style="flex:1; background:transparent; border:1px solid #ff4d4d; color:#ff4d4d; padding:4px; border-radius:4px; cursor:pointer;">❌ Gelemeyeceğim</button>
+                        <button onclick="event.stopPropagation(); handleNotifPollVote('${n.id}', '${n.related_id}', true)" style="flex:1; background:var(--neon-green); color:#000; border:none; padding:4px; border-radius:4px; font-weight:bold; cursor:pointer;">✅ Gelebilirim</button>
+                        <button onclick="event.stopPropagation(); handleNotifPollVote('${n.id}', '${n.related_id}', false)" style="flex:1; background:transparent; border:1px solid #ff4d4d; color:#ff4d4d; padding:4px; border-radius:4px; cursor:pointer;">❌ Gelemem</button>
+                    </div>`;
+                } else if (n.type === 'match_invite' && n.related_id && !n.title?.includes('Çakışma')) {
+                    // Rakip takım kaptanına gelen davet — kendi kadrosunu topla
+                    actionsHtml = `
+                    <div class="notif-actions" style="margin-top:0.5rem; display:flex; gap:0.5rem;">
+                        <button onclick="event.stopPropagation(); handleNotifAwayCapAccept('${n.id}', '${n.related_id}')" style="flex:1; background:var(--neon-cyan); color:#000; border:none; padding:4px; border-radius:4px; font-weight:bold; cursor:pointer;">📋 Kadroyu Topla</button>
+                        <button onclick="event.stopPropagation(); handleNotifAwayCapDecline('${n.id}', '${n.related_id}')" style="flex:1; background:transparent; border:1px solid #ff4d4d; color:#ff4d4d; padding:4px; border-radius:4px; cursor:pointer;">❌ Reddet</button>
                     </div>`;
                 }
             }
@@ -1724,6 +1733,50 @@ window.handleNotifMatchCheckin = async function(notifId, matchId, accept) {
     } catch(e) {
         console.error('handleNotifMatchCheckin error:', e);
         if (typeof showToast === 'function') showToast('❌ İşlem başarısız: ' + (e.message || ''), 'error');
+    }
+};
+
+// Takım içi oylama — oyuncu oy kullanıyor
+window.handleNotifPollVote = async function(notifId, matchId, accept) {
+    const user = window.__AUTH_USER__;
+    if (!user || !window.DB) return;
+    try {
+        await window.DB.Matches.castProposalVote(matchId, user.id, accept);
+        await window.DB.Notifications.markRead(notifId);
+        window.initRealNotifications();
+        showToast?.(accept ? '✅ Gelebileceğin kaydedildi!' : '❌ Cevabın kaydedildi.');
+    } catch(e) {
+        showToast?.('İşlem başarısız: ' + (e.message || ''));
+    }
+};
+
+// Rakip kaptan daveti kabul → kendi takımına poll açar (Maç Merkezi'ne yönlendirir)
+window.handleNotifAwayCapAccept = async function(notifId, matchId) {
+    await window.DB?.Notifications.markRead(notifId).catch(() => {});
+    window.initRealNotifications?.();
+    // Maç Merkezi > Planlanan sekmesine yönlendir
+    if (typeof window.showSection === 'function') {
+        window.showSection('matches');
+        setTimeout(() => {
+            const planBtn = document.querySelector('.mc-tab-btn[onclick*="proposals"]');
+            if (typeof window.mcSwitchTab === 'function') window.mcSwitchTab('proposals', planBtn);
+        }, 400);
+    } else {
+        window.location.href = '../matches/index.html';
+    }
+};
+
+// Rakip kaptan daveti reddediyor
+window.handleNotifAwayCapDecline = async function(notifId, matchId) {
+    const user = window.__AUTH_USER__;
+    if (!user) return;
+    try {
+        await window.sbClient.from('matches').update({ status: 'cancelled' }).eq('id', matchId);
+        await window.DB?.Notifications.markRead(notifId);
+        window.initRealNotifications?.();
+        showToast?.('Davet reddedildi.');
+    } catch(e) {
+        showToast?.('İşlem başarısız.');
     }
 };
 

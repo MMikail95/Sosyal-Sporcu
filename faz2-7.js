@@ -3781,8 +3781,127 @@ window.mcSwitchTab = function (tab, btn) {
     const el = document.getElementById('mc-tab-' + tab);
     if (el) el.style.display = 'block';
     if (tab === 'open-matches') window.mcLoadOpenMatches();
+    if (tab === 'proposals') window.mcLoadProposals();
     if (tab === 'create' || tab === 'create-match') window._mcInitDateInput();
 };
+
+window.mcUpdateRequiredPlayers = function(typeVal) {
+    // match type → required_players mapping (for UI feedback only; value read at submit)
+};
+
+// ── Proposal: Planlanan maçları yükle ──────────────────
+window.mcLoadProposals = async function() {
+    const el = document.getElementById('mc-proposals-list');
+    if (!el) return;
+    el.innerHTML = '<div class="empty-state-sm"><i class="fa-solid fa-spinner fa-spin"></i> Yükleniyor…</div>';
+    const userId = _mcGetUserId();
+    if (!userId) { el.innerHTML = '<div class="empty-state-sm">Giriş yapman gerekiyor.</div>'; return; }
+
+    try {
+        const proposals = await DB.Matches.getPendingProposals(userId);
+        if (!proposals.length) {
+            el.innerHTML = '<div class="empty-state-sm"><i class="fa-solid fa-clipboard-list"></i><br>Henüz planlanan maç yok.</div>';
+            return;
+        }
+        el.innerHTML = proposals.map(m => mcRenderProposalCard(m, userId)).join('');
+        // Her kart için oy durumunu async yükle
+        proposals.forEach(m => {
+            const isHomeCap = m.home_team?.captain_id === userId;
+            const isAwayCap = m.away_team?.captain_id === userId;
+            const side = isHomeCap ? 'home' : (isAwayCap ? 'away' : null);
+            if (side) mcLoadProposalVotes(m.id, m.required_players || 8, userId, side, m.status);
+        });
+    } catch(e) {
+        el.innerHTML = '<div class="empty-state-sm">Yüklenemedi.</div>';
+        console.error('mcLoadProposals:', e);
+    }
+};
+
+window.mcRenderProposalCard = function(m, userId) {
+    const isHomeCap = m.home_team?.captain_id === userId;
+    const isAwayCap = m.away_team?.captain_id === userId;
+    const myTeamSide = isHomeCap ? 'home' : (isAwayCap ? 'away' : null);
+    const matchDate = m.scheduled_at
+        ? new Date(m.scheduled_at).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })
+        : '—';
+    const req = m.required_players || 8;
+    const statusLabel = m.status === 'proposal'
+        ? `<span style="color:var(--neon-cyan);font-size:0.78rem;">📋 Kadro Toplanıyor</span>`
+        : `<span style="color:var(--neon-green);font-size:0.78rem;">📩 Rakip Bekliyor</span>`;
+
+    const homeLabel = m.home_team?.name || '—';
+    const awayLabel = m.away_team?.name || 'Rakip belirlenmedi';
+    const venueName = m.venue?.name || '';
+
+    const captainActions = myTeamSide ? `
+        <div style="margin-top:0.75rem;" id="proposal-votes-${m.id}">
+            <div style="color:var(--text-muted);font-size:0.8rem;"><i class="fa-solid fa-spinner fa-spin"></i> Oy durumu yükleniyor…</div>
+        </div>
+    ` : '';
+
+    return `
+    <div class="glass-card" style="margin-bottom:0.75rem;padding:1rem;" data-proposal-id="${m.id}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;">
+            <div>
+                <div style="font-weight:700;font-size:1rem;">${homeLabel} vs ${awayLabel}</div>
+                <div style="color:var(--text-muted);font-size:0.82rem;">${matchDate}${venueName ? ' · ' + venueName : ''} · ${req}v${req}</div>
+            </div>
+            ${statusLabel}
+        </div>
+        ${captainActions}
+    </div>`;
+};
+
+// Proposal kartı DOM'a eklendikten sonra oy durumunu yükle
+window.mcLoadProposalVotes = async function(matchId, required, userId, side, status) {
+    const el = document.getElementById(`proposal-votes-${matchId}`);
+    if (!el) return;
+    try {
+        const votes = await DB.Matches.getProposalVotes(matchId);
+        const accepted = votes.accepted.length;
+        const declined = votes.declined.length;
+        const pending  = votes.pending.length;
+        const pct = Math.min(100, Math.round((accepted / required) * 100));
+        const ready = accepted >= required;
+
+        let actionBtn = '';
+        if (status === 'proposal' && side === 'home') {
+            actionBtn = ready
+                ? `<button class="btn-primary" style="margin-top:0.5rem;width:100%;" onclick="mcOpenInterTeamInvite('${matchId}')">
+                       <i class="fa-solid fa-paper-plane"></i> Rakibe Davet Gönder
+                   </button>`
+                : `<button class="btn-primary" style="margin-top:0.5rem;width:100%;opacity:0.45;cursor:not-allowed;" disabled>
+                       <i class="fa-solid fa-hourglass-half"></i> ${accepted}/${required} oyuncu onayladı — bekleniyor
+                   </button>`;
+        } else if (status === 'invited' && side === 'away') {
+            actionBtn = `
+                <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                    <button class="btn-primary" style="flex:1;" onclick="mcOpenAwayPollModal('${matchId}')">
+                        <i class="fa-solid fa-users"></i> Kadroyu Topla
+                    </button>
+                    <button style="flex:1;background:transparent;border:1px solid #ff4d4d;color:#ff4d4d;padding:0.5rem;border-radius:8px;cursor:pointer;" onclick="mcDeclineInterTeamInvite('${matchId}')">
+                        <i class="fa-solid fa-xmark"></i> Reddet
+                    </button>
+                </div>`;
+        }
+
+        const playerRows = [...votes.accepted, ...votes.declined, ...votes.pending].map(p => {
+            const icon = votes.accepted.find(x=>x.id===p.id) ? '✅' : votes.declined.find(x=>x.id===p.id) ? '❌' : '⏳';
+            const badge = p.is_substitute ? '<span style="font-size:0.7rem;color:var(--neon-cyan);">YEDEK</span>' : '';
+            return `<div style="display:flex;align-items:center;gap:0.5rem;font-size:0.83rem;padding:0.2rem 0;">${icon} ${p.username || '—'} ${badge}</div>`;
+        }).join('');
+
+        el.innerHTML = `
+            <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.25rem;">✅ ${accepted} · ❌ ${declined} · ⏳ ${pending}</div>
+            <div style="background:rgba(255,255,255,0.1);border-radius:4px;height:6px;overflow:hidden;margin-bottom:0.5rem;">
+                <div style="background:var(--neon-green);height:100%;width:${pct}%;transition:width 0.3s;"></div>
+            </div>
+            <details style="font-size:0.82rem;"><summary style="cursor:pointer;color:var(--text-muted);">Oyuncuları göster</summary><div style="margin-top:0.4rem;">${playerRows || '—'}</div></details>
+            ${actionBtn}
+        `;
+    } catch(e) { el.innerHTML = '<div style="font-size:0.8rem;color:var(--text-muted);">Oy durumu alınamadı.</div>'; }
+};
+
 
 // Maç oluşturma formunda tarih input'unu bugün + 1 saat olarak ayarla
 window._mcInitDateInput = function () {
@@ -3823,23 +3942,26 @@ window._mcInitDateInput = function () {
     }
 };
 
+// _mcPollMatchId: proposal oluşturulunca modalda kullanmak için tutulan matchId
+let _mcPollMatchId = null;
+let _mcPollTeamId  = null;
+let _mcPollReq     = 8;
+
 window.mcSubmitCreate = async function () {
     const btn = document.getElementById('mc-submit-btn');
     const venueText  = (document.getElementById('mc-venue-input')?.value || '').trim();
-    const dateVal    = document.getElementById('mc-date-input')?.value;   // YYYY-MM-DD
-    const timeVal    = document.getElementById('mc-time-input')?.value;   // HH:mm
-    const matchType  = document.getElementById('mc-type-select')?.value || '5v5';
+    const dateVal    = document.getElementById('mc-date-input')?.value;
+    const timeVal    = document.getElementById('mc-time-input')?.value;
+    const typeVal    = document.getElementById('mc-type-select')?.value || '8v8';
     const homeTeamId = document.getElementById('mc-home-team-select')?.value || null;
     const notes      = (document.getElementById('mc-notes-input')?.value || '').trim();
 
-    if (venueText.length > 60) {
-        if (typeof showToast === 'function') showToast('Saha adı en fazla 60 karakter olabilir.');
-        return;
-    }
-    if (!dateVal || !timeVal) {
-        if (typeof showToast === 'function') showToast('Lütfen tarih ve saat girin.');
-        return;
-    }
+    const typeToReq = { '5v5': 5, '7v7': 7, '8v8': 8, '11v11': 11 };
+    const required  = typeToReq[typeVal] || 8;
+
+    if (venueText.length > 60) { showToast?.('Saha adı en fazla 60 karakter.'); return; }
+    if (!dateVal || !timeVal)  { showToast?.('Lütfen tarih ve saat girin.'); return; }
+    if (!homeTeamId)           { showToast?.('Lütfen takımını seç.'); return; }
 
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Oluşturuluyor…'; }
 
@@ -3847,96 +3969,31 @@ window.mcSubmitCreate = async function () {
         const userId = _mcGetUserId();
         if (!userId) throw new Error('Oturum açmanız gerekiyor.');
 
-        const awayTeamId   = _mcSelectedAwayTeam?.id || null;
-        const awayCapId    = _mcSelectedAwayTeam?.captainId || null;
-        const awayTeamName = _mcSelectedAwayTeam?.name || null;
+        const awayTeamId = _mcSelectedAwayTeam?.id || null;
 
-        // Rakip takım seçilmediyse text input'tan al ve notes'a ekle
-        const awayFallback = !awayTeamId
-            ? (document.getElementById('mc-away-team-input')?.value || '').trim()
-            : null;
-        const fullNotes = [notes, awayFallback ? 'Rakip: ' + awayFallback : ''].filter(Boolean).join('\n') || null;
-
-        // Tarih (YYYY-MM-DD) + saat (HH:mm) birleştir — local timezone'da parse et
         const safeDateStr = `${dateVal}T${timeVal}:00`;
-        const parsedDate = new Date(safeDateStr);
-        if (isNaN(parsedDate.getTime())) {
-            showToast?.('Geçersiz tarih formatı. Lütfen takvimden seçin.');
-            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Maç Oluştur'; }
-            return;
-        }
+        const parsedDate  = new Date(safeDateStr);
+        if (isNaN(parsedDate.getTime())) { showToast?.('Geçersiz tarih.'); return; }
+        if (parsedDate < new Date())     { showToast?.('Geçmiş tarihe maç oluşturamazsın!'); return; }
+        if (parsedDate.getFullYear() > 2030) { showToast?.('Geçerli bir yıl seçin.'); return; }
 
-        if (parsedDate < new Date()) {
-            showToast?.('Geçmiş tarihe maç oluşturamazsın!');
-            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Maç Oluştur'; }
-            return;
-        }
-        const selectedYear = parsedDate.getFullYear();
-        if (selectedYear < 2024 || selectedYear > 2030) {
-            showToast?.('Lütfen geçerli bir yıl seçin (2024–2030).');
-            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Maç Oluştur'; }
-            return;
-        }
-
-        // Saha metni girilmişse yeni venue oluştur
         let venueId = null;
         if (venueText) {
-            try {
-                const newVenue = await DB.Venues.add(userId, { name: venueText });
-                venueId = newVenue?.id || null;
-            } catch (e) { /* venue oluşturulamadıysa devam et */ }
+            try { const v = await DB.Venues.add(userId, { name: venueText }); venueId = v?.id || null; } catch (_) {}
         }
 
-        const matchPayload = {
-            scheduled_at: parsedDate.toISOString(),
-            match_type:   matchType,
-            status:       'scheduled'
-        };
-        if (venueId)    matchPayload.venue_id     = venueId;
-        if (homeTeamId) matchPayload.home_team_id = homeTeamId;
-        if (awayTeamId) matchPayload.away_team_id = awayTeamId;
-        if (fullNotes)  matchPayload.notes        = fullNotes;
+        const awayFallback = !awayTeamId ? (document.getElementById('mc-away-team-input')?.value || '').trim() : null;
+        const fullNotes = [notes, awayFallback ? 'Rakip: ' + awayFallback : ''].filter(Boolean).join('\n') || null;
 
-        const created = await DB.Matches.create(userId, matchPayload);
-
-        // Maç oluşturucuyu (ev sahibi) ekle
-        await DB.Matches.joinMatch(created.id, userId, 'home').catch(() => {});
-
-        // Rakip takım kaptanını otomatik olarak deplasman tarafına ekle
-        if (awayCapId) {
-            await DB.Matches.joinMatch(created.id, awayCapId, 'away').catch(() => {});
-        }
-
-        // Rakip takım kaptanına davet bildirimi gönder
-        if (awayCapId && awayTeamName) {
-            const matchDate = new Date(dateVal).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' });
-            await DB.Notifications.send(
-                awayCapId,
-                'match_invite',
-                'Maç Daveti',
-                `${matchDate} tarihinde takımınıza maç daveti gönderildi.`,
-                userId,
-                created.id
-            ).catch(() => {});
-        }
-
-        // Feed'e maç oluşturma postu ekle
-        try {
-            const homeTeamName = document.getElementById('mc-home-team-select')?.selectedOptions?.[0]?.text || 'Takım';
-            const matchDate = parsedDate.toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' });
-            let feedText;
-            if (awayTeamName) {
-                feedText = `📅 ${homeTeamName} vs ${awayTeamName} — ${matchDate}${venueText ? ' @ ' + venueText : ''} #MaçAyarlandı`;
-            } else {
-                feedText = `📅 ${homeTeamName} maç oluşturdu — ${matchDate}${venueText ? ' @ ' + venueText : ''} — Rakip aranıyor! #MaçAyarlandı`;
-            }
-            await DB.Feed.createPost(userId, feedText, 'match_result', { related_match_id: created.id })
-                .catch(e => console.warn('Feed post (match create) error:', e));
-        } catch (_) {}
-
-        if (typeof showToast === 'function') {
-            showToast(awayCapId ? 'Maç oluşturuldu, davet gönderildi!' : 'Maç oluşturuldu!');
-        }
+        const created = await DB.Matches.createProposal(userId, {
+            required_players: required,
+            scheduled_at:     parsedDate.toISOString(),
+            match_type:       typeVal,
+            venue_id:         venueId,
+            home_team_id:     homeTeamId,
+            away_team_id:     awayTeamId || null,
+            notes:            fullNotes
+        });
 
         // Formu sıfırla
         document.getElementById('mc-date-input').value = '';
@@ -3948,21 +4005,130 @@ window.mcSubmitCreate = async function () {
         document.getElementById('mc-notes-input').value = '';
         mcClearAwayTeam();
 
-        const firstBtn = document.querySelector('.mc-tab-btn');
-        mcSwitchTab('my-matches', firstBtn);
-        await _mcLoadMatches();
+        showToast?.('Maç planı oluşturuldu! Şimdi kadroyu seç.');
 
-        // Kadro seçim modal'ını aç (sadece takım varsa)
-        if (homeTeamId) {
-            mcOpenRosterModal(created.id, homeTeamId, matchType);
-        }
+        // Kadro oylama modalını aç
+        _mcPollMatchId = created.id;
+        _mcPollTeamId  = homeTeamId;
+        _mcPollReq     = required;
+        await mcOpenPollModal(created.id, homeTeamId, required, 'home');
 
     } catch (e) {
         console.error('mcSubmitCreate error:', e);
-        if (typeof showToast === 'function') showToast('Hata: ' + (e.message || 'Oluşturulamadı'));
+        showToast?.('Hata: ' + (e.message || 'Oluşturulamadı'));
     } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Maç Oluştur'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-users"></i> Kadro Oylaması Başlat'; }
     }
+};
+
+// ── Kadro Oylama Modalı ────────────────────────────────
+window.mcOpenPollModal = async function(matchId, teamId, required, side) {
+    const modal   = document.getElementById('mc-poll-modal-backdrop');
+    const listEl  = document.getElementById('mc-poll-member-list');
+    const descEl  = document.getElementById('mc-poll-modal-desc');
+    if (!modal || !listEl) return;
+
+    descEl.textContent = `${required} kişilik kadro için oylama yapılacak. Bildirimi gidecek oyuncuları seç:`;
+    listEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;"><i class="fa-solid fa-spinner fa-spin"></i> Takım üyeleri yükleniyor…</div>';
+    modal.style.display = 'flex';
+
+    try {
+        const { data: members } = await window.sbClient
+            .from('team_members')
+            .select('player:player_id(id, username, avatar_url, ana_mevki)')
+            .eq('team_id', teamId);
+
+        if (!members || members.length === 0) {
+            listEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;">Takımda kayıtlı oyuncu yok. Önce takıma oyuncu ekle.</div>';
+            return;
+        }
+
+        listEl.innerHTML = members.map(m => `
+            <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;padding:0.4rem 0.2rem;border-radius:6px;">
+                <input type="checkbox" name="poll-player" value="${m.player.id}" checked
+                    style="width:16px;height:16px;accent-color:var(--neon-green);">
+                <span style="font-weight:600;">${m.player.username || '—'}</span>
+                <span style="color:var(--text-muted);font-size:0.8rem;">${m.player.ana_mevki || ''}</span>
+            </label>
+        `).join('');
+
+        // Modal data
+        modal.dataset.matchId = matchId;
+        modal.dataset.side    = side;
+        modal.dataset.req     = required;
+    } catch(e) {
+        listEl.innerHTML = '<div style="color:#ff4d4d;">Üyeler yüklenemedi.</div>';
+    }
+};
+
+// ── Oylama Gönder ──────────────────────────────────────
+window.mcSendProposalPoll = async function() {
+    const modal   = document.getElementById('mc-poll-modal-backdrop');
+    const matchId = modal?.dataset.matchId;
+    const side    = modal?.dataset.side || 'home';
+    if (!matchId) return;
+
+    const checked = [...document.querySelectorAll('input[name="poll-player"]:checked')].map(el => el.value);
+    if (checked.length === 0) { showToast?.('En az 1 oyuncu seç.'); return; }
+
+    const userId = _mcGetUserId();
+    try {
+        await DB.Matches.sendProposalPoll(matchId, userId, checked, side);
+        modal.style.display = 'none';
+        showToast?.(`✅ ${checked.length} oyuncuya oylama gönderildi!`);
+        // Planlanan sekmesine geç
+        const planBtn = document.querySelector('.mc-tab-btn[onclick*="proposals"]');
+        mcSwitchTab('proposals', planBtn);
+    } catch(e) {
+        showToast?.('Oylama gönderilemedi: ' + e.message);
+    }
+};
+
+// ── Rakibe Davet Gönder (kaptan onay modal) ────────────
+window.mcOpenInterTeamInvite = async function(matchId) {
+    const userId = _mcGetUserId();
+    try {
+        const { data: match } = await window.sbClient
+            .from('matches')
+            .select('away_team_id, away_team:away_team_id(id, name, captain_id)')
+            .eq('id', matchId)
+            .single();
+
+        if (!match?.away_team) {
+            showToast?.('Önce rakip takım seç! (Planlanan kartından düzenle)');
+            return;
+        }
+
+        const awayCapId    = match.away_team.captain_id;
+        const awayTeamName = match.away_team.name;
+        await DB.Matches.sendInterTeamInvite(matchId, userId, awayCapId, awayTeamName);
+        showToast?.(`📩 ${awayTeamName} kaptanına davet gönderildi!`);
+        mcLoadProposals();
+    } catch(e) {
+        showToast?.('Davet gönderilemedi: ' + e.message);
+    }
+};
+
+// ── Deplasman kaptanı: kendi takımına poll aç ──────────
+window.mcOpenAwayPollModal = async function(matchId) {
+    const userId = _mcGetUserId();
+    const { data: match } = await window.sbClient
+        .from('matches')
+        .select('away_team_id, required_players')
+        .eq('id', matchId)
+        .single();
+    if (!match?.away_team_id) { showToast?.('Takım bulunamadı.'); return; }
+    const modal = document.getElementById('mc-poll-modal-backdrop');
+    if (modal) { modal.dataset.matchId = matchId; modal.dataset.side = 'away'; }
+    await mcOpenPollModal(matchId, match.away_team_id, match.required_players || 8, 'away');
+};
+
+// ── Deplasman kaptanı: daveti reddet ──────────────────
+window.mcDeclineInterTeamInvite = async function(matchId) {
+    const userId = _mcGetUserId();
+    await window.sbClient.from('matches').update({ status: 'cancelled' }).eq('id', matchId).catch(() => {});
+    showToast?.('Davet reddedildi.');
+    mcLoadProposals();
 };
 
 // ── Rakip Takım Arama ────────────────────────────────
