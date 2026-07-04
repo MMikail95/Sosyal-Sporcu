@@ -170,7 +170,10 @@ window.handleGoogleLogin = async function() {
   try {
     const { error } = await window.sbClient.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + '/auth.html' }
+      options: {
+        redirectTo: window.location.origin + '/auth.html',
+        queryParams: { prompt: 'select_account' }
+      }
     });
     if (error) throw error;
   } catch (error) {
