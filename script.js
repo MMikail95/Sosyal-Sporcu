@@ -401,6 +401,12 @@ function getActiveAccount() {
     return accounts.find(a => a.id === activeAccountId) || accounts[0];
 }
 
+// Tüm admin-yetkisi kontrolleri buradan geçer (profiles.is_admin → accounts[].role).
+window.isAdminUser = function() {
+    const acc = getActiveAccount();
+    return !!(acc && acc.role === 'admin');
+};
+
 function getAccountForPlayer(playerId) {
     return accounts.find(a => a.playerId === playerId);
 }
@@ -3929,29 +3935,16 @@ async function loadMatchHistory(targetPlayerId) {
             // Puan ver / Puanland\u0131 rozeti \u2014 sadece biten ma\u00e7lar i\u00e7in
             let ratingBadge = '';
             if (m.status === 'finished') {
-                if (!isOwnProfile && window.TEST_MODE) {
-                    // Ba\u015fkas\u0131n\u0131n profilini admin olarak g\u00f6r\u00fcnt\u00fcl\u00fcyoruz
-                    ratingBadge = `
-                        <button class="pmr-badge-pending" style="margin-right:4px;"
-                            onclick="openUserProfile('${playerId}','')">
-                            <i class="fa-solid fa-star"></i> Puan Ver
-                        </button>
-                        <button class="pmr-badge-pending" style="background:rgba(255,0,127,0.15); border-color:var(--neon-pink);"
-                            onclick="openSingleHonorModal('${playerId}','${m.id}')">
-                            <i class="fa-solid fa-shield-heart"></i> Onur Ver
-                        </button>`;
+                const status = ratingStatuses[m.id];
+                if (status === 'done') {
+                    ratingBadge = `<span class="pmr-badge-done-sm"><i class="fa-solid fa-shield-heart"></i> Onurland\u0131r\u0131ld\u0131</span>`;
+                } else if (status === 'pending') {
+                    ratingBadge = `<button class="pmr-badge-pending"
+                        onclick="openPostMatchRatingModal('${m.id}','${mp.team_side}')">
+                        <i class="fa-solid fa-shield-heart"></i> Onur Ver
+                    </button>`;
                 } else {
-                    const status = ratingStatuses[m.id];
-                    if (status === 'done') {
-                        ratingBadge = `<span class="pmr-badge-done-sm"><i class="fa-solid fa-shield-heart"></i> Onurland\u0131r\u0131ld\u0131</span>`;
-                    } else if (status === 'pending') {
-                        ratingBadge = `<button class="pmr-badge-pending"
-                            onclick="openPostMatchRatingModal('${m.id}','${mp.team_side}')">
-                            <i class="fa-solid fa-shield-heart"></i> Onur Ver
-                        </button>`;
-                    } else {
-                        ratingBadge = `<span style="color:#444;font-size:0.75rem;">\u2014</span>`;
-                    }
+                    ratingBadge = `<span style="color:#444;font-size:0.75rem;">\u2014</span>`;
                 }
             }
 
@@ -4026,58 +4019,6 @@ async function renderFormGraph(userId) {
     arrows.innerHTML = arrowHtml || '<span style="color:#555;font-size:0.85rem;">Yeterli ma\u00e7 yok</span>';
     card.style.display = '';
 }
-
-// \u2500\u2500 Tek oyuncuya onur ver modal\u0131 (TEST_MODE admin) \u2500\u2500\u2500\u2500\u2500\u2500
-window.openSingleHonorModal = async function(ratedPlayerId, matchId) {
-    const user = window.__AUTH_USER__;
-    if (!user || !window.DB) return;
-
-    document.getElementById('sho-modal')?.remove();
-
-    const honorDefs = [
-        { key: 'calm',     label: 'Sakin',   icon: '\ud83d\udd4a\ufe0f' },
-        { key: 'maestro',  label: 'Maestro', icon: '\ud83c\udfaf' },
-        { key: 'punctual', label: 'Dakik',   icon: '\u23f1\ufe0f' },
-        { key: 'joker',    label: 'Joker',   icon: '\ud83d\ude04' },
-        { key: 'dynamo',   label: 'Dinamo',  icon: '\u26a1' },
-    ];
-
-    const modal = document.createElement('div');
-    modal.id = 'sho-modal';
-    modal.className = 'modal-backdrop';
-    modal.style.cssText = 'display:flex; z-index:10000;';
-    modal.innerHTML = `
-    <div class="modal-box" style="max-width:380px; width:95%;" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <h3><i class="fa-solid fa-shield-heart" style="color:var(--neon-pink);"></i> Onur Ver</h3>
-            <button class="modal-close" onclick="document.getElementById('sho-modal').remove()">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-        <div style="padding:1.5rem; display:flex; flex-direction:column; gap:0.75rem;">
-            ${honorDefs.map(h => `
-            <button class="epc-btn" style="justify-content:flex-start; gap:0.75rem; padding:0.75rem 1rem;"
-                    onclick="window._submitSingleHonor('${ratedPlayerId}','${matchId}','${h.key}')">
-                <span style="font-size:1.3rem;">${h.icon}</span>
-                <strong>${h.label}</strong>
-            </button>`).join('')}
-        </div>
-    </div>`;
-    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
-    document.body.appendChild(modal);
-};
-
-window._submitSingleHonor = async function(ratedPlayerId, matchId, honorType) {
-    const user = window.__AUTH_USER__;
-    if (!user || !window.DB) return;
-    try {
-        await window.DB.Honors.submitMatchHonors(user.id, matchId, [{ rated_id: ratedPlayerId, honor_type: honorType }]);
-        document.getElementById('sho-modal')?.remove();
-        window.showToast?.('\u2705 Onur verildi!', 'success');
-    } catch(e) {
-        window.showToast?.('\u274c ' + (e.message || 'Onur verilemedi'), 'error');
-    }
-};
 
 // \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 // TANRI MODU \u2014 Admin test paneli

@@ -2488,7 +2488,7 @@ window.openPostMatchRatingModal = async function(matchId, currentUserSide) {
 
     try {
         const isParticipant = await window.DB.Ratings.isParticipantInMatch(user.id, matchId);
-        if (!isParticipant && !window.TEST_MODE) {
+        if (!isParticipant && !window.isAdminUser?.()) {
             if (typeof showToast === 'function') showToast('⚠️ Bu maçta yer almadığın için puan veremezsin.');
             return;
         }
@@ -3152,8 +3152,8 @@ function _mcMatchCard(row, ratingStatuses, userId, playerCounts) {
     const date = m.scheduled_at
         ? new Date(m.scheduled_at).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })
         : '—';
-    const isCreator  = (userId && m.created_by === userId) || window.TEST_MODE;
-    const isActive   = ['scheduled', 'confirmed'].includes(m.status) || window.TEST_MODE;
+    const isCreator  = (userId && m.created_by === userId) || window.isAdminUser?.();
+    const isActive   = ['scheduled', 'confirmed'].includes(m.status) || window.isAdminUser?.();
     const pCount     = playerCounts[mid] || 0;
 
     const statusMap = {
@@ -3204,7 +3204,7 @@ function _mcMatchCard(row, ratingStatuses, userId, playerCounts) {
            </button>`
         : '';
 
-    // İptal butonu (creator, yalnızca gerçekten aktif maçlar — TEST_MODE bypass etmez)
+    // İptal butonu (creator, yalnızca gerçekten aktif maçlar — admin bypass etmez)
     const isTrulyActive = ['scheduled', 'confirmed'].includes(m.status);
     const cancelBtn = isCreator && isTrulyActive
         ? `<button class="btn-sm mc-cancel-match-btn" onclick="mcCancelMatch('${_mcEsc(mid)}')">

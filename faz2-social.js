@@ -128,7 +128,7 @@ function renderExploreTeams(teams) {
                            <i class="fa-solid fa-eye" aria-hidden="true"></i> Önizle
                        </button>`
                 }
-                ${window.TEST_MODE && !isOwn
+                ${window.isAdminUser?.() && !isOwn
                     ? `<button class="epc-btn" style="background:var(--neon-pink);color:#0a0a0f;font-weight:700;"
                                onclick="_adminJoinTeam('${t.id}','${safeName}')">
                            <i class="fa-solid fa-bolt"></i> Direkt Katıl
@@ -148,7 +148,7 @@ function renderExploreTeams(teams) {
     }).join('');
 }
 
-// ── Admin: Direkt takıma katıl (TEST_MODE) ─────────────
+// ── Admin: Direkt takıma katıl ──────────────────────────
 window._adminJoinTeam = async function(teamId, teamName) {
     const user = window.__AUTH_USER__;
     if (!user || !window.DB) return;

@@ -57,8 +57,8 @@ Scripts load in this order (bottom of `index.html` body):
 
 ## Database
 
-**Supabase project:** `lgfhtzxmwrabrsqbccty.supabase.co`  
-Full schema in `schema.sql`. Migration files: `master-migration.sql`, `sprint6-migration.sql`, `postmatch-rating-migration.sql`.
+**Supabase project:** `rpwbmvpapfouhpyvoeol.supabase.co` ("Sosyal Sporcu Published") — this is the ONLY project the app actually connects to (see `SUPABASE_URL` in `supabase.js`). There is a second, unrelated project in the same org called "Sosyal Sporcu Old" (`lgfhtzxmwrabrsqbccty`) — it is empty/abandoned and not used anywhere. **Never apply a migration or run a schema check against `lgfhtzxmwrabrsqbccty` — always confirm the project ref matches `rpwbmvpapfouhpyvoeol` before any DB operation.**  
+Full schema in `schema.sql`. Migration files: `master-migration.sql`, `sprint6-migration.sql`, `postmatch-rating-migration.sql`, `voting-window-migration.sql` (applied directly via migration on 2026-07-04; not yet folded into `schema.sql`).
 
 **Key tables:**
 - `profiles` — users + self-ratings (6 skills: teknik, sut, pas, hiz, fizik, kondisyon) + `gen_score`
