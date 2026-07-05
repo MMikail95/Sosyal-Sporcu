@@ -1019,7 +1019,18 @@ window.goBackFromProfile = function() {
  * kod (tab değişimi, realtime event vb.) bakılan kişiyi kaybedip kendi ID'sine düşer.
  */
 function getViewedPlayerId() {
-    return sessionStorage.getItem('ss_view_player_id') || window.__PENDING_VIEW_PLAYER_ID__ || null;
+    const explicit = sessionStorage.getItem('ss_view_player_id') || window.__PENDING_VIEW_PLAYER_ID__;
+    if (explicit) return explicit;
+    // SPA (index.html) içi görüntüleme: openUserProfile sessionStorage/__PENDING set ETMEZ,
+    // sadece window.activePlayerId'yi geçici 'sb_view_<uuid>' ID'sine çevirir. Bu durumu da
+    // yakala ki "başkasını görüntülüyoruz" mantığına dayanan TÜM guard'lar (populateFutCard,
+    // honor-realtime __SUPABASE_PROFILE__ overwrite koruması, header avatarı vb.) SPA'da da
+    // doğru çalışsın — aksi halde bu guard'lar null görüp kendi verimizi sızdırabiliyor.
+    const active = window.activePlayerId;
+    if (typeof active === 'string' && active.startsWith('sb_view_')) {
+        return active.slice('sb_view_'.length);
+    }
+    return null;
 }
 
 /**
@@ -1510,6 +1521,11 @@ window.populateFutCard = function() {
     // düşüp KENDİ mock player'ımızı (kendi avatarımız dahil) göstermeyelim; doğru profil
     // yüklenince zaten tekrar çağrılacak (bkz. updateUI() içindeki aynı korumalı avatar mantığı).
     if (_viewedId && _viewedId !== window.__AUTH_USER__?.id && !_isViewingOther) {
+        // ÖNEMLİ: sadece return etmek yetmez — FUT avatarında bir önceki render'dan (örn. kendi
+        // profilimiz) kalan görsel duruyor olabilir. Bakılan kişinin profili gelene kadar kendi
+        // fotoğrafımız görünmesin diye avatarı temizle (bug: başkasının profilinde kendi avatarı).
+        const _futAv = document.getElementById('fut-avatar');
+        if (_futAv) { _futAv.src = ''; _futAv.style.opacity = '0.25'; }
         return;
     }
 
@@ -1540,7 +1556,9 @@ window.populateFutCard = function() {
             }
         };
     } else {
-        player = players.find(p => p.id === activePlayerId) || players[0];
+        // window.activePlayerId önceliği: SPA'da openUserProfile sadece window.activePlayerId'yi
+        // 'sb_view_<uuid>' yapar; yerel activePlayerId ile aynı var olsa da açıkça window'u kullan.
+        player = players.find(p => p.id === (window.activePlayerId || activePlayerId)) || players[0];
         // Karakter sayfasında players boşsa Supabase profilinden oluştur
         if (!player && window.__SUPABASE_PROFILE__) {
             const sp = window.__SUPABASE_PROFILE__;
@@ -1652,6 +1670,8 @@ function onFutFieldChange() {
 
 window.toggleFutSettings = function(e) {
     e.stopPropagation();
+    // Güvenlik: başkasının profilindeyken ayar paneli açılmasın (buton gizli olsa bile)
+    if (typeof isViewingOtherProfile === 'function' && isViewingOtherProfile()) return;
     const panel = document.getElementById('fut-settings-panel');
     if (!panel) return;
     const open = panel.style.display === 'block';
@@ -1972,6 +1992,23 @@ function applyProfileViewMode() {
         });
     }
 
+    // ── Başkasının profilinde: profil sahibine ait KİŞİSEL kontrolleri kilitle ─────
+    // Bunlar "profili düzenleme" değil, tamamen profil sahibine özgü kişisel
+    // kontroller — bu yüzden admin istisnası YOK, başka birinin profilindeysek
+    // (viewingOther) her koşulda gizlenir. Merkezi engel burada; ayrıca ilgili
+    // fonksiyonların başında savunma amaçlı ikinci bir kontrol var (belt-and-suspenders).
+    //   1) FUT kartı "Görünecek Alanlar" ayar dişlisi — localStorage'daki kişisel
+    //      görünüm tercihini değiştirir, başkasının kartında anlamsız/yanıltıcı.
+    //   2) Header avatar yükleme (kamera) ikonu — CSS'te opacity:0 olsa bile
+    //      avatarın üstünü tıklanabilir biçimde kaplar; kendi fotoğrafını
+    //      başkasının sayfasından yüklemene yol açardı.
+    const futSettingsBtn   = document.querySelector('.fut-settings-btn');
+    const futSettingsPanel = document.getElementById('fut-settings-panel');
+    const cameraOverlay    = document.querySelector('.camera-overlay');
+    if (futSettingsBtn)   futSettingsBtn.style.display = viewingOther ? 'none' : '';
+    if (futSettingsPanel && viewingOther) futSettingsPanel.style.display = 'none';
+    if (cameraOverlay)    cameraOverlay.style.display = viewingOther ? 'none' : '';
+
     // Arkadaş değilse kısıtlı tab görünümü uygula
     applyFriendshipTabRestriction(viewingOther);
 }
@@ -2107,8 +2144,9 @@ window.updateUI = function () {
     const avatarEl = document.getElementById('profile-avatar');
     if (avatarEl) {
         const sbp = window.__SUPABASE_PROFILE__;
-        // ss_view_player_id varsa ve __SUPABASE_PROFILE__ o kişiye aitse → başkasının profili
-        const viewedSessionId = sessionStorage.getItem('ss_view_player_id') || window.__PENDING_VIEW_PLAYER_ID__ || null;
+        // ss_view_player_id / __PENDING / SPA 'sb_view_' — hepsini getViewedPlayerId() birleştirir.
+        // __SUPABASE_PROFILE__ o kişiye aitse → başkasının profili (aksi halde henüz yüklenmedi).
+        const viewedSessionId = getViewedPlayerId();
         const isViewingOther  = sbp && viewedSessionId && sbp.id === viewedSessionId;
         // Race condition fix: viewedSessionId var ama henüz doğru profil yüklenmediyse kendi avatarımızı gösterme
         if (viewedSessionId && !isViewingOther) {
@@ -3987,9 +4025,11 @@ async function loadMatchHistory(targetPlayerId) {
 
             const posColor = { 'KL':'var(--neon-pink)', 'DEF':'var(--neon-cyan)', 'OS':'gold', 'FV':'var(--neon-green)' }[pos] || '#888';
 
-            // Puan ver / Puanland\u0131 rozeti \u2014 sadece biten ma\u00e7lar i\u00e7in
+            // Puan ver / Puanland\u0131 rozeti \u2014 sadece biten ma\u00e7lar i\u00e7in VE sadece
+            // kendi profilinde. Ba\u015fkas\u0131n\u0131n ma\u00e7 ge\u00e7mi\u015finde "Onur Ver" butonu \u00e7\u0131kmamal\u0131 \u2014
+            // aksi halde senin puanlama durumuna g\u00f6re yanl\u0131\u015f tarafa modal a\u00e7\u0131labilir.
             let ratingBadge = '';
-            if (m.status === 'finished') {
+            if (m.status === 'finished' && isOwnProfile) {
                 const status = ratingStatuses[m.id];
                 if (status === 'done') {
                     ratingBadge = `<span class="pmr-badge-done-sm"><i class="fa-solid fa-shield-heart"></i> Onurland\u0131r\u0131ld\u0131</span>`;

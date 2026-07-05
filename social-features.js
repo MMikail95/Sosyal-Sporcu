@@ -2638,6 +2638,12 @@ window.handleAvatarUpload = function(input) {
     if (!file) return;
     input.value = '';  // reset early so same file can be reselected
 
+    // Güvenlik: başkasının profilini görüntülerken kendi fotoğrafını yüklemeyi engelle
+    if (typeof isViewingOtherProfile === 'function' && isViewingOtherProfile()) {
+        showToast('❌ Başka bir oyuncunun profilinde fotoğraf değiştiremezsiniz.');
+        return;
+    }
+
     if (!file.type.startsWith('image/')) {
         showToast('❌ Lütfen bir resim dosyası seçin.'); return;
     }

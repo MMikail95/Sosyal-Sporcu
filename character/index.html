@@ -733,10 +733,14 @@ document.addEventListener('supabaseUserReady', async function onSupabaseReady() 
 
     if (typeof updateUI === 'function') updateUI();
 
-    // updateUI() içindeki zamanlama sorununu aşmak için avatarları doğrudan set et
+    // updateUI() içindeki zamanlama sorununu aşmak için avatarları doğrudan set et.
+    // KRİTİK: sadece __SUPABASE_PROFILE__ GERÇEKTEN bakılan kişiye aitse (sbp.id === viewedId)
+    // avatarı boya. Aksi halde (DB.Profiles.get başarısız/yavaşsa) __SUPABASE_PROFILE__ hâlâ
+    // GİRİŞ YAPAN kullanıcının profilidir ve buraya kendi avatarımızı yazıp bakılan kişinin
+    // FUT kartına kendi fotoğrafımızı sızdırırdık.
     if (viewedId && viewedId !== loggedInId) {
         const sbp = window.__SUPABASE_PROFILE__;
-        if (sbp) {
+        if (sbp && sbp.id === viewedId) {
             const headerAvatar = document.getElementById('profile-avatar');
             if (headerAvatar) {
                 headerAvatar.src = sbp.avatar_url || '';
