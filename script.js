@@ -534,6 +534,10 @@ async function initSupabaseUser() {
         }
 
         const userId = session.user.id;
+        // Oturum doğrulandı — __AUTH_USER__'ı burada da garanti et. (index.html guardSession
+        // da set ediyor ama async yarış nedeniyle bazen bu noktada henüz boş olabiliyor;
+        // dashboard'un erken başlatılabilmesi için (bkz. DOMContentLoaded) burada sabitliyoruz.)
+        window.__AUTH_USER__ = session.user;
         const profile = await window.DB.Profiles.get(userId);
         if (profile) window.__SUPABASE_PROFILE__ = profile;
 
@@ -836,6 +840,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateAccountUI();
     updateUI();
     renderPlayerList();
+
+    // Ana Sayfa (dashboard) ilk açılışta 'active' — auth+DB hazır olduğuna göre
+    // (initSupabaseUser bitti) iskelet/placeholder flash'ını kısaltmak için hemen başlat.
+    // dashboard.js'teki 800ms'lik DOMContentLoaded fallback'i beklemeye gerek yok;
+    // initDashboard içindeki dashLoading guard'ı çift-yüklemeyi engeller.
+    const _dashEl = document.getElementById('dashboard');
+    if (_dashEl && _dashEl.classList.contains('active') &&
+        typeof window.initDashboard === 'function') {
+        window.initDashboard();
+    }
 
     // Load team data after players are ready
     if (typeof loadTeamData === 'function') {

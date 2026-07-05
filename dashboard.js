@@ -12,6 +12,7 @@
     let dashRecentMatches   = [];   // son biten takım maçları
     let dashRealtimeChannel = null;
     let dashInitialized     = false;
+    let dashLoading         = false;   // eşzamanlı çift-init koruması
     let dashUserProfile     = null;
     let dashUserId          = null;
 
@@ -342,22 +343,32 @@
             setTimeout(() => window.initDashboard(), 500);
             return;
         }
+        // Çift-init koruması: hem script.js (DOMContentLoaded, erken tetik) hem
+        // dashboard.js'in kendi 800ms fallback'i hem de showSection('dashboard')
+        // aynı anda çağırabilir; yükleme sürerken tekrarını yok say (aksi halde
+        // gereksiz çift network isteği ve iskelet titremesi olur).
+        if (dashLoading) return;
+        dashLoading = true;
 
-        const user = window.__AUTH_USER__;
-        dashUserId = user?.id || null;
+        try {
+            const user = window.__AUTH_USER__;
+            dashUserId = user?.id || null;
 
-        // Mini kart önce yüklensin — şehri öğrenmek için
-        await loadDashMiniCard();
+            // Mini kart önce yüklensin — şehri öğrenmek için
+            await loadDashMiniCard();
 
-        // Geri kalanlar paralel
-        await Promise.all([
-            loadDashFeed(),
-            loadDashGazette(),
-            loadDashStandings()
-        ]);
+            // Geri kalanlar paralel
+            await Promise.all([
+                loadDashFeed(),
+                loadDashGazette(),
+                loadDashStandings()
+            ]);
 
-        subscribeDashFeed();
-        dashInitialized = true;
+            subscribeDashFeed();
+            dashInitialized = true;
+        } finally {
+            dashLoading = false;
+        }
     };
 
     // ── İlk yükleme: DOMContentLoaded'dan sonra dashboard açıksa başlat ──

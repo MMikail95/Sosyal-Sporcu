@@ -2913,14 +2913,27 @@ async function initAvatarUpload() {
         }
 
         if (profile?.avatar_url) {
-            const avatarImg = document.getElementById('profile-avatar');
-            if (avatarImg) {
-                avatarImg.src = profile.avatar_url;
-                avatarImg.onerror = () => {
-                    avatarImg.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profile.username || user.email || 'user')}`;
-                };
+            // KRİTİK: Başkasının profiline bakıyorsak header (#profile-avatar) BAKILAN kişiye
+            // aittir — buraya giriş yapan kullanıcının avatarını YAZMA. Bu init DOMContentLoaded'dan
+            // ~1200ms sonra çalışıyor ve karakter (MPA) sayfası zaten bakılan oyuncuyu yüklemiş
+            // olduğundan, guard olmadan header'a KENDİ fotoğrafımızı basıp bakılan kişinin
+            // profiline sızdırıyordu (FUT kartı ve isim doğru kalıyor → "header yanlış, FUT doğru"
+            // görünümü tam olarak bu satırdan kaynaklanıyordu).
+            const _viewedId = (typeof getViewedPlayerId === 'function')
+                ? getViewedPlayerId()
+                : (sessionStorage.getItem('ss_view_player_id') || window.__PENDING_VIEW_PLAYER_ID__ || null);
+            const _viewingOther = _viewedId && _viewedId !== user.id;
+
+            if (!_viewingOther) {
+                const avatarImg = document.getElementById('profile-avatar');
+                if (avatarImg) {
+                    avatarImg.src = profile.avatar_url;
+                    avatarImg.onerror = () => {
+                        avatarImg.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profile.username || user.email || 'user')}`;
+                    };
+                }
             }
-            // Sidebar avatar
+            // Sidebar avatar — her zaman giriş yapan hesabı temsil eder, bakılan profilden bağımsız.
             const sidebarAvatar = document.getElementById('current-account-avatar');
             if (sidebarAvatar) sidebarAvatar.src = profile.avatar_url;
         }
