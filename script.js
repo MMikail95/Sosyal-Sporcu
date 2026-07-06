@@ -809,9 +809,16 @@ function addLogoutButton(profile) {
 
 // Oturumu kapat
 function _authRedirectPath() {
-    // Alt sayfalarda (matches/, character/, explore/) '../auth.html' gerekir
-    const segs = window.location.pathname.split('/').filter(Boolean);
-    return segs.length > 1 ? '../auth.html' : 'auth.html';
+    // Alt sayfalarda (matches/, character/, explore/ ...) '../auth.html' gerekir.
+    // DİKKAT: Segment SAYMAK güvenilir değil — GitHub Pages proje sitesi uygulamayı
+    // '/repo-adı/' alt dizininden yayınlar; o taban segmenti gerçek bir uygulama alt
+    // sayfasından ayırt edilemez (custom domain'de kökten, github.io'da alt dizinden
+    // yanlış yol üretip 404 veriyordu). Bunun yerine bilinen alt sayfa DİZİN ADLARINI
+    // tespit ediyoruz — bu hem custom domain (sosyalsporcu.com) hem github.io
+    // (mmikail95.github.io/Sosyal-Sporcu) tabanında doğru çalışır.
+    // YENİ bir MPA alt sayfası (kendi klasörü + script.js) eklenirse buraya da ekle.
+    const inSubdir = /\/(character|explore|matches|team|team-profile|feed)(\/|$)/.test(window.location.pathname);
+    return inSubdir ? '../auth.html' : 'auth.html';
 }
 
 window.handleLogout = async function() {
@@ -2175,14 +2182,25 @@ window.updateUI = function () {
         }
     }
 
-    // ── Sidebar senkronizasyonu: SADECE giriş yapmış kullanıcının kendi profilinde güncelle ──
+    // ── Sidebar senkronizasyonu: SADECE giriş yapmış kullanıcının KENDİ profilinde güncelle ──
+    // KRİTİK: Başkasının profilindeyken __SUPABASE_PROFILE__ = BAKILAN kişidir. Bu blok ismi
+    // __SUPABASE_PROFILE__'dan, avatarı ise 'player'dan alıyordu; karakter sayfası yükleme
+    // yarışında (player hâlâ BİZ, __SUPABASE_PROFILE__ zaten bakılan kişi) sidebar'a "bakılan
+    // isim (ör. Harputoglu) + kendi avatarım" uyumsuzluğunu yazıyordu. Bu yüzden başkasını
+    // görüntülerken sidebar'a HİÇ dokunma — init (hydrateSidebarFromCache/addLogoutButton) onu
+    // zaten giriş yapan hesaba göre doldurdu. Ayrıca isim kaynağının sahipliğini de doğrula.
     const authId  = window.__AUTH_USER__?.id;
-    const isSelf  = authId && (player.supabase_id === authId || player.id === authId);
+    const _sbViewedId     = getViewedPlayerId();
+    const _sbViewingOther = _sbViewedId && _sbViewedId !== authId;
+    const isSelf  = authId && !_sbViewingOther && (player.supabase_id === authId || player.id === authId);
     if (isSelf) {
         const sidebarName = document.getElementById('current-account-name');
         if (sidebarName) {
-            // Gerçek Supabase kullanıcı adını kullan, mock ismi değil
-            const realRaw = window.__SUPABASE_PROFILE__?.username || window.__SUPABASE_PROFILE__?.full_name || player.name;
+            // İsmi yalnız __SUPABASE_PROFILE__ gerçekten giriş yapan kullanıcıya aitse ondan al;
+            // aksi halde (race) player.name'e düş — asla bakılan kişinin adını sidebar'a yazma.
+            const _mine = (window.__SUPABASE_PROFILE__ && window.__SUPABASE_PROFILE__.id === authId)
+                ? window.__SUPABASE_PROFILE__ : null;
+            const realRaw = _mine?.username || _mine?.full_name || player.name;
             const firstName = realRaw ? realRaw.split(' ')[0] : '';
             if (firstName) sidebarName.textContent = firstName.charAt(0).toUpperCase() + firstName.slice(1);
         }

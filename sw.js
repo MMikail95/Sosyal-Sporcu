@@ -1,4 +1,4 @@
-const CACHE = 'ss-v8';
+const CACHE = 'ss-v9';
 
 // Works both on localhost (/sw.js) and GitHub Pages (/Sosyal-Sporcu/sw.js)
 const BASE = self.location.pathname.replace(/\/sw\.js$/, '');
