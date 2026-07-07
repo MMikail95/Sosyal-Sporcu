@@ -67,6 +67,10 @@
         const seed = encodeURIComponent(profile?.username || 'player');
         avatarEl.src = profile?.avatar_url ||
             `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
+        // Gerçek avatar (veya kullanıcının kendi username'ine dayalı DiceBear) hazır → görünür yap.
+        // index.html'de avatar `visibility:hidden` başlar ki gerçek foto gelene kadar "seed=player"
+        // yabancı yüz görünmesin; burada gösteriyoruz.
+        avatarEl.style.visibility = 'visible';
         avatarEl.onerror = () => {
             avatarEl.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`;
         };
@@ -91,6 +95,18 @@
     // ── Mini kart yükle ──────────────────────────────
     async function loadDashMiniCard() {
         if (!dashUserId) return;
+
+        // Cache-first render: giriş yapan kullanıcının profili zaten memory'de
+        // (__SUPABASE_PROFILE__, initSupabaseUser doldurdu). DB round-trip'ini beklemeden
+        // mini kartı hemen doldur ki statik iskelet — özellikle index.html'deki `seed=player`
+        // DiceBear avatarı (kullanıcının "kapalı/yabancı yüz" olarak gördüğü placeholder) +
+        // `—` isim/mevki/GEN — bir an bile görünmesin. Form şeridi (history) cache'de olmadığından
+        // kısa süre `?` kalabilir; asıl göze batan avatar/isim/mevki/GEN anında gerçek veriye döner.
+        const cached = window.__SUPABASE_PROFILE__;
+        if (cached && cached.id === dashUserId) {
+            renderDashMiniCard(cached, []);
+        }
+
         try {
             const [profileRes, historyRes] = await Promise.all([
                 window.DB.Profiles.get(dashUserId),

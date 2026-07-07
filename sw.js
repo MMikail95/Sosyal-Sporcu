@@ -1,4 +1,4 @@
-const CACHE = 'ss-v9';
+const CACHE = 'ss-v12';
 
 // Works both on localhost (/sw.js) and GitHub Pages (/Sosyal-Sporcu/sw.js)
 const BASE = self.location.pathname.replace(/\/sw\.js$/, '');
@@ -57,16 +57,22 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Statik dosyalar — cache'den hemen sun, arka planda güncelle (stale-while-revalidate)
+  // Statik dosyalar (JS/CSS/img) — NETWORK ÖNCE, offline'da cache.
+  // Eskiden stale-while-revalidate idi: cache'ten hemen sunup yeniyi arka planda çekiyordu →
+  // her deploy'dan sonra ilk yüklemede ESKİ JS servis ediliyor, kullanıcı düzeltmeleri görmek
+  // için 2. kez yenilemek (veya cache bump beklemek) zorunda kalıyordu. Bu, "1sn flash"
+  // şikâyetlerinin bir kısmının aslında görülmeyen (henüz ulaşmamış) düzeltmeler olmasına yol
+  // açtı. Network-first ile online kullanıcı HER ZAMAN en güncel dosyayı alır; sadece network
+  // gerçekten başarısızsa (offline) cache'e düşer. Başarılı yanıt cache'e yazılır (offline için).
   e.respondWith(
-    caches.open(CACHE).then(cache =>
-      cache.match(e.request).then(cached => {
-        const fetchPromise = fetch(e.request).then(response => {
-          cache.put(e.request, response.clone());
-          return response;
-        });
-        return cached || fetchPromise;
-      })
+    fetch(e.request).then(response => {
+      if (response && response.ok) {
+        const clone = response.clone();
+        caches.open(CACHE).then(cache => cache.put(e.request, clone));
+      }
+      return response;
+    }).catch(() =>
+      caches.open(CACHE).then(cache => cache.match(e.request))
     )
   );
 });

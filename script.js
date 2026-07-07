@@ -743,9 +743,17 @@ function hydrateSidebarFromCache() {
     const roleEl   = document.getElementById('current-account-role');
 
     if (nameEl) {
-        const raw = (player && (player.full_name || player.name)) || acc.name || '';
-        const firstName = raw.split(' ')[0];
-        if (firstName) nameEl.textContent = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+        // SADECE güvenilir username kaynağı kullanılır — `player.name`/`player.full_name`/`acc.name`
+        // fallback'i BİLEREK kaldırıldı: eski localStorage cache'inde (ss_players_v2) `player.name`
+        // full_name ("Muhammed") olarak kalmış olabilir; ona düşülürse sidebar bir an "Muhammed"
+        // yazıp updateUI'nin "MikimonTheGray"ine (username) atlıyordu = flash. supabase_username
+        // yoksa hiç dokunma → addLogoutButton/updateUI ~1sn içinde doğru username'i yazar (yanlış
+        // isim yerine kısa süre eski/doğru değerin kalması, yanlış "Muhammed" flash'ından iyidir).
+        const uname = player && player.supabase_username;
+        if (uname) {
+            const firstName = uname.split(' ')[0];
+            nameEl.textContent = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+        }
     }
     if (avatarEl && player && player.avatar_url) avatarEl.src = player.avatar_url;
     if (roleEl) roleEl.style.display = 'none';
@@ -758,7 +766,9 @@ function addLogoutButton(profile) {
     // ── Gerçek kullanıcı bilgilerini güncelle ──
     const nameEl = document.getElementById('current-account-name');
     if (nameEl) {
-        const raw = profile.full_name || profile.username || '';
+        // Kullanıcı adı öncelikli (updateUI/hydrateSidebarFromCache ile tutarlı) — "MikimonTheGray",
+        // full_name ilk kelimesi ("Muhammed") değil.
+        const raw = profile.username || profile.full_name || '';
         const firstName = raw.split(' ')[0];
         nameEl.textContent = firstName.charAt(0).toUpperCase() + firstName.slice(1);
     }
@@ -840,6 +850,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadData();
     setupNavigation();
     hydrateSidebarFromCache();
+
+    // Cache-first profil render: loadData() zaten ss_players_v2'den gerçek kullanıcıyı ve
+    // doğru activePlayerId'yi yükledi. initSupabaseUser() 3 ağ isteği yapar (getSession +
+    // Profiles.get + getMyTeam ≈ 1sn); bu bekleme boyunca Karakterim'e basınca profil header
+    // (boş avatar / "—" isim / GEN) + FUT kartı ("OS"/"OYUNCU"/"@kullanici") statik iskelet
+    // görünüyordu. Cache'de gerçek Supabase hesabı varsa profili HEMEN cache'li veriyle doldur;
+    // initSupabaseUser bitince aynı verilerle sessizce tazelenir (flash yok). Guard sayesinde
+    // gerçek oturum yoksa (mock/ilk giriş) erken render yapılmaz — mock Mikimon sızmaz.
+    if (getActiveAccount()?.supabase_id && typeof updateUI === 'function') updateUI();
 
     // FAZ 1: Supabase kullanıcısını yükle
     await initSupabaseUser();
@@ -948,7 +967,12 @@ function showSection(id) {
     if (id === 'takimim') {
         // Faz 1: render new team overview
         if (typeof renderTeamOverview === 'function') {
-            setTimeout(() => {
+            // requestAnimationFrame: bir sonraki paint'ten ÖNCE çalışır → veri (_tmState.team)
+            // hazırsa "Yükleniyor..." iskeleti hiç boyanmadan gerçek overview render edilir
+            // (eski 80ms'lik setTimeout, iskeletin ekranda 80ms+ görünüp sonra "atlaması"na =
+            // flash'a sebep oluyordu). Veri henüz gelmediyse renderTeamOverview no-op döner →
+            // "Yükleniyor..." dürüstçe kalır, loadTeamData bitince tekrar render eder.
+            requestAnimationFrame(() => {
                 renderTeamOverview();
                 // Trigger placeholder renders for other tabs
                 if (typeof renderKadroTab      === 'function') renderKadroTab();
@@ -957,11 +981,11 @@ function showSection(id) {
                 if (typeof renderRakiplerTab   === 'function') renderRakiplerTab();
                 if (typeof renderOdemelerTab   === 'function') renderOdemelerTab();
                 if (typeof renderSinerjiTab    === 'function') renderSinerjiTab();
-            }, 80);
+            });
         } else {
             // Legacy fallback
             renderPlayerList();
-            setTimeout(() => restorePitchState(), 50);
+            requestAnimationFrame(() => restorePitchState());
         }
     }
     if (id === 'profile') {
@@ -976,12 +1000,20 @@ function showSection(id) {
         }
         delete showSection._fromViewPlayer;
 
-        setTimeout(() => {
-            const player = players.find(p => p.id === activePlayerId) || players[0];
-            updateUI();
+        // updateUI SENKRON: section display:block ile AYNI JS turn'ünde DOM'u doldur ki
+        // statik iskelet ("—", "OS", "OYUNCU / @kullanici", boş avatar) tarayıcı tarafından
+        // hiç boyanmasın (eski 100ms'lik setTimeout, bu iskeletin ekranda görünüp sonra
+        // gerçek veriyle değişmesine = flash'a sebep oluyordu). updateUI/populateFutCard
+        // senkron çalışır ve veriyi zaten memory'deki `players`/__SUPABASE_PROFILE__'dan
+        // alır — DB round-trip yok, o yüzden beklemeye gerek yok. Chart'ı yine de bir sonraki
+        // frame'e bırak: display:block sonrası offsetWidth reflow (yukarıda) canvas'a boyut
+        // verdi ama Chart.js resize'ının güvenli oturması için paint öncesi rAF'ta çiz.
+        const player = players.find(p => p.id === activePlayerId) || players[0];
+        updateUI();
+        requestAnimationFrame(() => {
             updateChart(player);
             _setupRatingsRealtime(player);
-        }, 100);
+        });
     }
     if (id === 'feed') {
         if (typeof window.renderFeed === 'function') window.renderFeed();
@@ -2089,9 +2121,14 @@ function applyFriendshipTabRestriction(viewingOther) {
 window.switchProfileTab = function (tabId) {
     // Güvenlik: sadece profil sahibine özel sekmeler (Hakkımda / Kariyer ve Rozetler)
     // başkasının profilinde asla açılmasın — buton her nasılsa görünür kalmış olsa bile.
+    // ÖNEMLİ: Eskiden burada tabId 'tab-genel'e YÖNLENDİRİLİYORDU; bu, tıklayınca Genel
+    // Bakış'a geri fırlayıp GEN altıgen grafiğini gereksiz yere yeniden çizdiği için
+    // kafa karıştırıcıydı (kullanıcı bunu bildirdi). Artık hiçbir şey yapmadan çıkıyoruz;
+    // ek olarak, kısıtlı butonlar bir şekilde görünür kaldıysa yeniden gizliyoruz.
     const OWN_ONLY_TABS = ['tab-hakkimda', 'tab-kariyer'];
     if (OWN_ONLY_TABS.includes(tabId) && isViewingOtherProfile()) {
-        tabId = 'tab-genel';
+        if (typeof applyFriendshipTabRestriction === 'function') applyFriendshipTabRestriction(true);
+        return;
     }
 
     document.querySelectorAll('.profile-subtab').forEach(el => el.style.display = 'none');

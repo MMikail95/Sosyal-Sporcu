@@ -721,20 +721,28 @@ const Matches = {
     if (!match) return;
 
     const entries = [];
+    const seen = new Set();
     for (const [teamId, side] of [[match.home_team_id, 'home'], [match.away_team_id, 'away']]) {
       if (!teamId) continue;
       const { data: members } = await sb()
         .from('team_members')
         .select('player_id')
         .eq('team_id', teamId);
-      (members || []).forEach(m => entries.push({
-        match_id: matchId, player_id: m.player_id,
-        team_side: side, confirmed: true
-      }));
+      (members || []).forEach(m => {
+        // KRİTİK: player_id null olan "hayalet/misafir" team_members satırlarını ATLA.
+        // match_players.player_id NOT NULL olduğundan, tek bir null entry TÜM upsert batch'ini
+        // reddettiriyordu → o maçtaki hiçbir gerçek oyuncu match_players'a eklenmiyor, dolayısıyla
+        // total_matches trigger'ı onları hiç saymıyordu (bkz. bug: aynı maçtaki diğer oyuncular 0).
+        // Ayrıca aynı oyuncu iki kez gelirse (dedupe) UNIQUE(match_id,player_id) çakışmasını önle.
+        if (!m.player_id || seen.has(m.player_id)) return;
+        seen.add(m.player_id);
+        entries.push({ match_id: matchId, player_id: m.player_id, team_side: side, confirmed: true });
+      });
     }
     if (!entries.length) return;
-    await sb().from('match_players')
+    const { error } = await sb().from('match_players')
       .upsert(entries, { onConflict: 'match_id,player_id' });
+    if (error) console.error('autoPopulateTeamPlayers upsert error:', error);
   },
 
   // Kullanıcının tüm maçlarını getir (hem geçmiş hem yaklaşan)

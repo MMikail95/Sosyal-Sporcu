@@ -21,7 +21,25 @@
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
-    <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');</script>
+    <script>
+    // Service Worker + OTOMATİK GÜNCELLEME:
+    // Eskiden düz register vardı; yeni bir sürüm yayınlandığında kullanıcı manuel "hard refresh"
+    // / "clear site data" yapmadıkça eski JS/CSS'i görüyordu. Artık yeni SW kontrolü aldığında
+    // sayfa BİR kez kendiliğinden yenilenir → kullanıcı hiçbir şey yapmadan en güncel sürümü alır.
+    if ('serviceWorker' in navigator) {
+        // Sayfa yüklenirken zaten bir SW kontrolde miydi? İlk kurulumda gereksiz reload yapmamak için.
+        var _hadCtrl = !!navigator.serviceWorker.controller;
+        var _swRefreshed = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+            if (_swRefreshed) return;
+            _swRefreshed = true;
+            if (_hadCtrl) window.location.reload();   // sadece GÜNCELLEME sonrası yenile
+        });
+        navigator.serviceWorker.register('./sw.js').then(function (reg) {
+            reg.update();   // her açılışta güncelleme kontrolü tetikle (24s gecikmeyi bekleme)
+        }).catch(function () {});
+    }
+    </script>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="team-fix.css">
     <link rel="stylesheet" href="team-and-matches.css">
@@ -322,8 +340,13 @@
                         <!-- Kullanıcı mini kartı -->
                         <div class="glass-card dash-mini-card" id="dash-mini-card">
                             <div class="dash-mini-avatar-wrap">
+                                <!-- src boşken/hata olunca ESKİDEN 'seed=player' DiceBear (kadın/yabancı
+                                     yüz) yüklüyordu → kullanıcı kendi kartında bir an yabancı foto görüyordu.
+                                     Artık gerçek avatar (renderDashMiniCard) gelene kadar avatar GİZLİ kalır
+                                     (nötr koyu daire) — yanlış yüz flash'ı olmaz. -->
                                 <img id="dash-mini-avatar" src="" alt="Avatar"
-                                     onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=player'">
+                                     style="background:#1a1a1a; visibility:hidden;"
+                                     onerror="this.style.visibility='hidden'">
                                 <div class="dash-mini-ovr" id="dash-mini-ovr">—</div>
                             </div>
                             <div class="dash-mini-info">
