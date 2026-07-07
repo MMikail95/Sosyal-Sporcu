@@ -711,38 +711,82 @@ const Matches = {
     return data;
   },
 
-  // Maç bitince her iki takımın tüm üyelerini match_players'a ekle (upsert)
+  // Maç bitince match_players'ı DOLU DEĞİLSE doldur (FALLBACK-ONLY).
+  // ÖNEMLİ: Artık "tüm takım kadrosunu" körlemesine yazıp oylama/kaptan-onaylı gerçek katılımcı
+  // listesini EZMEZ. Öncelik sırası:
+  //   1) match_players'ta zaten satır varsa → DOKUNMA (oylama/confirmMatch ile gelen liste korunur).
+  //   2) Yoksa: 'accepted' geliyorum oylarından (match_proposal_votes) doldur.
+  //   3) O da yoksa (eski/oylamasız maç): takım kadrosuna (team_members) düş.
+  // team_members.player_id null olabilir (hayalet/misafir üye) ve match_players.player_id NOT NULL
+  // olduğundan tek bir null entry TÜM batch'i reddettirir → null'ları filtrele + dedupe et.
   async autoPopulateTeamPlayers(matchId) {
-    const { data: match } = await sb()
-      .from('matches')
-      .select('home_team_id, away_team_id')
-      .eq('id', matchId)
-      .single();
-    if (!match) return;
+    // 1) Zaten katılımcı varsa dokunma
+    const { data: existing } = await sb()
+      .from('match_players')
+      .select('id')
+      .eq('match_id', matchId)
+      .limit(1);
+    if (existing && existing.length) return;
 
-    const entries = [];
     const seen = new Set();
-    for (const [teamId, side] of [[match.home_team_id, 'home'], [match.away_team_id, 'away']]) {
-      if (!teamId) continue;
-      const { data: members } = await sb()
-        .from('team_members')
-        .select('player_id')
-        .eq('team_id', teamId);
-      (members || []).forEach(m => {
-        // KRİTİK: player_id null olan "hayalet/misafir" team_members satırlarını ATLA.
-        // match_players.player_id NOT NULL olduğundan, tek bir null entry TÜM upsert batch'ini
-        // reddettiriyordu → o maçtaki hiçbir gerçek oyuncu match_players'a eklenmiyor, dolayısıyla
-        // total_matches trigger'ı onları hiç saymıyordu (bkz. bug: aynı maçtaki diğer oyuncular 0).
-        // Ayrıca aynı oyuncu iki kez gelirse (dedupe) UNIQUE(match_id,player_id) çakışmasını önle.
-        if (!m.player_id || seen.has(m.player_id)) return;
-        seen.add(m.player_id);
-        entries.push({ match_id: matchId, player_id: m.player_id, team_side: side, confirmed: true });
-      });
+    const entries = [];
+    const push = (playerId, side) => {
+      if (!playerId || seen.has(playerId)) return;
+      seen.add(playerId);
+      entries.push({ match_id: matchId, player_id: playerId, team_side: side || 'home', confirmed: true });
+    };
+
+    // 2) Kabul edilmiş "geliyorum" oyları
+    const { data: votes } = await sb()
+      .from('match_proposal_votes')
+      .select('player_id, team_side')
+      .eq('match_id', matchId)
+      .eq('status', 'accepted');
+    (votes || []).forEach(v => push(v.player_id, v.team_side));
+
+    // 3) Hiç oy yoksa takım kadrosuna düş (legacy)
+    if (!entries.length) {
+      const { data: match } = await sb()
+        .from('matches')
+        .select('home_team_id, away_team_id')
+        .eq('id', matchId)
+        .single();
+      if (match) {
+        for (const [teamId, side] of [[match.home_team_id, 'home'], [match.away_team_id, 'away']]) {
+          if (!teamId) continue;
+          const { data: members } = await sb()
+            .from('team_members')
+            .select('player_id')
+            .eq('team_id', teamId);
+          (members || []).forEach(m => push(m.player_id, side));
+        }
+      }
     }
+
     if (!entries.length) return;
     const { error } = await sb().from('match_players')
       .upsert(entries, { onConflict: 'match_id,player_id' });
     if (error) console.error('autoPopulateTeamPlayers upsert error:', error);
+  },
+
+  // Kaptan bir oyuncuyu kadrodan çıkarır — satır + o maçtaki puanları birlikte siler (void).
+  // SECURITY DEFINER RPC üzerinden gider (kaptan kontrolü + RLS-güvenli community_ratings silme).
+  async removeMatchPlayer(matchId, playerId) {
+    const { error } = await sb().rpc('void_match_player', {
+      p_match_id: matchId, p_player_id: playerId
+    });
+    if (error) throw error;
+  },
+
+  // Squad editor için tek maç özeti (kaptan/creator kontrolü + takım adları/ID'leri).
+  async getMatchInfo(matchId) {
+    const { data, error } = await sb()
+      .from('matches')
+      .select('id, status, created_by, home_team_id, away_team_id, home_team:home_team_id(name), away_team:away_team_id(name)')
+      .eq('id', matchId)
+      .maybeSingle();
+    if (error) { console.error('getMatchInfo error:', error); return null; }
+    return data;
   },
 
   // Kullanıcının tüm maçlarını getir (hem geçmiş hem yaklaşan)
@@ -1580,8 +1624,10 @@ const Ratings = {
     return data || null;
   },
 
-  // Bir maçtaki tüm oyuncuları getir (kullanıcı hariç)
-  // Önce match_players tablosundan çeker; yetersizse her iki takımın üyelerini de ekler.
+  // Bir maçtaki puanlanabilir oyuncuları getir (kullanıcı hariç).
+  // KAYNAK = match_players (oylama/kaptan-onaylı gerçek katılımcılar). Geniş "tüm takım kadrosu"
+  // fallback'i YALNIZ match_players tamamen boşsa (eski/oylamasız maç) devreye girer — böylece maça
+  // gelmemiş kadro üyeleri puanlanamaz ve kaptanın kadro onayı boşa çıkmaz.
   async getMatchParticipants(matchId, excludePlayerId) {
     // 1) match_players'dan çek
     const { data: mpData } = await sb()
@@ -1595,6 +1641,10 @@ const Ratings = {
       .neq('player_id', excludePlayerId);
 
     const direct = (mpData || []).filter(d => d.player !== null);
+
+    // match_players doluysa yalnız onu döndür — team_members fallback'ine düşme.
+    if (direct.length) return direct;
+
     const directIds = new Set(direct.map(d => d.player_id));
 
     // 2) Maçın home/away takım ID'lerini çek
@@ -1696,15 +1746,17 @@ const Ratings = {
       memberRows = tm || [];
     }
 
-    // 4) Her maç için benzersiz oyuncu seti oluştur
+    // 4) Her maç için oyuncu seti oluştur — match_players ÖNCELİKLİ
     const byMatch = {};
-    matchIds.forEach(mid => { byMatch[mid] = new Set(); });
+    const hasMp = {}; // bu maçın match_players satırı var mı?
+    matchIds.forEach(mid => { byMatch[mid] = new Set(); hasMp[mid] = false; });
 
     (mpRows || []).forEach(p => {
-      if (byMatch[p.match_id]) byMatch[p.match_id].add(p.player_id);
+      if (byMatch[p.match_id]) { byMatch[p.match_id].add(p.player_id); hasMp[p.match_id] = true; }
     });
 
-    // Takım üyelerini de ekle (match_players'da yoksa)
+    // Takım üyeleri fallback'i YALNIZ match_players'ı boş olan (eski/oylamasız) maçlar için —
+    // getMatchParticipants ile aynı kural: gerçek katılımcı listesi varsa kadroya düşme.
     const teamPlayerTeamMap = {}; // teamId -> Set(player_id)
     memberRows.forEach(m => {
       if (!teamPlayerTeamMap[m.team_id]) teamPlayerTeamMap[m.team_id] = new Set();
@@ -1712,6 +1764,7 @@ const Ratings = {
     });
 
     matchIds.forEach(mid => {
+      if (hasMp[mid]) return; // match_players varsa fallback yok
       (matchTeamMap[mid] || []).forEach(tid => {
         (teamPlayerTeamMap[tid] || new Set()).forEach(pid => {
           byMatch[mid].add(pid);
