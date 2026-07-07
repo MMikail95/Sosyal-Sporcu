@@ -218,6 +218,25 @@ Kullanıcı hesaptan çıkış yapınca GitHub Pages'in "404 — File not found"
 
 **Aynı sınıftan AÇIK kalan latent bug (henüz düzeltilmedi):** `social-features.js`'teki davet linki üreticileri (satır ~2552 `switchExploreTab` invite tab preview, ~2569 `copyInviteLink`) `window.location.href.replace(/\/[^\/]*$/, '/auth.html')` ile "uygulama kökü = mevcut dizin" varsayıyor. Bir alt sayfadan (ör. `explore/index.html`) çalıştırılırsa `/explore/auth.html` gibi 404 veren bir davet linki üretir. Düzeltilirse davet linki daima kanonik köke (`.../auth.html`, tercihen `sosyalsporcu.com` kökü) işaret etmeli.
 
+## Maç Katılımcıları — Oylama → Kaptan Onayı → İstatistik/Puanlama (2026-07-07)
+
+**Amaç:** Bir maçın `match_players` kaydı (istatistik sayaçlarının ve maç-sonu puanlamanın kaynağı) artık **kaptan-onaylı gerçek katılımcı listesi** olmalı — "geliyorum" oylaması → maç öncesi kaptan onayı → maç sonrası kaptanın "gerçekten oynayanlar" düzenlemesi. Tetikleyen bug: Keşfet kartlarında aynı maçtaki oyuncuların bir kısmı `0 MAÇ` gösteriyordu.
+
+**Zaten var olan altyapı (yeniden kullanıldı, yeniden yazılmadı):** `match_proposal_votes` tablosu + `createProposal`/`sendProposalPoll` ("Müsait misin?" = geliyorum oylaması)/`castProposalVote`/`getProposalVotes` (kaptan oy paneli, `mcLoadProposalVotes` UI)/`setSubstitute`/`confirmMatch` (accepted oyları `match_players`'a yazar → `scheduled`). `joinMatch` (ekle), `leaveMatch` (çık), `getMatchPlayers`, `getMatchParticipants` (puanlanacaklar), `openPostMatchRatingModal` (24h pencere `matches.finished_at`'e bağlı).
+
+**Kök neden (clobber):** Maç bitince `mcSubmitScore` → `DB.Matches.autoPopulateTeamPlayers` **tüm takım kadrosunu** `match_players`'a yazıp oylamayla gelen listeyi eziyordu. Ayrıca `team_members.player_id` **nullable** (hayalet/misafir üye) ve `match_players.player_id` **NOT NULL** olduğundan tek null entry tüm upsert'i reddettiriyor, hata `.catch` ile yutuluyordu → o maçta hiçbir gerçek üye eklenmiyordu.
+
+**Yapılan değişiklikler:**
+- **`autoPopulateTeamPlayers` artık FALLBACK-ONLY** (db.js): (1) `match_players` doluysa DOKUNMA; (2) yoksa `match_proposal_votes` `accepted`'lardan doldur; (3) o da yoksa `team_members`'a düş — null filtreli + dedupe.
+- **`removeMatchPlayer(matchId, playerId)`** (db.js) → **`void_match_player` RPC** çağırır.
+- **DB migration (`rpwbmvpapfouhpyvoeol`):** (a) `match_players` **DELETE RLS policy** (`auth.uid()=player_id` VEYA maç `created_by` kaptanı) — önceden DELETE policy yoktu, RLS açık olduğundan `leaveMatch` dahil tüm silmeler bloktaydı (yan fayda: "Ayrıl" düzeldi). (b) **`void_match_player(p_match_id, p_player_id)` SECURITY DEFINER RPC:** kaptan bir no-show'u çıkarınca `match_players` satırını + o oyuncunun O MAÇtaki `community_ratings` (rated + rater) kayıtlarını birlikte siler; içeride `auth.uid()=matches.created_by` kontrolü.
+- **Puanlama = sadece `match_players`** (db.js): `getMatchParticipants` ve `getMatchRatingStatuses` artık `match_players` doluysa `team_members` geniş fallback'ine düşmez (yalnız boş/legacy maçta). Böylece maça gelmemiş kadro üyeleri puanlanamaz.
+- **Squad editör UI** (team-and-matches.js, `mcOpenSquadEditor` + `mcSquadAdd`/`mcSquadRemove`/`mcSquadSearch`/`closeSquadEditor`, `.msq-*` CSS): kaptan-only modal; mevcut kadroyu ev/deplasman gruplu listeler, ✕ ile çıkarır, kadrodan/oy verenlerden veya **username arama** (misafir dahil) ile ekler. Değişiklikler anında DB'ye yazılır; `trg_match_players_sync_stats` sayaçları günceller. Kart butonu **"Gelenleri Düzenle"** (creator; `scheduled/confirmed/finished`).
+- **Akış:** `mcSubmitScore` skor sonrası PMR yerine **squad editörünü** açar (`{rateAfter: teamSide}`); kaptan editörü kapatınca (`closeSquadEditor`) kendi puanlaması için PMR açılır. **Puanlama kaptan onayını BEKLEMEZ** — maç `finished` olur olmaz `finished_at` + 24h başlar, puanlama badge'i herkese açıktır; squad editör paralel çalışır, puanlamayı bloklamaz.
+- **Kural:** `match_players`'a yazan HER yol `team_members.player_id` null olabileceğini varsaymalı (filtrele). Puanlanacak liste her yerde `match_players` (dolu ise) olmalı — kadroya sadece boş/legacy maçta düş. Kaptan silme akışı `void_match_player` RPC üzerinden gitmeli (RLS + puan void birlikte). `sw.js` cache `ss-v9` → `ss-v10` bump edildi.
+
+**Not (kapsam dışı):** `isVotingOpen`'daki 24h kısıtı hâlâ test için KAPALI (`status='finished'` yeterli); bu iş kapsamında değiştirilmedi. `player_id=null` hayalet `team_members` satırı silinmedi (kaptan kendi siler; kod onu zaten atlıyor).
+
 ## Bilinen Açık Konular
 
 - **Şifre sıfırlama e-postası:** Şu an Supabase'in varsayılan göndericisinden gidiyor, "Sosyal Sporcu" marka adıyla değil. Çözüm: Supabase Dashboard → Authentication → Emails → SMTP Settings → Custom SMTP açılıp gerçek bir SMTP sağlayıcı (Resend/SendGrid/Postmark vb.) ile `noreply@sosyalsporcu.com` gönderen adresi ayarlanmalı. Kurulum 2026-07-04 itibarıyla devam ediyor — bu repodaki koddan bağımsız, tamamen Supabase panel/DNS (SPF/DKIM) konfigürasyonu.

@@ -3258,6 +3258,13 @@ function _mcMatchCard(row, ratingStatuses, userId, playerCounts) {
            </button>`
         : '';
 
+    // Gelenleri Düzenle — kadro onay editörü (creator; scheduled/confirmed maç öncesi + finished maç sonrası)
+    const squadEditBtn = isCreator && ['scheduled', 'confirmed', 'finished'].includes(m.status)
+        ? `<button class="btn-sm mc-squad-edit-btn" onclick="mcOpenSquadEditor('${_mcEsc(mid)}')">
+               <i class="fa-solid fa-user-check"></i> Gelenleri Düzenle
+           </button>`
+        : '';
+
     // İptal butonu (creator, yalnızca gerçekten aktif maçlar — admin bypass etmez)
     const isTrulyActive = ['scheduled', 'confirmed'].includes(m.status);
     const cancelBtn = isCreator && isTrulyActive
@@ -3313,6 +3320,7 @@ function _mcMatchCard(row, ratingStatuses, userId, playerCounts) {
             <div class="mc-card-actions-right">
                 ${actionHtml}
                 ${noRatingReason}
+                ${squadEditBtn}
                 ${statsBtn}
                 ${leaveBtn}
                 ${cancelBtn}
@@ -3417,15 +3425,10 @@ window.mcSubmitScore = async function (matchId, teamSide) {
 
         await _mcLoadMatches();
 
-        // 5. Puanlanacak oyuncu varsa PMR modal'ı aç
-        setTimeout(async () => {
-            const statuses = await DB.Ratings.getMatchRatingStatuses(userId, [matchId]).catch(() => ({}));
-            if (statuses[matchId] === 'pending') {
-                if (typeof openPostMatchRatingModal === 'function') {
-                    openPostMatchRatingModal(matchId, teamSide || 'home');
-                }
-            }
-        }, 800);
+        // 5. Önce kaptan GELENLERİ ONAYLAsın (squad editor). Maç zaten 'finished' olduğundan 24 saatlik
+        //    puanlama penceresi çoktan başladı ve puanlama HERKESE açık — editör puanlamayı BLOKLAMAZ.
+        //    Kaptan editörü kapatınca (closeSquadEditor), kendi puanlaması için PMR modalı açılır.
+        if (typeof mcOpenSquadEditor === 'function') mcOpenSquadEditor(matchId, { rateAfter: teamSide || 'home' });
 
     } catch (e) {
         console.error('mcSubmitScore error:', e);
@@ -3690,6 +3693,224 @@ window.mcLeaveMatch = async function (matchId) {
     } catch (e) {
         console.error('mcLeaveMatch error:', e);
         if (typeof showToast === 'function') showToast('Hata: ' + (e.message || 'Ayrılamadı'));
+    }
+};
+
+// ── Gelenleri Onayla / Düzenle — Kaptan kadro editörü ─────────────────
+// Kaptan gerçek katılımcı listesini düzenler: gelmeyeni ✕ ile çıkarır (void_match_player →
+// match_players satırı + o maçtaki community_ratings birlikte silinir), geleni ekler (takım
+// kadrosu / oy verenler / username arama ile misafir dahil). Değişiklikler anında DB'ye yazılır;
+// match_players trigger'ı total_matches/goals/assists sayaçlarını otomatik günceller.
+let _mcSquadMatchId = null;
+let _mcSquadInfo = null;
+let _mcSquadPlayers = [];
+let _mcSquadPool = [];
+let _mcSquadSearchResults = [];
+let _mcSquadRateSideAfter = null;   // skor girişinden geldiyse: kapatınca PMR açılacak taraf
+let _mcSquadSearchTimer = null;
+
+function _mcEnsureSquadModal() {
+    if (document.getElementById('msq-overlay')) return;
+    const el = document.createElement('div');
+    el.id = 'msq-overlay';
+    el.className = 'msq-overlay';
+    el.style.display = 'none';
+    el.onclick = (e) => { if (e.target === el) window.closeSquadEditor(); };
+    el.innerHTML = `
+        <div class="msq-box">
+            <div class="msq-header">
+                <div class="msq-title"><i class="fa-solid fa-user-check"></i> <span id="msq-title-text">Gelenleri Onayla</span></div>
+                <button class="msq-close" onclick="closeSquadEditor()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="msq-body" class="msq-body"></div>
+            <div class="msq-footer">
+                <button class="btn-primary msq-done-btn" onclick="closeSquadEditor()"><i class="fa-solid fa-check"></i> Bitti</button>
+            </div>
+        </div>`;
+    document.body.appendChild(el);
+}
+
+window.mcOpenSquadEditor = async function(matchId, opts) {
+    const userId = _mcGetUserId();
+    if (!userId) { if (typeof showToast === 'function') showToast('Oturum açmanız gerekiyor.'); return; }
+    _mcEnsureSquadModal();
+    const overlay = document.getElementById('msq-overlay');
+    overlay.style.display = 'flex';
+    setTimeout(() => overlay.classList.add('visible'), 10);
+    document.getElementById('msq-body').innerHTML = '<div class="msq-loading"><i class="fa-solid fa-spinner fa-spin"></i></div>';
+    try {
+        const info = await DB.Matches.getMatchInfo(matchId);
+        if (!info) throw new Error('Maç bulunamadı');
+        // Yetki: yalnız maçı oluşturan kaptan (buton gizli olsa bile savunma)
+        if (info.created_by !== userId && !(window.isAdminUser && window.isAdminUser())) {
+            if (typeof showToast === 'function') showToast('Bu işlem yalnızca maçı oluşturan kaptana açık.');
+            window.closeSquadEditor();
+            return;
+        }
+        _mcSquadMatchId = matchId;
+        _mcSquadInfo = info;
+        _mcSquadSearchResults = [];
+        _mcSquadRateSideAfter = (opts && opts.rateAfter) || null;
+        await _mcSquadReload();
+    } catch (e) {
+        console.error('mcOpenSquadEditor error:', e);
+        const body = document.getElementById('msq-body');
+        if (body) body.innerHTML = '<p class="msq-error">Kadro yüklenemedi.</p>';
+    }
+};
+
+async function _mcSquadReload() {
+    const matchId = _mcSquadMatchId, info = _mcSquadInfo;
+    if (!matchId || !info) return;
+    _mcSquadPlayers = await DB.Matches.getMatchPlayers(matchId).catch(() => []);
+    const inIds = new Set(_mcSquadPlayers.map(p => (p.player && p.player.id) || p.player_id));
+
+    // Eklenebilir havuz: iki takımın kadrosu + oy verenler (match_players'da OLMAYANLAR)
+    const pool = new Map();
+    const addPool = (id, username, avatar, side) => {
+        if (!id || inIds.has(id) || pool.has(id)) return;
+        pool.set(id, { id, username: username || 'Oyuncu', avatar_url: avatar || null, side: side || 'home' });
+    };
+    try {
+        if (info.home_team_id) (await DB.Teams.getMembers(info.home_team_id)).forEach(m => { if (m.player) addPool(m.player.id, m.player.username, m.player.avatar_url, 'home'); });
+        if (info.away_team_id) (await DB.Teams.getMembers(info.away_team_id)).forEach(m => { if (m.player) addPool(m.player.id, m.player.username, m.player.avatar_url, 'away'); });
+    } catch(_) {}
+    try {
+        const v = await DB.Matches.getProposalVotes(matchId);
+        [...(v.accepted || []), ...(v.declined || []), ...(v.pending || [])].forEach(p => addPool(p.id, p.username, p.avatar_url, p.team_side || 'home'));
+    } catch(_) {}
+    _mcSquadPool = [...pool.values()];
+    _mcRenderSquadEditor();
+}
+
+function _mcSquadChip(p, actionHtml) {
+    const pl = p.player || p;
+    const name = _mcEsc(pl.username || 'Oyuncu');
+    const avatar = pl.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(pl.username || 'x')}`;
+    return `<div class="msq-chip">
+        <img class="msq-chip-avatar" src="${_mcEsc(avatar)}" alt="">
+        <span class="msq-chip-name">${name}</span>
+        ${actionHtml}
+    </div>`;
+}
+
+function _mcRenderSquadEditor() {
+    const body = document.getElementById('msq-body');
+    if (!body) return;
+    const info = _mcSquadInfo || {};
+    const homeName = (info.home_team && info.home_team.name) || 'Ev Sahibi';
+    const awayName = (info.away_team && info.away_team.name) || 'Deplasman';
+    const tt = document.getElementById('msq-title-text');
+    if (tt) tt.textContent = `Gelenleri Onayla — ${homeName} vs ${awayName}`;
+
+    const home = _mcSquadPlayers.filter(p => p.team_side === 'home');
+    const away = _mcSquadPlayers.filter(p => p.team_side !== 'home');
+
+    const group = (list, label) => {
+        const chips = list.length
+            ? list.map(mp => {
+                const id = (mp.player && mp.player.id) || mp.player_id;
+                return _mcSquadChip(mp, `<button class="msq-x" title="Çıkar" onclick="mcSquadRemove('${_mcEsc(id)}')"><i class="fa-solid fa-xmark"></i></button>`);
+              }).join('')
+            : '<div class="msq-empty">— boş —</div>';
+        return `<div class="msq-group">
+            <div class="msq-group-label">${label} <span class="msq-count">${list.length}</span></div>
+            <div class="msq-chips">${chips}</div>
+        </div>`;
+    };
+
+    const poolChips = _mcSquadPool.length
+        ? _mcSquadPool.map(p => _mcSquadChip(p, `
+            <button class="msq-add" title="Ev Sahibine ekle" onclick="mcSquadAdd('${_mcEsc(p.id)}','home')">+Ev</button>
+            <button class="msq-add" title="Deplasmana ekle" onclick="mcSquadAdd('${_mcEsc(p.id)}','away')">+Dep</button>`)).join('')
+        : '<div class="msq-empty">Eklenecek başka kadro/oy yok.</div>';
+
+    body.innerHTML = `
+        <p class="msq-hint">Gelmeyeni <b>✕</b> ile çıkar, geleni ekle. Çıkarılan oyuncunun bu maçtaki puanları da silinir. Değişiklikler anında kaydedilir.</p>
+        <div class="msq-current">
+            ${group(home, '<i class="fa-solid fa-house"></i> ' + _mcEsc(homeName))}
+            ${group(away, '<i class="fa-solid fa-plane"></i> ' + _mcEsc(awayName))}
+        </div>
+        <div class="msq-add-section">
+            <div class="msq-section-label"><i class="fa-solid fa-user-plus"></i> Kadro / oy verenler</div>
+            <div class="msq-chips msq-pool">${poolChips}</div>
+            <div class="msq-section-label"><i class="fa-solid fa-magnifying-glass"></i> Kullanıcı ara (misafir dahil)</div>
+            <input id="msq-search" class="form-input msq-search" type="text" placeholder="Kullanıcı adı ara…" oninput="mcSquadSearch()" autocomplete="off">
+            <div id="msq-search-results" class="msq-chips"></div>
+        </div>`;
+    _mcRenderSquadSearchResults();
+}
+
+function _mcRenderSquadSearchResults() {
+    const el = document.getElementById('msq-search-results');
+    if (!el) return;
+    el.innerHTML = _mcSquadSearchResults.length
+        ? _mcSquadSearchResults.map(r => _mcSquadChip(r, `
+            <button class="msq-add" onclick="mcSquadAdd('${_mcEsc(r.id)}','home')">+Ev</button>
+            <button class="msq-add" onclick="mcSquadAdd('${_mcEsc(r.id)}','away')">+Dep</button>`)).join('')
+        : '';
+}
+
+window.mcSquadSearch = function() {
+    clearTimeout(_mcSquadSearchTimer);
+    _mcSquadSearchTimer = setTimeout(async () => {
+        const q = (document.getElementById('msq-search')?.value || '').trim();
+        if (q.length < 2) { _mcSquadSearchResults = []; _mcRenderSquadSearchResults(); return; }
+        try {
+            const res = await DB.Profiles.getAll({ search: q, limit: 8 });
+            const inIds = new Set(_mcSquadPlayers.map(p => (p.player && p.player.id) || p.player_id));
+            _mcSquadSearchResults = (res || []).filter(r => !inIds.has(r.id));
+        } catch(_) { _mcSquadSearchResults = []; }
+        _mcRenderSquadSearchResults();
+    }, 300);
+};
+
+window.mcSquadRemove = async function(playerId) {
+    if (!_mcSquadMatchId || !playerId) return;
+    try {
+        await DB.Matches.removeMatchPlayer(_mcSquadMatchId, playerId);
+        if (typeof showToast === 'function') showToast('Oyuncu çıkarıldı.');
+        await _mcSquadReload();
+    } catch (e) {
+        console.error('mcSquadRemove error:', e);
+        if (typeof showToast === 'function') showToast('Çıkarılamadı: ' + (e.message || ''));
+    }
+};
+
+window.mcSquadAdd = async function(playerId, side) {
+    if (!_mcSquadMatchId || !playerId) return;
+    try {
+        await DB.Matches.joinMatch(_mcSquadMatchId, playerId, side === 'away' ? 'away' : 'home');
+        if (typeof showToast === 'function') showToast('Oyuncu eklendi.');
+        const si = document.getElementById('msq-search'); if (si) si.value = '';
+        _mcSquadSearchResults = [];
+        await _mcSquadReload();
+    } catch (e) {
+        console.error('mcSquadAdd error:', e);
+        if (typeof showToast === 'function') showToast('Eklenemedi: ' + (e.message || ''));
+    }
+};
+
+window.closeSquadEditor = function() {
+    const overlay = document.getElementById('msq-overlay');
+    if (overlay) {
+        overlay.classList.remove('visible');
+        setTimeout(() => { overlay.style.display = 'none'; }, 200);
+    }
+    const matchId = _mcSquadMatchId;
+    const rateSide = _mcSquadRateSideAfter;
+    _mcSquadRateSideAfter = null;
+    if (typeof _mcLoadMatches === 'function') _mcLoadMatches();
+    // Skor girişinden geldiyse: kadro onaylandıktan sonra kaptanın kendi puanlaması için PMR aç
+    if (matchId && rateSide) {
+        setTimeout(async () => {
+            try {
+                const statuses = await DB.Ratings.getMatchRatingStatuses(_mcGetUserId(), [matchId]).catch(() => ({}));
+                if (statuses[matchId] === 'pending' && typeof openPostMatchRatingModal === 'function') {
+                    openPostMatchRatingModal(matchId, rateSide);
+                }
+            } catch(_) {}
+        }, 300);
     }
 };
 

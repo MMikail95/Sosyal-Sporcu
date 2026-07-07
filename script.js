@@ -743,7 +743,9 @@ function hydrateSidebarFromCache() {
     const roleEl   = document.getElementById('current-account-role');
 
     if (nameEl) {
-        const raw = (player && (player.full_name || player.name)) || acc.name || '';
+        // Kullanıcı adı öncelikli (updateUI ile tutarlı): kullanıcı kendini username'iyle
+        // ("MikimonTheGray") tanımlıyor; full_name ilk kelimesi ("Muhammed") yanıltıcıydı.
+        const raw = (player && (player.supabase_username || player.name || player.full_name)) || acc.name || '';
         const firstName = raw.split(' ')[0];
         if (firstName) nameEl.textContent = firstName.charAt(0).toUpperCase() + firstName.slice(1);
     }
@@ -758,7 +760,9 @@ function addLogoutButton(profile) {
     // ── Gerçek kullanıcı bilgilerini güncelle ──
     const nameEl = document.getElementById('current-account-name');
     if (nameEl) {
-        const raw = profile.full_name || profile.username || '';
+        // Kullanıcı adı öncelikli (updateUI/hydrateSidebarFromCache ile tutarlı) — "MikimonTheGray",
+        // full_name ilk kelimesi ("Muhammed") değil.
+        const raw = profile.username || profile.full_name || '';
         const firstName = raw.split(' ')[0];
         nameEl.textContent = firstName.charAt(0).toUpperCase() + firstName.slice(1);
     }
@@ -2089,9 +2093,14 @@ function applyFriendshipTabRestriction(viewingOther) {
 window.switchProfileTab = function (tabId) {
     // Güvenlik: sadece profil sahibine özel sekmeler (Hakkımda / Kariyer ve Rozetler)
     // başkasının profilinde asla açılmasın — buton her nasılsa görünür kalmış olsa bile.
+    // ÖNEMLİ: Eskiden burada tabId 'tab-genel'e YÖNLENDİRİLİYORDU; bu, tıklayınca Genel
+    // Bakış'a geri fırlayıp GEN altıgen grafiğini gereksiz yere yeniden çizdiği için
+    // kafa karıştırıcıydı (kullanıcı bunu bildirdi). Artık hiçbir şey yapmadan çıkıyoruz;
+    // ek olarak, kısıtlı butonlar bir şekilde görünür kaldıysa yeniden gizliyoruz.
     const OWN_ONLY_TABS = ['tab-hakkimda', 'tab-kariyer'];
     if (OWN_ONLY_TABS.includes(tabId) && isViewingOtherProfile()) {
-        tabId = 'tab-genel';
+        if (typeof applyFriendshipTabRestriction === 'function') applyFriendshipTabRestriction(true);
+        return;
     }
 
     document.querySelectorAll('.profile-subtab').forEach(el => el.style.display = 'none');

@@ -2370,3 +2370,73 @@
     font-family: 'Outfit', sans-serif;
 }
 
+/* ── Gelenleri Onayla / Kadro Editörü (msq-*) ───────────────────────── */
+.msq-overlay {
+    position: fixed; inset: 0; z-index: 9996;
+    background: rgba(0,0,0,0.78); backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem; opacity: 0; transition: opacity 0.25s ease;
+}
+.msq-overlay.visible { opacity: 1; }
+.msq-box {
+    background: #12121a; border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 18px; width: 100%; max-width: 520px;
+    max-height: 92vh; display: flex; flex-direction: column;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.7); animation: slideInUp 0.3s ease;
+}
+.msq-header {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 1rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.msq-title { display: flex; align-items: center; gap: 0.5rem; font-weight: 800; font-size: 0.95rem; flex: 1; color: #fff; }
+.msq-title i { color: var(--neon-green); }
+.msq-close {
+    background: rgba(255,255,255,0.06); border: none; color: #aaa;
+    width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 0.95rem;
+}
+.msq-close:hover { background: rgba(255,255,255,0.14); color: #fff; }
+.msq-body { padding: 1rem 1.25rem; overflow-y: auto; }
+.msq-loading, .msq-error { text-align: center; padding: 2.5rem; color: #666; font-size: 1.4rem; }
+.msq-error { color: var(--neon-pink); font-size: 0.9rem; }
+.msq-hint { font-size: 0.78rem; color: #9aa; line-height: 1.4; margin: 0 0 0.9rem; }
+.msq-hint b { color: var(--neon-pink); }
+.msq-group { margin-bottom: 0.9rem; }
+.msq-group-label { font-size: 0.8rem; font-weight: 700; color: #ccd; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.4rem; }
+.msq-count {
+    background: rgba(255,255,255,0.1); color: #bbb; border-radius: 10px;
+    padding: 0 0.45rem; font-size: 0.72rem; font-weight: 700;
+}
+.msq-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.msq-chip {
+    display: flex; align-items: center; gap: 0.4rem;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 999px; padding: 0.22rem 0.5rem 0.22rem 0.28rem; font-size: 0.8rem;
+}
+.msq-chip-avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; background: #222; }
+.msq-chip-name { color: #eee; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msq-x, .msq-add {
+    border: none; cursor: pointer; border-radius: 999px; font-weight: 700;
+    font-size: 0.72rem; line-height: 1; padding: 0.25rem 0.45rem;
+    font-family: 'Outfit', sans-serif;
+}
+.msq-x { background: rgba(255,0,127,0.15); color: var(--neon-pink); width: 22px; height: 22px; padding: 0; }
+.msq-x:hover { background: var(--neon-pink); color: #fff; }
+.msq-add { background: rgba(173,255,47,0.14); color: var(--neon-green); margin-left: 2px; }
+.msq-add:hover { background: var(--neon-green); color: #06210a; }
+.msq-empty { color: #555; font-size: 0.78rem; padding: 0.3rem 0; }
+.msq-add-section { margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.85rem; }
+.msq-section-label { font-size: 0.78rem; font-weight: 700; color: #9aa; margin: 0.6rem 0 0.45rem; display: flex; align-items: center; gap: 0.4rem; }
+.msq-section-label i { color: var(--neon-cyan); }
+.msq-search { width: 100%; margin-bottom: 0.5rem; }
+.msq-footer {
+    padding: 0.85rem 1.25rem; border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex; justify-content: flex-end;
+}
+.msq-done-btn { min-width: 120px; }
+.mc-squad-edit-btn { background: rgba(0,229,255,0.12); color: var(--neon-cyan); border: 1px solid rgba(0,229,255,0.3); }
+.mc-squad-edit-btn:hover { background: rgba(0,229,255,0.22); }
+@media (max-width: 520px) {
+    .msq-box { border-radius: 14px; }
+    .msq-chip-name { max-width: 90px; }
+}
+
