@@ -2096,6 +2096,50 @@ const TeamRequests = {
 // GLOBAL EXPORT
 // =====================================================
 
+// =====================================================
+// 🚩 İÇERİK ŞİKAYETLERİ (content_reports)
+//    Bkz. moderation-migration.sql. Moderasyon LİSTELERİ (banned_words vb.)
+//    client'ta moderation.js tarafından doğrudan sbClient ile okunur.
+// =====================================================
+const Reports = {
+  // Bir içeriği şikayet et
+  async create(reporterId, contentType, contentId, reason) {
+    const { data, error } = await sb()
+      .from('content_reports')
+      .insert({
+        reporter_id: reporterId,
+        content_type: contentType,   // 'post' | 'comment' | 'profile' | 'team'
+        content_id: contentId,
+        reason: reason || null
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  // Admin: bekleyen şikayetler
+  async getPending() {
+    const { data, error } = await sb()
+      .from('content_reports')
+      .select('*, reporter:reporter_id(username, full_name)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Admin: şikayeti sonuçlandır ('reviewed' | 'dismissed' | 'removed')
+  async resolve(reportId, status, reviewerId) {
+    const { error } = await sb()
+      .from('content_reports')
+      .update({ status, reviewed_by: reviewerId, reviewed_at: new Date().toISOString() })
+      .eq('id', reportId);
+    if (error) throw error;
+    return true;
+  }
+};
+
 window.DB = {
   Auth,
   Profiles,
@@ -2109,6 +2153,7 @@ window.DB = {
   Honors,
   Venues,
   Storage,
+  Reports,
   error: dbError,
   test: testSupabaseConnection
 };

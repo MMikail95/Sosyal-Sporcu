@@ -1,4 +1,4 @@
-const CACHE = 'ss-v13';
+const CACHE = 'ss-v14';
 
 // Works both on localhost (/sw.js) and GitHub Pages (/Sosyal-Sporcu/sw.js)
 const BASE = self.location.pathname.replace(/\/sw\.js$/, '');
@@ -13,6 +13,7 @@ const APP_SHELL = [
   BASE + '/fixes.css',
   BASE + '/script.js',
   BASE + '/db.js',
+  BASE + '/moderation.js',
   BASE + '/team-and-matches.js',
   BASE + '/social-features.js',
   BASE + '/notifications-and-toast.js',

@@ -121,6 +121,16 @@ window.handleRegister = async function(e) {
     return;
   }
 
+  // Moderasyon: rezerve / uygunsuz kullanıcı adı ve isim (UX önizleme;
+  // gerçek zorlama profiles trigger'ındadır — bkz. moderation-migration.sql)
+  if (window.Moderation) {
+    try { await window.Moderation.ready; } catch (_) {}
+    const uCheck = window.Moderation.validateUsername(username);
+    if (!uCheck.ok) { showMessage('❌ ' + uCheck.reason, 'error'); return; }
+    const nCheck = window.Moderation.validateName(fullName);
+    if (!nCheck.ok) { showMessage('❌ ' + nCheck.reason, 'error'); return; }
+  }
+
   // Username müsait mi kontrol et
   const sbClient = window.sbClient;
   const { data: existing } = await sbClient
@@ -283,6 +293,16 @@ window.checkUsernameAvailability = function(value) {
     return;
   }
   errEl.classList.remove('show');
+
+  // Moderasyon: rezerve / uygunsuz kullanıcı adı (anında geri bildirim)
+  if (window.Moderation && window.Moderation.loaded) {
+    const uCheck = window.Moderation.validateUsername(value);
+    if (!uCheck.ok) {
+      checkEl.innerHTML = '<span style="color:#ff4d4d">✗ Kullanılamaz</span>';
+      return;
+    }
+  }
+
   checkEl.innerHTML = '<span style="color:#888">...</span>';
 
   usernameCheckTimer = setTimeout(async () => {

@@ -441,6 +441,17 @@ window._tmSubmitCreate = async function() {
   const desc = document.getElementById('ntc-desc')?.value?.trim();
   if (!name) { window.showToast?.('Takım adı zorunlu', 'error'); return; }
 
+  // Moderasyon (UX; gerçek zorlama teams trigger'ında — moderation-migration.sql)
+  if (window.Moderation) {
+    try { await window.Moderation.ready; } catch (_) {}
+    const nc = window.Moderation.validateContent(name);
+    if (!nc.ok) { window.showToast?.('⚠️ ' + nc.reason, 'error'); return; }
+    if (desc) {
+      const dc = window.Moderation.validateContent(desc);
+      if (!dc.ok) { window.showToast?.('⚠️ ' + dc.reason, 'error'); return; }
+    }
+  }
+
   const btn = document.getElementById('ntc-create-btn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Kuruluyor…'; }
 
@@ -1674,6 +1685,17 @@ window.saveTeamEdit = async function() {
   const draws = parseInt(document.getElementById('team-stat-draws')?.value) || 0;
   const losses= parseInt(document.getElementById('team-stat-losses')?.value)|| 0;
   if (!name) { window.showToast?.('Takım adı boş bırakılamaz', 'error'); return; }
+
+  // Moderasyon (UX; gerçek zorlama teams trigger'ında)
+  if (window.Moderation) {
+    try { await window.Moderation.ready; } catch (_) {}
+    const nc = window.Moderation.validateContent(name);
+    if (!nc.ok) { window.showToast?.('⚠️ ' + nc.reason, 'error'); return; }
+    if (desc) {
+      const dc = window.Moderation.validateContent(desc);
+      if (!dc.ok) { window.showToast?.('⚠️ ' + dc.reason, 'error'); return; }
+    }
+  }
 
   try {
     await DB.Teams.update(_tmState.team.id, {

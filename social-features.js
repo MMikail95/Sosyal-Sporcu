@@ -1228,6 +1228,9 @@ function buildRealFeedCard(post) {
                 <button class="feed-action-btn share-btn" onclick="shareFeedPost('${post.id}')">
                     <i class="fa-solid fa-share-nodes"></i>
                 </button>
+                <button class="feed-action-btn report-btn" title="Şikayet Et" onclick="reportContent('post','${post.id}')">
+                    <i class="fa-regular fa-flag"></i>
+                </button>
             </div>
             <div class="feed-comments-area" id="comments-${post.id}" style="display:none;"></div>
         </div>
@@ -1353,6 +1356,13 @@ window.submitComment = async function(postId) {
     const user = window.__AUTH_USER__;
     if (!user || !window.DB) return;
 
+    // Moderasyon (UX; gerçek zorlama post_comments trigger'ında)
+    if (window.Moderation) {
+        try { await window.Moderation.ready; } catch (_) {}
+        const mc = window.Moderation.validateContent(content);
+        if (!mc.ok) { showToast('⚠️ ' + mc.reason); return; }
+    }
+
     input.disabled = true;
 
     try {
@@ -1468,6 +1478,13 @@ window.submitPost = async function() {
 
     const user = window.__AUTH_USER__;
     if (!user) { showToast('⚠️ Giriş yapmalısınız.'); return; }
+
+    // Moderasyon (UX; gerçek zorlama posts trigger'ında — moderation-migration.sql)
+    if (window.Moderation) {
+        try { await window.Moderation.ready; } catch (_) {}
+        const mc = window.Moderation.validateContent(content);
+        if (!mc.ok) { showToast('⚠️ ' + mc.reason); return; }
+    }
 
     if (!window.DB) {
         // Fallback: localStorage (FAZ 1 uyumluluğu)
@@ -2950,4 +2967,124 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Dashboard'un feed kartlarını oluşturabilmesi için export
 window.buildRealFeedCard = buildRealFeedCard;
+
+
+// =====================================================
+// BÖLÜM 8: İÇERİK ŞİKAYETİ (content_reports)
+//   Kullanıcı bir gönderi/yorum/profil/takımı bildirir → admin kuyruğu.
+//   Bkz. moderation-migration.sql (content_reports tablosu + RLS).
+// =====================================================
+
+const REPORT_REASONS = [
+    'Küfür / hakaret',
+    'Uygunsuz / cinsel içerik',
+    'Dini / siyasi hakaret',
+    'Spam / reklam',
+    'Sahte hesap / taklit',
+    'Diğer'
+];
+
+window.reportContent = function(contentType, contentId) {
+    const user = window.__AUTH_USER__;
+    if (!user) { showToast('⚠️ Şikayet için giriş yapmalısınız.'); return; }
+
+    // Zaten açık modal varsa kaldır
+    document.getElementById('report-modal-overlay')?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'report-modal-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:1rem;';
+    overlay.innerHTML = `
+      <div style="background:#1a1a1a;border:1px solid rgba(255,255,255,.1);border-radius:16px;max-width:420px;width:100%;padding:1.5rem;box-shadow:0 20px 60px rgba(0,0,0,.5);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+          <h3 style="margin:0;color:#fff;font-size:1.1rem;"><i class="fa-solid fa-flag" style="color:var(--neon-pink);margin-right:.4rem;"></i>Şikayet Et</h3>
+          <button onclick="document.getElementById('report-modal-overlay').remove()" style="background:none;border:none;color:#888;font-size:1.3rem;cursor:pointer;">&times;</button>
+        </div>
+        <p style="color:#aaa;font-size:.85rem;margin:0 0 .8rem;">Bu içeriği neden bildiriyorsun?</p>
+        <select id="report-reason" style="width:100%;padding:.7rem;border-radius:10px;background:#111;border:1px solid rgba(255,255,255,.12);color:#fff;margin-bottom:.7rem;">
+          ${REPORT_REASONS.map(r => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('')}
+        </select>
+        <textarea id="report-note" placeholder="Ek açıklama (opsiyonel)" rows="3" style="width:100%;padding:.7rem;border-radius:10px;background:#111;border:1px solid rgba(255,255,255,.12);color:#fff;resize:vertical;margin-bottom:1rem;"></textarea>
+        <div style="display:flex;gap:.6rem;">
+          <button onclick="document.getElementById('report-modal-overlay').remove()" style="flex:1;padding:.7rem;border-radius:10px;background:#2a2a2a;border:none;color:#ccc;cursor:pointer;">Vazgeç</button>
+          <button id="report-submit-btn" onclick="submitReport('${contentType}','${contentId}')" style="flex:1;padding:.7rem;border-radius:10px;background:var(--neon-pink);border:none;color:#fff;font-weight:600;cursor:pointer;">Gönder</button>
+        </div>
+      </div>`;
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+};
+
+window.submitReport = async function(contentType, contentId) {
+    const user = window.__AUTH_USER__;
+    if (!user || !window.DB) { showToast('⚠️ Giriş gerekli.'); return; }
+    const reasonSel = document.getElementById('report-reason')?.value || '';
+    const note      = document.getElementById('report-note')?.value?.trim() || '';
+    const reason    = note ? `${reasonSel} — ${note}` : reasonSel;
+    const btn = document.getElementById('report-submit-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Gönderiliyor…'; }
+    try {
+        await window.DB.Reports.create(user.id, contentType, contentId, reason);
+        document.getElementById('report-modal-overlay')?.remove();
+        showToast('✅ Şikayetin alındı, teşekkürler. İnceleyeceğiz.');
+    } catch (e) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Gönder'; }
+        // Aynı içeriği tekrar bildirme gibi durumlar
+        showToast('❌ Şikayet gönderilemedi: ' + (e.message || ''));
+    }
+};
+
+// --- Admin moderasyon kuyruğu (yalnız isAdminUser) ---
+// ADMIN_FEATURE_ENABLED kapalıysa erişilemez; açıldığında bu fonksiyon çalışır.
+window.openModerationQueue = async function() {
+    if (typeof window.isAdminUser !== 'function' || !window.isAdminUser()) {
+        showToast('⚠️ Bu alana erişim yetkiniz yok.');
+        return;
+    }
+    if (!window.DB) return;
+    document.getElementById('modq-overlay')?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'modq-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:1rem;';
+    overlay.innerHTML = `
+      <div style="background:#1a1a1a;border:1px solid rgba(255,255,255,.1);border-radius:16px;max-width:560px;width:100%;max-height:80vh;overflow:auto;padding:1.5rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+          <h3 style="margin:0;color:#fff;"><i class="fa-solid fa-gavel" style="color:var(--neon-cyan);margin-right:.4rem;"></i>Moderasyon Kuyruğu</h3>
+          <button onclick="document.getElementById('modq-overlay').remove()" style="background:none;border:none;color:#888;font-size:1.3rem;cursor:pointer;">&times;</button>
+        </div>
+        <div id="modq-list" style="color:#ccc;">Yükleniyor…</div>
+      </div>`;
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+
+    try {
+        const reports = await window.DB.Reports.getPending();
+        const listEl = document.getElementById('modq-list');
+        if (!reports.length) { listEl.innerHTML = '<p style="color:#888;">Bekleyen şikayet yok. 🎉</p>'; return; }
+        listEl.innerHTML = reports.map(r => `
+          <div style="border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:.9rem;margin-bottom:.7rem;">
+            <div style="font-size:.75rem;color:#888;margin-bottom:.3rem;">${r.content_type} · ${escapeHtml(r.reporter?.username || 'bilinmiyor')} · ${timeAgoSocial(r.created_at)}</div>
+            <div style="color:#fff;margin-bottom:.2rem;">${escapeHtml(r.reason || '(sebep belirtilmemiş)')}</div>
+            <div style="font-size:.7rem;color:#666;margin-bottom:.6rem;">içerik id: ${r.content_id}</div>
+            <div style="display:flex;gap:.5rem;">
+              <button onclick="resolveReport('${r.id}','removed')" style="flex:1;padding:.5rem;border-radius:8px;background:rgba(255,0,127,.15);border:1px solid var(--neon-pink);color:var(--neon-pink);cursor:pointer;">Kaldırıldı</button>
+              <button onclick="resolveReport('${r.id}','dismissed')" style="flex:1;padding:.5rem;border-radius:8px;background:#2a2a2a;border:none;color:#ccc;cursor:pointer;">Yok say</button>
+            </div>
+          </div>`).join('');
+    } catch (e) {
+        document.getElementById('modq-list').innerHTML = '<p style="color:#ff4d4d;">Yüklenemedi: ' + escapeHtml(e.message || '') + '</p>';
+    }
+};
+
+window.resolveReport = async function(reportId, status) {
+    const user = window.__AUTH_USER__;
+    if (!user || !window.DB) return;
+    try {
+        await window.DB.Reports.resolve(reportId, status, user.id);
+        showToast(status === 'removed' ? '✅ İçerik kaldırıldı olarak işaretlendi.' : '✅ Şikayet yok sayıldı.');
+        openModerationQueue(); // listeyi tazele
+    } catch (e) {
+        showToast('❌ İşlem başarısız: ' + (e.message || ''));
+    }
+};
 

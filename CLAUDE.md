@@ -276,6 +276,29 @@ Kullanıcı Ana Sayfa'da (dashboard) ~1sn: (a) sağ mini kartta **kendi fotosu y
 
 **Not (kapsam dışı):** `isVotingOpen`'daki 24h kısıtı hâlâ test için KAPALI (`status='finished'` yeterli); bu iş kapsamında değiştirilmedi. `player_id=null` hayalet `team_members` satırı silinmedi (kaptan kendi siler; kod onu zaten atlıyor).
 
+## İçerik Moderasyonu — Küfür / Rezerve İsim / Yasaklı Link / Şikayet (2026-07-31)
+
+**Amaç:** Uygunsuz kullanıcı adları (rezerve sistem adları + küfür/hakaret), gönderi/yorum/takım adında küfür ve dini/siyasi hakaret, ve paylaşımlarda porno/yasaklı domain engellemek + kullanıcı şikayet sistemi.
+
+**İKİ KATMANLI MİMARİ (kritik — bkz. `trg_protect_profile_privileged_columns` dersi):**
+- **Katman 1 (UX) = `moderation.js`:** Sadece hızlı, kullanıcı dostu ön uyarı. Tarayıcı konsolundan **atlanabilir**. `index.html` (db.js sonrası) ve `auth.html` (supabase.js sonrası) yükler; yalnız `window.sbClient`'e bağlıdır. `window.Moderation.{validateUsername, validateName, validateContent, checkText, isReservedUsername, findBannedDomain, ready}`.
+- **Katman 2 (GÜVENLİK) = Postgres trigger'ları (`moderation-migration.sql`, `rpwbmvpapfouhpyvoeol`'e uygulandı):** Asıl zorlama burada, **atlanamaz**. Uygunsuz içerik `RAISE EXCEPTION` ile reddedilir (Türkçe mesaj → PostgREST `error.message` → arayüzde toast).
+
+**DB nesneleri (`moderation-migration.sql`):**
+- Tablolar: `banned_words(word, match_type, category)`, `reserved_usernames(name)`, `banned_domains(domain, category)`, `content_reports(reporter_id, content_type, content_id, reason, status, reviewed_by...)`. Liste tabloları herkese **SELECT** (client UX okur), yazma yok (RLS: yalnız service-role/SQL editor). `content_reports`: kullanıcı kendi şikayetini INSERT/SELECT; admin (`profiles.is_admin`) tümünü SELECT/UPDATE.
+- Fonksiyonlar: `moderation_fold` (Türkçe + leetspeak katlama + lowercase), `moderation_compact` (ayraçları sil + tekrar eden karakteri tek'e indir → `s.i.k.t.i.r`/`s1kt1r`/`siiik` yakalanır), `moderation_tokens` (boşluk korumalı token dizisi), `moderation_has_banned_word`, `moderation_is_reserved_username`, `moderation_has_banned_domain`. **`moderation.js` bu mantığın birebir JS kopyasıdır — birini değiştirirsen diğerini de değiştir.**
+- Trigger'lar: `trg_moderation_profile` (username reserved + küfür / full_name küfür — `before insert or update of username, full_name`), `trg_moderation_post`, `trg_moderation_comment`, `trg_moderation_team`. **`auth.uid()` kısıtı YOK** — signup (`handle_new_user`, auth.uid()=null) yolunun da filtreden geçmesi için; ama trigger'lar sadece ilgili kolonlar (`of content` / `of username, full_name` / `of name, description`) SET edildiğinde fire eder → normal update'ler (gen_score/honor/avatar/counter) etkilenmez, performans/çakışma yok.
+
+**match_type — false-positive önleme (ÖNEMLİ):** Kısa/ambigü kökler `'word'` (tam token eşleşmesi): `sik`, `göt`, `piç`, `amk`... — substring olsalardı `klasik`/`götür`/`epic` yanlış yakalanırdı. Uzun/belirgin ifadeler `'substring'` (aralarına nokta/boşluk konsa bile yakalar): `siktir`, `orospu`, `şerefsiz`... Yeni kelime eklerken bu ayrımı yap. Doğrulandı: `klasik/götür/Sakarya/epic` **geçer**, `siktir/s1kt1r/s.i.k.t.i.r/siiik` **yakalanır** (hem JS hem DB, 31 senaryo + canlı trigger testi).
+
+**Yasaklı domain:** `moderation_has_banned_domain` metindeki URL'leri regex ile bulur, `banned_domains` ile karşılaştırır — **alt domainler otomatik kapsanır** (`m.pornhub.com` yakalanır, `notpornhub.com` yakalanmaz). Seed: 23 yetişkin domain.
+
+**Şikayet (Şikayet Et):** Her feed post'unda `.report-btn` (bayrak) → `reportContent('post', id)` → modal (sebep dropdown + not) → `submitReport` → `DB.Reports.create`. Admin kuyruğu: `window.openModerationQueue()` — **`isAdminUser()` ile gated, ADMIN_FEATURE_ENABLED=false olduğundan şu an erişilemez**; admin açılınca çalışır (`DB.Reports.getPending/resolve`).
+
+**Listeyi genişletme (kod deploy'u GEREKMEZ):** Yeni küfür/rezerve/domain, doğrudan Supabase SQL editöründen ilgili tabloya `insert` ile eklenir; client bir sonraki yüklemede DB'den çeker. Kelime listesini kasıtlı düzeltmek için trigger'ı geçici `disable` etmek gerekmez (auth.uid guard yok ama SQL editör yazımı zaten filtreden geçer — sadece temiz veri gir).
+
+**Kural:** İçerik yazan yeni bir yol (yeni serbest-metin alanı, yeni tablo) eklerken **hem** ilgili trigger'ı **hem** client `validateContent`/`validateUsername` çağrısını ekle. `moderation.js` normalize mantığı ile `moderation_*` SQL fonksiyonları senkron kalmalı. `sw.js` cache `ss-v13` → `ss-v14` bump edildi + `moderation.js` APP_SHELL'e eklendi.
+
 ## Bilinen Açık Konular
 
 - **Şifre sıfırlama e-postası:** Şu an Supabase'in varsayılan göndericisinden gidiyor, "Sosyal Sporcu" marka adıyla değil. Çözüm: Supabase Dashboard → Authentication → Emails → SMTP Settings → Custom SMTP açılıp gerçek bir SMTP sağlayıcı (Resend/SendGrid/Postmark vb.) ile `noreply@sosyalsporcu.com` gönderen adresi ayarlanmalı. Kurulum 2026-07-04 itibarıyla devam ediyor — bu repodaki koddan bağımsız, tamamen Supabase panel/DNS (SPF/DKIM) konfigürasyonu.
